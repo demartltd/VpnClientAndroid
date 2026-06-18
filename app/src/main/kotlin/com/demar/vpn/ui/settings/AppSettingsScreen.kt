@@ -20,21 +20,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Article
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -53,12 +48,12 @@ import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SectionCard
+import com.demar.vpn.ui.scaffold.DemarBackScaffold
 import com.demar.vpn.ui.util.shareJournal
 import kotlinx.coroutines.launch
 
 private const val JournalHeight = 260
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
   val scope = rememberCoroutineScope()
@@ -70,17 +65,9 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
     if (expanded) AppLog.importPendingNativeDiag(context)
   }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text(stringResource(R.string.app_settings_title)) },
-        navigationIcon = {
-          IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-          }
-        },
-      )
-    },
+  DemarBackScaffold(
+    title = stringResource(R.string.app_settings_title),
+    onBack = onBack,
   ) { padding ->
     Column(
       Modifier
@@ -91,7 +78,7 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
       SectionCard(
         title = stringResource(R.string.journal_title),
         subtitle = stringResource(R.string.journal_subtitle),
-        leading = { Icon(Icons.Filled.Article, null, tint = MaterialTheme.colorScheme.primary) },
+        icon = Icons.Filled.Article,
       ) {
         val expandInteraction = remember { MutableInteractionSource() }
         val expandLabel = stringResource(R.string.journal_expand) +

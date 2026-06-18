@@ -1,10 +1,20 @@
 package com.demar.vpn.ui.mock
 
+import com.demar.vpn.data.network.EgressHostProbe
+import com.demar.vpn.data.network.EgressRouteKind
+import com.demar.vpn.data.network.PublicEgressInfo
+
 data class SignedInUserUi(
   val username: String,
   val id: String,
   val vpnSubscription: String,
   val vpnExpiresAt: String?,
+)
+
+data class EgressMock(
+  val route: EgressRouteKind,
+  val info: PublicEgressInfo,
+  val hostProbes: List<EgressHostProbe>,
 )
 
 object UiMocks {
@@ -15,22 +25,17 @@ object UiMocks {
     vpnExpiresAt = "2026-12-31",
   )
 
-  val journalLines = listOf(
-    "[ui] home screen opened",
-    "sing-box bundled",
-  )
-
-  val deviceFields = linkedMapOf(
-    "manufacturer" to "Google",
-    "model" to "Pixel",
-    "android_id" to "demo-android-id",
-    "app_set_id" to "demo-app-set",
-  )
-
-  val egressFields = linkedMapOf(
-    "Route" to "Direct",
-    "IP" to "203.0.113.1",
-    "Country" to "—",
-    "TCP latency" to "42 ms",
+  val egress = EgressMock(
+    route = EgressRouteKind.Direct,
+    info = PublicEgressInfo(ip = "203.0.113.42", country = "None 🏳️"),
+    hostProbes = listOf(
+      EgressHostProbe(42, 88),
+      EgressHostProbe(35, 72),
+      EgressHostProbe(58, 95),
+      EgressHostProbe(51, 80),
+      EgressHostProbe(44, 76),
+      EgressHostProbe(62, 102),
+      EgressHostProbe(70, 110),
+    ),
   )
 }

@@ -1,6 +1,7 @@
 package com.demar.vpn.vpn
 
 import android.util.Log
+import com.demar.vpn.domain.vpn.SingBoxTags
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Proxy
@@ -9,19 +10,15 @@ import java.net.URL
 
 internal object VpnTunnelProbe {
   private const val TAG = "VpnTunnelProbe"
-  private const val PROBE_URL = "https://www.cloudflare.com/cdn-cgi/trace"
-  private const val ATTEMPTS = 5
-  private const val RETRY_DELAY_MS = 500L
   private const val READY_POLL_MS = 200L
-  const val NAIVE_WARMUP_MS = 2000L
   const val POST_CONNECT_BUDGET_MS = 5_000L
   private const val TCP_PROBE_MS = 1000
 
   const val TIMEOUT_MS = 5000
 
   fun waitForDiagProxy(
-    host: String = SingBoxDiag.LISTEN_HOST,
-    port: Int = SingBoxDiag.LISTEN_PORT,
+    host: String = SingBoxTags.DIAG_LISTEN_HOST,
+    port: Int = SingBoxTags.DIAG_LISTEN_PORT,
     budgetMs: Long = POST_CONNECT_BUDGET_MS,
   ): Boolean {
     val deadline = System.currentTimeMillis() + budgetMs
@@ -32,53 +29,15 @@ internal object VpnTunnelProbe {
     return false
   }
 
-  fun verifyHttp(
-    host: String = SingBoxDiag.LISTEN_HOST,
-    port: Int = SingBoxDiag.LISTEN_PORT,
-    timeoutMs: Int = TIMEOUT_MS,
-  ): Boolean {
-    repeat(ATTEMPTS) { attempt ->
-      if (httpOk(host, port, timeoutMs)) return true
-      if (attempt < ATTEMPTS - 1) Thread.sleep(RETRY_DELAY_MS)
-    }
-    return false
-  }
-
   fun waitForTunnelReady(budgetMs: Long): Boolean {
     if (budgetMs <= 0) return false
-    val deadline = System.currentTimeMillis() + budgetMs
-    if (!waitForDiagProxy(budgetMs = minOf(budgetMs, 10_000L))) return false
-    val remaining = deadline - System.currentTimeMillis()
-    if (remaining <= 0) return false
-    Thread.sleep(minOf(NAIVE_WARMUP_MS, remaining))
-    while (System.currentTimeMillis() < deadline) {
-      if (httpOk()) return true
-      val left = deadline - System.currentTimeMillis()
-      if (left <= 0) break
-      Thread.sleep(minOf(RETRY_DELAY_MS, left))
-    }
-    return false
+    return waitForDiagProxy(budgetMs = minOf(budgetMs, 8_000L))
   }
-
-  fun verify(
-    host: String = SingBoxDiag.LISTEN_HOST,
-    port: Int = SingBoxDiag.LISTEN_PORT,
-    timeoutMs: Int = TIMEOUT_MS,
-  ): Boolean = waitForTunnelReady(POST_CONNECT_BUDGET_MS)
 
   fun isDiagProxyOpen(
-    host: String = SingBoxDiag.LISTEN_HOST,
-    port: Int = SingBoxDiag.LISTEN_PORT,
+    host: String = SingBoxTags.DIAG_LISTEN_HOST,
+    port: Int = SingBoxTags.DIAG_LISTEN_PORT,
   ): Boolean = tcpOpen(host, port)
-
-  private fun httpOk(
-    host: String = SingBoxDiag.LISTEN_HOST,
-    port: Int = SingBoxDiag.LISTEN_PORT,
-    timeoutMs: Int = TIMEOUT_MS,
-  ): Boolean {
-    val body = httpGetViaDiagProxy(host, port, PROBE_URL, timeoutMs)
-    return body != null && body.contains("ip=")
-  }
 
   private fun tcpOpen(host: String, port: Int): Boolean {
     return try {
@@ -107,16 +66,24 @@ internal object VpnTunnelProbe {
             requestMethod = "GET"
             connectTimeout = timeoutMs
             readTimeout = timeoutMs
-            setRequestProperty("Accept", "application/json,text/plain,*/*")
+            instanceFollowRedirects = false
+            setRequestProperty("Accept", "*/*")
           }
-      if (conn.responseCode !in 200..399) {
-        Log.w(TAG, "probe HTTP ${conn.responseCode} for $url")
-        return null
+      when (val code = conn.responseCode) {
+        204 -> "ip=0.0.0.0"
+        in 200..399 -> {
+          val body = conn.inputStream.bufferedReader().use { it.readText() }
+          when {
+            body.contains("ip=") -> body
+            body.isBlank() -> "ip=0.0.0.0"
+            else -> body
+          }
+        }
+        else -> {
+          Log.w(TAG, "probe HTTP $code for $url")
+          null
+        }
       }
-      val body = conn.inputStream.bufferedReader().use { it.readText() }
-      if (body.contains("ip=")) return body
-      if (conn.responseCode == 204) return "ip=0.0.0.0"
-      body.ifBlank { null }
     } catch (t: Throwable) {
       Log.w(TAG, "probe failed for $url: ${t.message}")
       null

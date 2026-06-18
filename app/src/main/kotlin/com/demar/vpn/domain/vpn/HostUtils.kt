@@ -9,5 +9,7 @@ fun isLiteralIpv4(host: String): Boolean {
   }
 }
 
-fun isHostname(host: String): Boolean =
-  host.trim().isNotEmpty() && !isLiteralIpv4(host.trim())
+fun isHostname(host: String): Boolean {
+  val h = host.trim()
+  return h.isNotEmpty() && !isLiteralIpv4(h)
+}

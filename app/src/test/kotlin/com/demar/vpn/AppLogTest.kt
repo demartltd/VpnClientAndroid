@@ -52,4 +52,21 @@ class AppLogTest {
     assertTrue(isVpnTrafficAccessNoise(noise))
     assertFalse(isVpnTrafficAccessNoise("[app] connect started"))
   }
+
+  @Test
+  fun syncExportMirrorForTest_writesPersistedJournalToMirror() {
+    val internalDir = Files.createTempDirectory("applog-internal").toFile()
+    val mirrorDir = Files.createTempDirectory("applog-mirror").toFile()
+    AppLog.bindForTest(internalDir)
+    AppLog.bindMirrorForTest(mirrorDir)
+    AppLog.append("mirror-line-1")
+    AppLog.append("mirror-line-2")
+    AppLog.syncExportMirrorForTest()
+    val mirror = File(mirrorDir, "export_mirror.log")
+    assertTrue(mirror.isFile)
+    val mirrorText = mirror.readText()
+    assertTrue(mirrorText.contains("mirror-line-1"))
+    assertTrue(mirrorText.contains("mirror-line-2"))
+    assertEquals(AppLog.readPersistedUtf8().trim(), mirrorText.trim())
+  }
 }

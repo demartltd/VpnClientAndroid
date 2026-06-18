@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -13,6 +14,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.demar.vpn.DemarAppContextHolder
 import com.demar.vpn.MainActivity
+import com.demar.vpn.domain.vpn.ConnectTimeouts
 import io.nekohasekai.libbox.CommandServerHandler
 import io.nekohasekai.libbox.SystemProxyStatus
 import java.io.File
@@ -51,10 +53,12 @@ class DemarVpnService :
       ACTION_STOP -> {
         val logSrc = intent.getStringExtra(EXTRA_LOG_SOURCE)?.trim().orEmpty().ifEmpty { "unknown" }
         emitLogLine("[ui] android vpn_service: stop (source=$logSrc)")
-        sessionEpoch.incrementAndGet()
+        val stopEpoch = sessionEpoch.incrementAndGet()
         pendingStart = null
         emitState("disconnecting", "")
         executor.execute {
+          // Skip if a new START arrived after this STOP (epoch advanced past stopEpoch).
+          if (sessionEpoch.get() != stopEpoch) return@execute
           shutdown()
           stopSelf()
         }
@@ -72,6 +76,8 @@ class DemarVpnService :
         val uplink = intent.getStringExtra(EXTRA_UPLINK_HOST)
         val uplinkPort = intent.getIntExtra(EXTRA_UPLINK_PORT, 0).takeIf { it in 1..65535 }
         VpnControlStateStore.saveConnectPayload(applicationContext, cfg, uplink, uplinkPort)
+        // Advance epoch so any pending STOP executor task sees it was superseded.
+        sessionEpoch.incrementAndGet()
         startForegroundNotification()
         val request = ConnectRequest(cfg, uplink, uplinkPort)
         executor.execute { connectVpn(request) }
@@ -103,9 +109,12 @@ class DemarVpnService :
       emitLogLine("connect coalesced: queued latest config")
       return
     }
+    // Re-enter foreground in case a previous STOP removed the notification before this
+    // START's executor task ran (rapid STOP → START scenario).
+    startForegroundNotification()
     connecting = true
     val epochAtStart = sessionEpoch.get()
-    val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(CONNECT_TIMEOUT_MS)
+    val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ConnectTimeouts.CONNECT_MS)
     try {
       emitState("connecting", "")
       shutdownSingBox()
@@ -137,15 +146,21 @@ class DemarVpnService :
       }
 
       val budgetMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()).coerceAtLeast(0)
+      val verifyStart = System.currentTimeMillis()
       if (!VpnTunnelProbe.waitForTunnelReady(budgetMs)) {
-        emitLogLine("tunnel egress not ready")
-        emitState("error", "Tunnel verification failed: egress not ready")
+        val verifyMs = System.currentTimeMillis() - verifyStart
+        Log.w(TAG, "tunnel not ready after ${verifyMs}ms")
+        emitLogLine("tunnel not ready after ${verifyMs}ms — diag proxy unreachable")
+        appendStderrTail()
+        emitState("error", "Tunnel probe failed after ${verifyMs}ms")
         shutdownSingBox()
         stopForegroundCompat()
         return
       }
 
-      emitLogLine("tunnel egress verified")
+      val verifyMs = System.currentTimeMillis() - verifyStart
+      Log.i(TAG, "tunnel ready in ${verifyMs}ms")
+      emitLogLine("tunnel ready in ${verifyMs}ms")
       emitState("connected", "")
     } catch (t: TimeoutException) {
       Log.e(TAG, "connectVpn timed out", t)
@@ -304,9 +319,20 @@ class DemarVpnService :
     const val EXTRA_LOG_SOURCE = "log_source"
     const val LOG_SOURCE_UI = "ui"
     const val LOG_SOURCE_QS_TILE = "qs_tile"
-  private const val NOTIFICATION_ID = 1
-  private const val TAG = "DemarVpn"
-  private const val CONNECT_TIMEOUT_MS = 90_000L
-  private const val TUN_SETTLE_MS = 500L
-}
+    private const val NOTIFICATION_ID = 1
+    private const val TAG = "DemarVpn"
+    private const val TUN_SETTLE_MS = 200L
+
+    internal fun buildStartIntent(
+      context: Context,
+      payload: VpnControlStateStore.ConnectPayload,
+      logSource: String,
+    ): Intent = Intent(context, DemarVpnService::class.java).apply {
+      action = ACTION_START
+      putExtra(EXTRA_LOG_SOURCE, logSource)
+      putExtra(EXTRA_CONFIG_JSON, payload.configJson)
+      payload.uplinkHost?.let { putExtra(EXTRA_UPLINK_HOST, it) }
+      payload.uplinkPort?.let { putExtra(EXTRA_UPLINK_PORT, it) }
+    }
+  }
 }

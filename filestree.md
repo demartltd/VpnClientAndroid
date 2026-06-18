@@ -50,7 +50,8 @@ scripts/
 ├── backup-android-signing.ps1
 ├── open_output_folders.ps1
 ├── push-github.ps1
-└── adb_debug.sh
+├── adb_debug.sh
+└── adb_journal.sh
 ```
 
 ## Res

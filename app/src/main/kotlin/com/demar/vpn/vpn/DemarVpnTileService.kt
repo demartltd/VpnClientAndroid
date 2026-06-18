@@ -58,15 +58,10 @@ class DemarVpnTileService : TileService() {
   private fun requestConnect(payload: VpnControlStateStore.ConnectPayload) {
     try {
       VpnControlStateStore.saveState(this, VpnControlStateStore.State.Connecting.raw)
-      val start =
-        Intent(this, DemarVpnService::class.java).apply {
-          action = DemarVpnService.ACTION_START
-          putExtra(DemarVpnService.EXTRA_LOG_SOURCE, DemarVpnService.LOG_SOURCE_QS_TILE)
-          putExtra(DemarVpnService.EXTRA_CONFIG_JSON, payload.configJson)
-          payload.uplinkHost?.let { putExtra(DemarVpnService.EXTRA_UPLINK_HOST, it) }
-          payload.uplinkPort?.let { putExtra(DemarVpnService.EXTRA_UPLINK_PORT, it) }
-        }
-      ContextCompat.startForegroundService(this, start)
+      ContextCompat.startForegroundService(
+        this,
+        DemarVpnService.buildStartIntent(this, payload, DemarVpnService.LOG_SOURCE_QS_TILE),
+      )
     } catch (_: Throwable) {
       VpnControlStateStore.saveState(this, VpnControlStateStore.State.Error.raw)
     }

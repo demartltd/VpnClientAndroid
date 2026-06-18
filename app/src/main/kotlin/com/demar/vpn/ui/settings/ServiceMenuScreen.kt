@@ -7,17 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,15 +19,15 @@ import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
+import com.demar.vpn.ui.scaffold.DemarBackScaffold
+import androidx.compose.material3.SnackbarHostState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServiceMenuScreen(
   singBoxLabel: String,
   onBack: () -> Unit,
   snackbarHost: SnackbarHostState,
 ) {
-  val cs = MaterialTheme.colorScheme
   val context = LocalContext.current
   val appName = remember(context) {
     runCatching {
@@ -46,17 +37,9 @@ fun ServiceMenuScreen(
     }.getOrElse { context.getString(R.string.app_name) }
   }
 
-  Scaffold(
-    topBar = {
-      TopAppBar(
-        title = { Text(stringResource(R.string.service_menu_title)) },
-        navigationIcon = {
-          IconButton(onClick = onBack) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-          }
-        },
-      )
-    },
+  DemarBackScaffold(
+    title = stringResource(R.string.service_menu_title),
+    onBack = onBack,
   ) { padding ->
     Column(
       Modifier
@@ -64,7 +47,7 @@ fun ServiceMenuScreen(
         .verticalScroll(rememberScrollState())
         .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
     ) {
-      SectionCard(title = "About", leading = { Icon(Icons.Filled.Info, null, tint = cs.primary) }) {
+      SectionCard(title = "About", icon = Icons.Filled.Info) {
         KvRow("Name", appName)
         KvRow("Package", BuildConfig.APPLICATION_ID)
         KvRow("Version", BuildConfig.VERSION_NAME)
@@ -72,12 +55,12 @@ fun ServiceMenuScreen(
         KvRow("Sing-box", singBoxLabel.ifEmpty { "…" })
       }
       Spacer(Modifier.height(12.dp))
-      ServiceEgressCard(iconColor = cs.primary)
+      ServiceEgressCard()
       Spacer(Modifier.height(12.dp))
       DeviceIdentitySection()
       Spacer(Modifier.height(12.dp))
-      SectionCard(title = "Snack bar", leading = { Icon(Icons.Filled.NotificationsActive, null, tint = cs.primary) }) {
-        ServiceMenuSnackChips(snackbarHost, cs.primary)
+      SectionCard(title = "Snack bar", icon = Icons.Filled.NotificationsActive) {
+        ServiceMenuSnackChips(snackbarHost)
       }
     }
   }

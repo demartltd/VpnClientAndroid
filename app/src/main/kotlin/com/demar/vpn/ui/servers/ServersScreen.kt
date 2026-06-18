@@ -1,8 +1,7 @@
 package com.demar.vpn.ui.servers
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,7 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
-import com.demar.vpn.ui.components.AppFloatingToolbarExtent
+import com.demar.vpn.ui.components.ActiveTabContent
+import com.demar.vpn.ui.components.toolbarBottomInset
 import com.demar.vpn.ui.components.DemarSnackbar
 import kotlinx.coroutines.launch
 
@@ -37,17 +37,14 @@ fun ServersScreen(
   vpnController: VpnController,
   modifier: Modifier = Modifier,
 ) {
-  if (!active) {
-    Box(modifier.fillMaxSize())
-    return
-  }
+  ActiveTabContent(active, modifier) {
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val selectedMsg = stringResource(R.string.server_selected)
   val scope = rememberCoroutineScope()
 
   LazyColumn(
-    modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 24.dp + AppFloatingToolbarExtent),
+    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+    contentPadding = PaddingValues(bottom = toolbarBottomInset(24.dp)),
   ) {
     items(vpnController.serverProfiles, key = { it.id }) { profile ->
       ServerRow(profile, selected = profile.id == selected.id) {
@@ -55,6 +52,7 @@ fun ServersScreen(
         scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
       }
     }
+  }
   }
 }
 

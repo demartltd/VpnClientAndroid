@@ -45,8 +45,9 @@ object SingBoxCore {
 
   @Synchronized
   fun stop(owner: Long) {
-    if (activeOwner != owner && activeOwner != 0L) {
-      Log.w(TAG, "stop: owner mismatch expected=$owner active=$activeOwner — forcing close")
+    if (activeOwner != owner) {
+      Log.w(TAG, "stop: owner mismatch expected=$owner active=$activeOwner, skipping")
+      return
     }
     closeLocked()
   }

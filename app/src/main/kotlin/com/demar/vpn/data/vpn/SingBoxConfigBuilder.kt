@@ -11,33 +11,18 @@ object SingBoxConfigBuilder {
     tunName: String = "tun0",
     mtu: Int = 1492,
     logLevel: String = "warning",
-  ): String = buildTunConfig(
-    proxyOutbound = plan.proxyOutbound,
-    directIPs = plan.directIPs,
-    tunName = tunName,
-    mtu = mtu,
-    logLevel = logLevel,
-    dnsFinal = plan.tun.dnsFinal,
-    dnsBootstrapDomains = plan.tun.dnsBootstrapDomains,
-    strictRoute = plan.tun.strictRoute,
-    directDomains = plan.tun.directDomains,
-  ).toString(2)
+  ): String = buildTunConfig(plan, tunName, mtu, logLevel).toString(2)
 
   private fun buildTunConfig(
-    proxyOutbound: Map<String, Any?>,
-    directIPs: List<String>,
+    plan: SingBoxConnectPlan,
     tunName: String,
     mtu: Int,
     logLevel: String,
-    dnsFinal: String,
-    dnsBootstrapDomains: List<String>,
-    strictRoute: Boolean,
-    directDomains: List<String>,
   ): JSONObject = JSONObject().apply {
     put("log", JSONObject().put("level", logLevel))
-    put("dns", makeDns(dnsFinal, dnsBootstrapDomains))
+    put("dns", makeDns(plan.tun.dnsFinal, plan.tun.bootstrapDomains))
     put("inbounds", JSONArray().apply {
-      put(makeTunInbound(tunName, mtu, directIPs, strictRoute))
+      put(makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute))
       put(JSONObject().apply {
         put("type", "mixed")
         put("tag", SingBoxTags.DIAG_INBOUND)
@@ -45,9 +30,9 @@ object SingBoxConfigBuilder {
         put("listen_port", SingBoxTags.DIAG_LISTEN_PORT)
       })
     })
-    put("route", makeRoute(SingBoxTags.TUN_INBOUND, directIPs, directDomains))
+    put("route", makeRoute(SingBoxTags.TUN_INBOUND, plan.directIPs, plan.tun.bootstrapDomains))
     put("outbounds", JSONArray().apply {
-      put(toJson(proxyOutbound))
+      put(toJson(plan.proxyOutbound))
       put(JSONObject().apply {
         put("type", "direct")
         put("tag", SingBoxTags.DIRECT)
@@ -95,7 +80,7 @@ object SingBoxConfigBuilder {
   private fun makeRoute(
     inboundTag: String,
     directIPs: List<String>,
-    directDomains: List<String>,
+    bootstrapDomains: List<String>,
   ): JSONObject {
     val rules = JSONArray().apply {
       put(JSONObject().apply {
@@ -123,7 +108,7 @@ object SingBoxConfigBuilder {
           put("outbound", SingBoxTags.DIRECT)
         })
       }
-      directDomains.forEach { domain ->
+      bootstrapDomains.forEach { domain ->
         cleanedDomain(domain)?.let { clean ->
           put(JSONObject().apply {
             put("domain", JSONArray().put(clean))
@@ -168,7 +153,7 @@ object SingBoxConfigBuilder {
     put("type", "tun")
     put("tag", SingBoxTags.TUN_INBOUND)
     put("interface_name", tunName)
-    put("mtu", if (mtu < 1400) mtu else 1400)
+    put("mtu", mtu.coerceAtMost(1400))
     put("auto_route", true)
     put("strict_route", strictRoute)
     put("address", JSONArray().put("172.19.0.1/30"))

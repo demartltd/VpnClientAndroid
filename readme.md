@@ -38,7 +38,7 @@ pwsh scripts/build_android.ps1
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
 | Service menu (3× tap version) | mock diagnostics |
 
-VPN connect (Naive MVP) — **реализовано**. Auth, share, throughput, egress diagnostics — **следующий этап**.
+VPN connect (Naive MVP) — **реализовано**. Auth, share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 
@@ -48,6 +48,25 @@ VPN connect (Naive MVP) — **реализовано**. Auth, share, throughput,
 ./gradlew :app:installDebug && adb shell am start -n com.demar.vpn/.MainActivity
 ./scripts/adb_debug.sh
 ```
+
+### Журнал (AppLog)
+
+UI-журнал («Настройки → Настройки приложения») и ADB-выгрузка — один источник `AppLog` (до 512 строк, tail-trim). Приложение зеркалирует журнал во внешнее хранилище при каждой записи — доступно на **debug и release** без `run-as`.
+
+```bash
+# Весь журнал в терминал
+./scripts/adb_journal.sh
+
+# Сохранить в файл
+./scripts/adb_journal.sh -o journal.txt
+```
+
+Путь на устройстве (ручной `adb pull`):
+
+```
+/sdcard/Android/data/com.demar.vpn/files/demar/demar_app.log
+```
+
 
 ---
 

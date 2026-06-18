@@ -1,6 +1,5 @@
 package com.demar.vpn.ui.account
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,24 +27,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
 import com.demar.vpn.ui.auth.LoginPanel
-import com.demar.vpn.ui.components.AppFloatingToolbarExtent
+import com.demar.vpn.ui.components.ActiveTabContent
+import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.components.SectionCard
 import com.demar.vpn.ui.mock.UiMocks
 
 @Composable
 fun AccountScreen(active: Boolean, modifier: Modifier = Modifier) {
-  if (!active) {
-    Box(modifier.fillMaxSize())
-    return
-  }
+  ActiveTabContent(active, modifier) {
   var signedIn by rememberSaveable { mutableStateOf(false) }
   var showLogin by rememberSaveable { mutableStateOf(false) }
 
   Column(
-    modifier
+    Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(start = 16.dp, end = 16.dp, top = 64.dp, bottom = AppFloatingToolbarExtent),
+      .mainTabPadding(bottomExtra = 0.dp),
   ) {
     Text(
       stringResource(R.string.account_title),
@@ -81,6 +78,7 @@ fun AccountScreen(active: Boolean, modifier: Modifier = Modifier) {
 
   if (showLogin) {
     LoginBottomSheet(onDismiss = { showLogin = false }, onSignedIn = { signedIn = true; showLogin = false })
+  }
   }
 }
 
