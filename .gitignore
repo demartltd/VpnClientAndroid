@@ -1,0 +1,46 @@
+# OS / editor
+.DS_Store
+*.swp
+.history
+
+# IDE
+.idea/
+*.iml
+.cxx/
+
+# Android / Gradle local
+local.properties
+.gradle/
+.kotlin/
+captures/
+
+# Build outputs
+**/build/
+*.apk
+*.aab
+*.hprof
+
+# Libbox (scripts/libbox-build-android.py)
+app/libs/libbox.aar
+app/src/main/jniLibs/
+
+# Sing-box assets — only bundled_version.txt (+ optional README) in git
+**/singbox/*
+!**/singbox/bundled_version.txt
+!**/singbox/README.txt
+!**/singbox/README.md
+
+# Release signing — readme-signing.md
+key.properties
+**/*.jks
+**/*.keystore
+
+# Python tooling
+.venv/
+scripts/build/
+
+# Misc
+*.class
+*.log
+*.pyc
+*.sync-conflict-*

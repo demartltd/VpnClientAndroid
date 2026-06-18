@@ -1,0 +1,131 @@
+import java.io.FileInputStream
+import java.util.Properties
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+}
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
+val versionNameProp = providers.gradleProperty("VERSION_NAME").get()
+val versionCodeProp = providers.gradleProperty("VERSION_CODE").get().toInt()
+
+android {
+    namespace = "com.demar.vpn"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "com.demar.vpn"
+        minSdk = 33
+        targetSdk = 36
+        versionCode = versionCodeProp
+        versionName = versionNameProp
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_17.toString()
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
+    packaging {
+        jniLibs {
+            excludes += setOf(
+                "**/armeabi-v7a/**",
+                "**/x86/**",
+                "**/x86_64/**",
+            )
+        }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val releaseTask = allTasks.any { it.name.contains("Release", ignoreCase = true) }
+    if (releaseTask && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            """
+            Release build requires key.properties (upload keystore).
+            Copy key.properties.example and create a keystore — see readme-signing.md
+            """.trimIndent(),
+        )
+    }
+}
+
+dependencies {
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.play.services.appset)
+    implementation(libs.play.services.ads.identifier)
+
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.material.kolor)
+    testImplementation(libs.junit)
+    testImplementation(libs.org.json)
+}
+
+tasks.register("verifyBundledLibboxAar") {
+    doLast {
+        val aar = layout.projectDirectory.file("libs/libbox.aar").asFile
+        if (!aar.isFile) {
+            throw GradleException(
+                """
+                Missing libbox.aar in app/libs/.
+
+                Fix: python3 scripts/libbox-build-android.py
+                """.trimIndent(),
+            )
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("verifyBundledLibboxAar")
+}

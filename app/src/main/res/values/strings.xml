@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Demar VPN</string>
+    <string name="home_title">Demar VPN</string>
+    <string name="vpn_connected">Подключено</string>
+    <string name="server_not_selected">Не выбран</string>
+    <string name="account_title">Аккаунт</string>
+    <string name="account_sign_in_hint">Войдите, чтобы управлять подпиской и профилем</string>
+    <string name="sign_in">Войти</string>
+    <string name="sign_out">Выйти</string>
+    <string name="loading">Загрузка…</string>
+    <string name="settings_header_subtitle">Настройки подключения и приложения</string>
+    <string name="settings_app">Настройки приложения</string>
+    <string name="settings_app_sub">Подключение, журнал диагностики и статус функций</string>
+    <string name="settings_feedback">Обратная связь</string>
+    <string name="settings_feedback_sub">Отправить ошибку или предложение</string>
+    <string name="settings_share">Пригласите друзей по ссылке</string>
+    <string name="settings_share_sub">Получите бесплатный премиум</string>
+    <string name="settings_terms">Условия использования</string>
+    <string name="settings_terms_sub">Правила использования сервиса</string>
+    <string name="settings_privacy">Конфиденциальность</string>
+    <string name="settings_privacy_sub">Как обрабатываются данные</string>
+    <string name="app_settings_title">Настройки приложения</string>
+    <string name="journal_title">Журнал</string>
+    <string name="journal_subtitle">Сообщения приложения и ядра VPN</string>
+    <string name="journal_empty">Пока пусто</string>
+    <string name="journal_expand">Показать журнал</string>
+    <string name="journal_clear">Очистить</string>
+    <string name="journal_share">Поделиться</string>
+    <string name="journal_cleared">Журнал очищен.</string>
+    <string name="journal_share_empty">Журнал пуст — нечего отправить.</string>
+    <string name="journal_share_failed">Не удалось поделиться журналом: %s</string>
+    <string name="share_app_subject">Demar VPN</string>
+    <string name="share_app_pitch">Demar VPN — клиент NaiveProxy / sing-box.\n\nПодробности в репозитории проекта.</string>
+    <string name="service_menu_title">Service menu</string>
+    <string name="login_sheet_title">Вход в аккаунт</string>
+    <string name="login_email_hint">Email</string>
+    <string name="login_continue">Продолжить</string>
+    <string name="login_sending">Отправка…</string>
+    <string name="login_more_methods">More Login Methods</string>
+    <string name="login_otp_sent">Отправлено на %1$s</string>
+    <string name="login_resend">Отправить код снова</string>
+    <string name="login_totp">Код из аутентификатора</string>
+    <string name="soon">Скоро</string>
+    <string name="server_selected">Сервер выбран</string>
+    <string name="platform_android">Android</string>
+</resources>
