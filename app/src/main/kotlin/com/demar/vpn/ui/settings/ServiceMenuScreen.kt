@@ -9,6 +9,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -20,7 +21,6 @@ import com.demar.vpn.R
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
-import androidx.compose.material3.SnackbarHostState
 
 @Composable
 fun ServiceMenuScreen(

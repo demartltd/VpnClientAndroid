@@ -45,7 +45,6 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 
 | Поле | Значение |
 |------|----------|
-| `insecure_concurrency` | `1` |
 | `udp_over_tcp` | `true` |
 | `quic` | `false` |
 | `tls` | enabled + `server_name` |

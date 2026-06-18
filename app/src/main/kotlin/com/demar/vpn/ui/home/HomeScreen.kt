@@ -21,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -38,8 +37,6 @@ import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.ThroughputLine
-import kotlinx.coroutines.launch
-
 @Composable
 fun HomeScreen(
   active: Boolean,
@@ -50,13 +47,12 @@ fun HomeScreen(
 ) {
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
+  val retryCooldown by vpnController.retryCooldownSecs.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
-  val scope = rememberCoroutineScope()
   val serverName = selected.displayName.ifEmpty { stringResource(R.string.server_not_selected) }
 
-  LaunchedEffect(vpnState) {
-    val err = vpnState as? VpnState.Error ?: return@LaunchedEffect
-    scope.launch { DemarSnackbar.showError(snackbarHost, err.message) }
+  LaunchedEffect(Unit) {
+    vpnController.errorEvents.collect { msg -> DemarSnackbar.showError(snackbarHost, msg) }
   }
 
   Column(
@@ -73,17 +69,18 @@ fun HomeScreen(
     Spacer(Modifier.weight(1f))
     VpnMainToggle(
       state = vpnState,
+      retryCooldownSecs = retryCooldown,
       onClick = {
-        when (vpnState) {
-          VpnState.Disconnected -> {
+        when {
+          vpnState is VpnState.Disconnected && retryCooldown == 0 -> {
             AppLog.append("[ui] android home: connect")
             vpnController.connect()
           }
-          VpnState.Connected -> {
+          vpnState is VpnState.Connected -> {
             AppLog.append("[ui] android home: disconnect")
             vpnController.disconnect()
           }
-          VpnState.Connecting, VpnState.Disconnecting, is VpnState.Error -> Unit
+          else -> Unit
         }
       },
     )
@@ -107,20 +104,33 @@ fun HomeScreen(
 }
 
 @Composable
-private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
+private fun VpnMainToggle(state: VpnState, retryCooldownSecs: Int, onClick: () -> Unit) {
   val cs = MaterialTheme.colorScheme
   val compact = state is VpnState.Connected || state is VpnState.Disconnecting
   val busy = state is VpnState.Connecting || state is VpnState.Disconnecting
+  val cooling = retryCooldownSecs > 0 && state is VpnState.Disconnected
   val diameter by animateDpAsState(if (compact) 116.dp else 200.dp)
   val fill = if (compact) cs.primaryContainer else cs.surfaceContainerHighest
-  val iconColor = if (compact) cs.onPrimaryContainer else cs.onSurfaceVariant
+  val iconColor = if (compact) cs.onPrimaryContainer else if (cooling) cs.onSurfaceVariant.copy(alpha = 0.4f) else cs.onSurfaceVariant
 
   Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-    Surface(onClick = onClick, modifier = Modifier.size(diameter), shape = CircleShape, color = fill) {
+    Surface(
+      onClick = onClick,
+      modifier = Modifier.size(diameter),
+      shape = CircleShape,
+      color = fill,
+      enabled = !cooling && !busy,
+    ) {
       Box(contentAlignment = Alignment.Center) {
         when {
           busy -> CircularProgressIndicator(Modifier.size(46.dp), color = iconColor)
           state is VpnState.Connected -> Icon(Icons.Filled.Shield, null, Modifier.size(44.dp), tint = iconColor)
+          cooling -> Text(
+            "$retryCooldownSecs",
+            style = MaterialTheme.typography.headlineLarge,
+            color = iconColor,
+            fontWeight = FontWeight.Bold,
+          )
           else -> Icon(Icons.Filled.PowerSettingsNew, null, Modifier.size(92.dp), tint = iconColor)
         }
       }

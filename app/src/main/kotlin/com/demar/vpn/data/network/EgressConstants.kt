@@ -2,6 +2,10 @@ package com.demar.vpn.data.network
 
 object EgressConstants {
   const val LoadTimingMs = 2000L
+  const val DIAG_PROXY_HOST = "127.0.0.1"
+  const val DIAG_PROXY_PORT = 10808
+  const val CLOUDFLARE_TUNNEL_URL = "https://1.1.1.1/cdn-cgi/trace"
+  const val HOST_PROBE_DEADLINE_MS = 2_500L
 
   val TcpLatencyProbeHosts = listOf(
     "github.com",
@@ -17,6 +21,8 @@ object EgressConstants {
 enum class EgressRouteKind { Direct, DemarVpn, OtherVpn }
 
 data class EgressHostProbe(val tcpMs: Int, val httpsMs: Int)
+
+val EgressHostProbeZero = EgressHostProbe(tcpMs = 0, httpsMs = 0)
 
 data class PublicEgressInfo(val ip: String, val country: String)
 
