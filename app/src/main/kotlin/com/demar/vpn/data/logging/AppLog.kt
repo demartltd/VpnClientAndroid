@@ -23,57 +23,40 @@ fun isVpnTrafficAccessNoise(line: String): Boolean {
   return lower.contains("tcp:") || lower.contains("udp:")
 }
 
+object AppLogLimits {
+  const val maxLines = 512
+}
+
 object AppLog {
-  private const val MaxLines = 512
-  private val memory = ArrayDeque<String>(MaxLines)
+  private val memory = ArrayDeque<String>(AppLogLimits.maxLines)
   private val _lines = MutableStateFlow<List<String>>(emptyList())
   val lines: StateFlow<List<String>> = _lines.asStateFlow()
-
   private var file: File? = null
 
   fun init(context: Context) {
     if (file != null) return
-    val dir = File(context.filesDir, "demar").apply { mkdirs() }
-    file = File(dir, "demar_app.log")
-    reloadFromDisk()
-    enforcePersistedLineCap()
-    publish()
+    bind(File(context.filesDir, "demar").apply { mkdirs() }.resolve("demar_app.log"))
     importPendingNativeDiag(context)
   }
 
   fun append(line: String) {
     val t = line.trim()
     if (t.isEmpty() || isVpnTrafficAccessNoise(t)) return
-    val row = "${journalStampUtc()} $t"
-    val f = file ?: return
-    runCatching {
-      f.appendText("$row\n")
-      memory.addLast(row)
-      trimMemory()
-      enforcePersistedLineCap()
-      publish()
-    }
+    pushRows(listOf("${journalStampUtc()} $t"))
   }
 
   fun appendMany(raw: List<String>, prependStamp: Boolean = true) {
     if (raw.isEmpty()) return
-    val f = file ?: return
     val stamp = if (prependStamp) journalStampUtc() else ""
-    val sb = StringBuilder()
-    for (line in raw) {
+    val rows = raw.mapNotNull { line ->
       val t = line.trim()
-      if (t.isEmpty() || isVpnTrafficAccessNoise(t)) continue
-      val row = if (prependStamp) "$stamp $t" else t
-      sb.append(row).append('\n')
-      memory.addLast(row)
-      trimMemory()
+      when {
+        t.isEmpty() || isVpnTrafficAccessNoise(t) -> null
+        prependStamp -> "$stamp $t"
+        else -> t
+      }
     }
-    if (sb.isEmpty()) return
-    runCatching {
-      f.appendText(sb.toString())
-      enforcePersistedLineCap()
-      publish()
-    }
+    if (rows.isNotEmpty()) pushRows(rows)
   }
 
   fun clear() {
@@ -88,8 +71,7 @@ object AppLog {
 
   fun readPersistedUtf8(): String {
     val f = file ?: return ""
-    if (!f.isFile) return ""
-    return runCatching { f.readText() }.getOrDefault("")
+    return if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
   }
 
   fun importPendingNativeDiag(context: Context) {
@@ -97,29 +79,57 @@ object AppLog {
     if (drained.isNotEmpty()) appendMany(drained)
   }
 
-  private fun reloadFromDisk() {
-    val f = file ?: return
+  internal fun bindForTest(dir: File) = bind(File(dir, "demar_app.log"))
+
+  internal fun resetForTest() {
+    file = null
     memory.clear()
-    if (!f.isFile) return
-    val all = runCatching { f.readLines() }.getOrDefault(emptyList()).map { it.trim() }.filter { it.isNotEmpty() }
-    val tail = if (all.size > MaxLines) all.takeLast(MaxLines) else all
-    memory.addAll(tail)
+    publish()
   }
 
-  private fun enforcePersistedLineCap() {
+  private fun bind(f: File) {
+    file = f.also { it.parentFile?.mkdirs() }
+    syncMemoryFromDisk()
+    trimDisk()
+    publish()
+  }
+
+  private fun pushRows(rows: List<String>) {
+    val f = file ?: return
+    runCatching {
+      f.appendText(rows.joinToString("\n", postfix = "\n"))
+      rows.forEach { memory.addLast(it) }
+      trimMemory()
+      trimDisk()
+      publish()
+    }
+  }
+
+  private fun fileLines(f: File) =
+    runCatching { f.readLines().map { it.trim() }.filter { it.isNotEmpty() } }.getOrDefault(emptyList())
+
+  private fun List<String>.capped() =
+    if (size > AppLogLimits.maxLines) takeLast(AppLogLimits.maxLines) else this
+
+  private fun syncMemoryFromDisk() {
+    memory.clear()
+    val f = file ?: return
+    if (f.isFile) memory.addAll(fileLines(f).capped())
+  }
+
+  private fun trimDisk() {
     val f = file ?: return
     if (!f.isFile) return
     runCatching {
-      val all = f.readLines().map { it.trim() }.filter { it.isNotEmpty() }
-      if (all.size <= MaxLines) return
-      val tail = all.takeLast(MaxLines)
-      f.writeText(tail.joinToString("\n", postfix = "\n"))
-      reloadFromDisk()
+      val all = fileLines(f)
+      if (all.size <= AppLogLimits.maxLines) return
+      f.writeText(all.capped().joinToString("\n", postfix = "\n"))
+      syncMemoryFromDisk()
     }
   }
 
   private fun trimMemory() {
-    while (memory.size > MaxLines) memory.removeFirst()
+    while (memory.size > AppLogLimits.maxLines) memory.removeFirst()
   }
 
   private fun publish() {

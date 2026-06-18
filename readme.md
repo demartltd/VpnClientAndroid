@@ -35,7 +35,7 @@ pwsh scripts/build_android.ps1
 | Servers | test server `backronym.ru` (`TestServer.kt`) |
 | Settings + social links | FA6 brand icons, реальные URL (`x.com/demargames`, …) |
 | Account + login sheet | UI steps без API |
-| App settings (журнал) | mock lines |
+| App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
 | Service menu (3× tap version) | mock diagnostics |
 
 VPN connect (Naive MVP) — **реализовано**. Auth, share, throughput, egress diagnostics — **следующий этап**.
