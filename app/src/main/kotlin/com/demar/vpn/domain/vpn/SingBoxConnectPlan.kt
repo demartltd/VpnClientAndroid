@@ -33,7 +33,6 @@ data class SingBoxConnectPlan(
             "server" to SingBoxTags.DNS_DIRECT,
             "strategy" to "ipv4_only",
           ),
-          "insecure_concurrency" to 1,
           "udp_over_tcp" to mapOf("enabled" to true),
           "quic" to false,
           "tls" to mapOf(

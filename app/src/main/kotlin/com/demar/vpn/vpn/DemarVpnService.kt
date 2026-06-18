@@ -113,6 +113,7 @@ class DemarVpnService :
     // START's executor task ran (rapid STOP → START scenario).
     startForegroundNotification()
     connecting = true
+    var connectFailed = false
     val epochAtStart = sessionEpoch.get()
     val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ConnectTimeouts.CONNECT_MS)
     try {
@@ -142,23 +143,27 @@ class DemarVpnService :
         emitState("error", "sing-box failed to start TUN.")
         shutdownSingBox()
         stopForegroundCompat()
+        connectFailed = true
         return
       }
 
       val budgetMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()).coerceAtLeast(0)
       val verifyStart = System.currentTimeMillis()
-      if (!VpnTunnelProbe.waitForTunnelReady(budgetMs)) {
-        val verifyMs = System.currentTimeMillis() - verifyStart
-        Log.w(TAG, "tunnel not ready after ${verifyMs}ms")
-        emitLogLine("tunnel not ready after ${verifyMs}ms — diag proxy unreachable")
+      val probeResult = VpnTunnelProbe.waitForTunnelReady(budgetMs)
+      val verifyMs = System.currentTimeMillis() - verifyStart
+      if (probeResult != VpnTunnelProbe.ReadyResult.Ok) {
+        val reason = if (probeResult == VpnTunnelProbe.ReadyResult.TcpFail)
+          "diag proxy unreachable" else "upstream http fail"
+        Log.w(TAG, "tunnel not ready after ${verifyMs}ms — $reason")
+        emitLogLine("tunnel not ready after ${verifyMs}ms — $reason")
         appendStderrTail()
         emitState("error", "Tunnel probe failed after ${verifyMs}ms")
         shutdownSingBox()
         stopForegroundCompat()
+        connectFailed = true
         return
       }
 
-      val verifyMs = System.currentTimeMillis() - verifyStart
       Log.i(TAG, "tunnel ready in ${verifyMs}ms")
       emitLogLine("tunnel ready in ${verifyMs}ms")
       emitState("connected", "")
@@ -168,6 +173,7 @@ class DemarVpnService :
       emitState("error", "Connect timeout")
       shutdownSingBox()
       stopForegroundCompat()
+      connectFailed = true
     } catch (t: Throwable) {
       Log.e(TAG, "connectVpn failed", t)
       appendStderrTail()
@@ -175,12 +181,16 @@ class DemarVpnService :
       emitState("error", t.message ?: "Unknown error")
       shutdownSingBox()
       stopForegroundCompat()
+      connectFailed = true
     } finally {
       connecting = false
       val pending = pendingStart
       pendingStart = null
       if (pending != null) {
         executor.execute { connectVpn(pending) }
+      } else if (connectFailed) {
+        // Stop the service so onDestroy() transitions state to Disconnected.
+        stopSelf()
       }
     }
   }
