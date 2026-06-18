@@ -49,7 +49,7 @@ class VpnPipelineTest {
 
       val dns = cfg.getJSONObject("dns")
       assertEquals(SingBoxTags.DNS_REMOTE, dns.getString("final"))
-      for (domain in plan.tun.dnsBootstrapDomains) {
+      for (domain in plan.tun.bootstrapDomains) {
         val hasBootstrap = (0 until dns.getJSONArray("rules").length()).any { i ->
           val rule = dns.getJSONArray("rules").getJSONObject(i)
           rule.optJSONArray("domain")?.let { arr ->
@@ -84,8 +84,7 @@ class VpnPipelineTest {
       tlsServerName = "tls.example.com",
     )
     val plan = ServerProfile.naive(profile).connectPlan
-    assertTrue(plan.tun.dnsBootstrapDomains.containsAll(listOf("vpn.example.com", "tls.example.com")))
-    assertTrue(plan.tun.directDomains.containsAll(listOf("vpn.example.com", "tls.example.com")))
+    assertTrue(plan.tun.bootstrapDomains.containsAll(listOf("vpn.example.com", "tls.example.com")))
     assertTrue(plan.directIPs.isEmpty())
   }
 

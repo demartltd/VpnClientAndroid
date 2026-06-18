@@ -42,6 +42,11 @@ echo "=== TUN Routing ==="
 adb shell ip route show table all 2>/dev/null | grep -E "(tun0|dev tun)" || echo "No TUN routes"
 echo ""
 
+echo "=== App Journal (AppLog) ==="
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+"${SCRIPT_DIR}/adb_journal.sh" 2>/dev/null || echo "Journal mirror not available (launch app first)"
+echo ""
+
 echo "=== Log Stream (Ctrl+C to stop) ==="
 adb logcat -c 2>/dev/null || true
 adb logcat -s ${TAGS}

@@ -40,10 +40,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
-import com.demar.vpn.ui.components.AppFloatingToolbarExtent
+import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsLinksStrip
+import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.util.shareAppPitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -60,10 +61,7 @@ fun SettingsScreen(
   onServiceMenu: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  if (!active) {
-    androidx.compose.foundation.layout.Box(modifier.fillMaxSize())
-    return
-  }
+  ActiveTabContent(active, modifier) {
   var tapCount by remember { mutableIntStateOf(0) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
@@ -77,10 +75,10 @@ fun SettingsScreen(
   }
 
   Column(
-    modifier
+    Modifier
       .fillMaxSize()
       .verticalScroll(rememberScrollState())
-      .padding(start = 16.dp, end = 16.dp, top = 64.dp, bottom = 20.dp + AppFloatingToolbarExtent),
+      .mainTabPadding(bottomExtra = 20.dp),
   ) {
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
       Icon(Icons.Outlined.ShieldMoon, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
@@ -117,6 +115,7 @@ fun SettingsScreen(
         }
       },
     )
+  }
   }
 }
 

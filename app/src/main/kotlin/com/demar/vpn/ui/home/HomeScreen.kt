@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -32,9 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
+import com.demar.vpn.data.network.ThroughputRates
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.VpnState
-import com.demar.vpn.ui.components.AppFloatingToolbarExtent
+import com.demar.vpn.ui.components.ActiveTabContent
+import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.ThroughputLine
 import kotlinx.coroutines.launch
@@ -44,12 +45,10 @@ fun HomeScreen(
   active: Boolean,
   vpnController: VpnController,
   snackbarHost: SnackbarHostState,
+  throughput: ThroughputRates,
   modifier: Modifier = Modifier,
 ) {
-  if (!active) {
-    Box(modifier.fillMaxSize())
-    return
-  }
+  ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val scope = rememberCoroutineScope()
@@ -61,9 +60,9 @@ fun HomeScreen(
   }
 
   Column(
-    modifier
+    Modifier
       .fillMaxSize()
-      .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + AppFloatingToolbarExtent),
+      .mainTabPadding(top = 16.dp),
   ) {
     Text(
       stringResource(R.string.home_title),
@@ -97,8 +96,13 @@ fun HomeScreen(
       fontWeight = FontWeight.Bold,
     )
     Spacer(Modifier.height(6.dp))
-    ThroughputLine(Modifier.fillMaxWidth())
+    ThroughputLine(
+      Modifier.fillMaxWidth(),
+      downloadBps = throughput.downloadBps,
+      uploadBps = throughput.uploadBps,
+    )
     Spacer(Modifier.weight(1f))
+  }
   }
 }
 

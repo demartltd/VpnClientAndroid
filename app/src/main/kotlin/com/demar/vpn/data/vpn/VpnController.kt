@@ -7,8 +7,10 @@ import androidx.core.content.ContextCompat
 import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.resolveUplinkIpv4s
+import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.VpnState
+import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
@@ -35,24 +37,12 @@ class VpnController(private val context: Context) {
 
   private var connectStartedAt: Long = 0L
   private var watchdogJob: Job? = null
-  private var pendingConfigJson: String? = null
-  private var pendingUplinkHost: String? = null
-  private var pendingUplinkPort: Int? = null
   private val serviceStartInFlight = AtomicBoolean(false)
 
   var onNeedVpnPermission: ((Intent) -> Unit)? = null
 
   private val removeListener = VpnEventStream.addListener { event ->
-    when (event["type"] as? String) {
-      "state" -> {
-        val mapped = mapState(
-          state = (event["state"] as? String).orEmpty(),
-          message = (event["message"] as? String).orEmpty(),
-        )
-        if (shouldIgnoreStaleSnapshot(mapped)) return@addListener
-        _state.value = mapped
-      }
-    }
+    applyStateEvent(parseVpnStateEvent(event) ?: return@addListener)
   }
 
   init {
@@ -70,13 +60,7 @@ class VpnController(private val context: Context) {
 
   fun syncPlatformState() {
     val snap = VpnEventStream.vpnStateSnapshot(context) ?: return
-    if (snap["type"] != "state") return
-    val mapped = mapState(
-      state = (snap["state"] as? String).orEmpty(),
-      message = (snap["message"] as? String).orEmpty(),
-    )
-    if (shouldIgnoreStaleSnapshot(mapped)) return
-    _state.value = mapped
+    applyStateEvent(parseVpnStateEvent(snap) ?: return)
   }
 
   fun connect() {
@@ -100,13 +84,10 @@ class VpnController(private val context: Context) {
       val uplinkPort = profile.uplinkPort
 
       AppLog.append("connect uplinkHost=$uplinkHost uplinkPort=$uplinkPort")
-      pendingConfigJson = configJson
-      pendingUplinkHost = uplinkHost
-      pendingUplinkPort = uplinkPort
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)
 
       watchdogJob = scope.launch {
-        delay(95_000)
+        delay(ConnectTimeouts.CONNECT_MS)
         if (_state.value is VpnState.Connecting) {
           _state.value = VpnState.Error("Connect timeout")
         }
@@ -144,28 +125,32 @@ class VpnController(private val context: Context) {
   private fun startVpnService() {
     if (!serviceStartInFlight.compareAndSet(false, true)) return
     try {
-      val cfg = pendingConfigJson
-      if (cfg.isNullOrBlank()) {
+      val payload = VpnControlStateStore.loadConnectPayload(context)
+      if (payload == null) {
+        watchdogJob?.cancel()
         _state.value = VpnState.Error("Missing configJson")
         return
       }
-      val uplink = pendingUplinkHost
-      val uplinkPort = pendingUplinkPort
-      VpnControlStateStore.saveConnectPayload(context, cfg, uplink, uplinkPort)
-      val intent = Intent(context, DemarVpnService::class.java).apply {
-        action = DemarVpnService.ACTION_START
-        putExtra(DemarVpnService.EXTRA_LOG_SOURCE, DemarVpnService.LOG_SOURCE_UI)
-        putExtra(DemarVpnService.EXTRA_CONFIG_JSON, cfg)
-        if (!uplink.isNullOrEmpty()) putExtra(DemarVpnService.EXTRA_UPLINK_HOST, uplink)
-        if (uplinkPort != null) putExtra(DemarVpnService.EXTRA_UPLINK_PORT, uplinkPort)
-      }
-      ContextCompat.startForegroundService(context, intent)
+      ContextCompat.startForegroundService(
+        context,
+        DemarVpnService.buildStartIntent(context, payload, DemarVpnService.LOG_SOURCE_UI),
+      )
       _state.value = VpnState.Connecting
     } catch (t: Throwable) {
+      watchdogJob?.cancel()
       _state.value = VpnState.Error(t.message ?: "Failed to start VPN service")
     } finally {
       serviceStartInFlight.set(false)
     }
+  }
+
+  private fun applyStateEvent(mapped: VpnState) {
+    if (shouldIgnoreStaleSnapshot(mapped)) return
+    if (mapped is VpnState.Connected || mapped is VpnState.Disconnected || mapped is VpnState.Error) {
+      watchdogJob?.cancel()
+      connectStartedAt = 0L
+    }
+    _state.value = mapped
   }
 
   private fun shouldIgnoreStaleSnapshot(mapped: VpnState): Boolean {
@@ -174,22 +159,6 @@ class VpnController(private val context: Context) {
     val current = _state.value
     if (current !is VpnState.Connecting && current !is VpnState.Connected) return false
     if (connectStartedAt == 0L) return false
-    return System.currentTimeMillis() - connectStartedAt < 2_000
-  }
-
-  private fun mapState(state: String, message: String): VpnState {
-    val mapped = when (state) {
-      "disconnected" -> VpnState.Disconnected
-      "connecting" -> VpnState.Connecting
-      "connected" -> VpnState.Connected
-      "disconnecting" -> VpnState.Disconnecting
-      "error" -> VpnState.Error(message.ifEmpty { "Unknown error" })
-      else -> VpnState.Error("Unknown state from native: $state")
-    }
-    if (mapped is VpnState.Connected || mapped is VpnState.Disconnected || mapped is VpnState.Error) {
-      watchdogJob?.cancel()
-      connectStartedAt = 0L
-    }
-    return mapped
+    return System.currentTimeMillis() - connectStartedAt < 5_000
   }
 }

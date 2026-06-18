@@ -64,6 +64,15 @@ object DemarSnackbar {
   suspend fun showWarning(host: SnackbarHostState, message: String) = show(host, message, SnackKind.Warning)
   suspend fun showSoon(host: SnackbarHostState) = showInfo(host, "Скоро")
 
+  suspend fun show(host: SnackbarHostState, kind: SnackKind, message: String) = when (kind) {
+    SnackKind.Info -> showInfo(host, message)
+    SnackKind.Success -> showSuccess(host, message)
+    SnackKind.Error -> showError(host, message)
+    SnackKind.Warning -> showWarning(host, message)
+  }
+
+  fun icon(kind: SnackKind): ImageVector = snackIcon(kind)
+
   private suspend fun show(
     host: SnackbarHostState,
     message: String,

@@ -22,11 +22,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import com.demar.vpn.R
 import com.demar.vpn.ui.components.IconLinkChip
 import com.demar.vpn.ui.components.openSocialLink
@@ -37,25 +37,25 @@ private enum class LoginStep { Email, Verify, Totp }
 fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
   var step by rememberSaveable { mutableStateOf(LoginStep.Email) }
   var email by rememberSaveable { mutableStateOf("") }
-  var busy by rememberSaveable { mutableStateOf(false) }
-
   val context = LocalContext.current
+
   Column(modifier.fillMaxWidth()) {
     AnimatedContent(step, label = "login_step") { s ->
       when (s) {
         LoginStep.Email -> EmailStep(
           email = email,
           onEmailChange = { email = it },
-          busy = busy,
           onSubmit = { step = LoginStep.Verify },
         )
-        LoginStep.Verify -> VerifyStep(
-          email = email,
-          busy = busy,
+        LoginStep.Verify -> OtpStep(
+          title = stringResource(R.string.login_otp_sent, email),
           onComplete = { step = LoginStep.Totp },
           onResend = {},
         )
-        LoginStep.Totp -> TotpStep(busy = busy, onComplete = onSuccess)
+        LoginStep.Totp -> OtpStep(
+          title = stringResource(R.string.login_totp),
+          onComplete = onSuccess,
+        )
       }
     }
     Spacer(Modifier.height(24.dp))
@@ -77,7 +77,7 @@ fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EmailStep(email: String, onEmailChange: (String) -> Unit, busy: Boolean, onSubmit: () -> Unit) {
+private fun EmailStep(email: String, onEmailChange: (String) -> Unit, onSubmit: () -> Unit) {
   Column {
     OutlinedTextField(
       value = email,
@@ -88,35 +88,32 @@ private fun EmailStep(email: String, onEmailChange: (String) -> Unit, busy: Bool
       singleLine = true,
     )
     Spacer(Modifier.height(12.dp))
-    Button(onClick = onSubmit, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-      Text(if (busy) stringResource(R.string.login_sending) else stringResource(R.string.login_continue))
+    Button(onClick = onSubmit, modifier = Modifier.fillMaxWidth()) {
+      Text(stringResource(R.string.login_continue))
     }
   }
 }
 
 @Composable
-private fun VerifyStep(email: String, busy: Boolean, onComplete: () -> Unit, onResend: () -> Unit) {
+private fun OtpStep(
+  title: String,
+  onComplete: () -> Unit,
+  onResend: (() -> Unit)? = null,
+) {
   Column {
-    Text(stringResource(R.string.login_otp_sent, email), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    Text(title, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(12.dp))
-    OtpField(enabled = !busy, onComplete = onComplete)
-    TextButton(onClick = onResend, enabled = !busy, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-      Text(stringResource(R.string.login_resend))
+    OtpField(onComplete = onComplete)
+    if (onResend != null) {
+      TextButton(onClick = onResend, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        Text(stringResource(R.string.login_resend))
+      }
     }
   }
 }
 
 @Composable
-private fun TotpStep(busy: Boolean, onComplete: () -> Unit) {
-  Column {
-    Text(stringResource(R.string.login_totp), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(12.dp))
-    OtpField(enabled = !busy, onComplete = onComplete)
-  }
-}
-
-@Composable
-private fun OtpField(enabled: Boolean, onComplete: () -> Unit) {
+private fun OtpField(onComplete: () -> Unit) {
   var code by rememberSaveable { mutableStateOf("") }
   OutlinedTextField(
     value = code,
@@ -124,7 +121,6 @@ private fun OtpField(enabled: Boolean, onComplete: () -> Unit) {
       code = it.filter(Char::isDigit).take(6)
       if (code.length == 6) onComplete()
     },
-    enabled = enabled,
     modifier = Modifier.fillMaxWidth(),
     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
     singleLine = true,

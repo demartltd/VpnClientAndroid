@@ -32,11 +32,39 @@ object AppLog {
   private val _lines = MutableStateFlow<List<String>>(emptyList())
   val lines: StateFlow<List<String>> = _lines.asStateFlow()
   private var file: File? = null
+  private var exportMirror: File? = null
+  private var appContext: Context? = null
 
   fun init(context: Context) {
-    if (file != null) return
-    bind(File(context.filesDir, "demar").apply { mkdirs() }.resolve("demar_app.log"))
-    importPendingNativeDiag(context)
+    val app = context.applicationContext
+    if (file == null) {
+      bind(File(app.filesDir, "demar").apply { mkdirs() }.resolve("demar_app.log"))
+      importPendingNativeDiag(app)
+    }
+    exportMirror = app.getExternalFilesDir("demar")?.apply { mkdirs() }?.resolve("demar_app.log")
+    appContext = app
+    syncExportMirror(app)
+  }
+
+  fun exportMirrorPath(context: Context): String? =
+    context.getExternalFilesDir("demar")?.resolve("demar_app.log")?.absolutePath
+
+  fun syncExportMirror(context: Context) {
+    val mirror = exportMirror ?: context.applicationContext.getExternalFilesDir("demar")
+      ?.apply { mkdirs() }
+      ?.resolve("demar_app.log")
+      ?.also { exportMirror = it }
+      ?: return
+    importPendingNativeDiag(context.applicationContext)
+    val body = readPersistedUtf8()
+    runCatching {
+      mirror.parentFile?.mkdirs()
+      if (body.isEmpty()) {
+        mirror.writeText("")
+      } else {
+        mirror.writeText(body)
+      }
+    }
   }
 
   fun append(line: String) {
@@ -67,6 +95,7 @@ object AppLog {
     }
     memory.clear()
     publish()
+    appContext?.let { syncExportMirror(it) }
   }
 
   fun readPersistedUtf8(): String {
@@ -81,8 +110,20 @@ object AppLog {
 
   internal fun bindForTest(dir: File) = bind(File(dir, "demar_app.log"))
 
+  internal fun bindMirrorForTest(dir: File) {
+    exportMirror = File(dir, "export_mirror.log")
+  }
+
+  internal fun syncExportMirrorForTest() {
+    val mirror = exportMirror ?: return
+    mirror.parentFile?.mkdirs()
+    mirror.writeText(readPersistedUtf8())
+  }
+
   internal fun resetForTest() {
     file = null
+    exportMirror = null
+    appContext = null
     memory.clear()
     publish()
   }
@@ -102,6 +143,7 @@ object AppLog {
       trimMemory()
       trimDisk()
       publish()
+      appContext?.let { syncExportMirror(it) }
     }
   }
 

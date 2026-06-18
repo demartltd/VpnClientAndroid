@@ -115,8 +115,12 @@ private fun ToolbarSlot(
 ) {
   val cs = MaterialTheme.colorScheme
   val color = if (selected) cs.secondaryContainer else cs.surfaceContainerHigh.copy(alpha = 0f)
-  val slotModifier = modifier.fillMaxHeight()
-  val content: @Composable () -> Unit = {
+  Surface(
+    onClick = { onClick?.invoke() },
+    enabled = onClick != null,
+    modifier = modifier.fillMaxHeight(),
+    color = color,
+  ) {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
       Icon(
         icon,
@@ -124,10 +128,5 @@ private fun ToolbarSlot(
         tint = if (selected) cs.onSecondaryContainer else cs.onSurfaceVariant,
       )
     }
-  }
-  if (onClick != null) {
-    Surface(onClick = onClick, modifier = slotModifier, color = color, content = content)
-  } else {
-    Surface(modifier = slotModifier, color = color, content = content)
   }
 }

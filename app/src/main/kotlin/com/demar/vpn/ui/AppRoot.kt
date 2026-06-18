@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -39,18 +40,8 @@ fun AppRoot(singBoxLabel: String, vpnController: VpnController) {
           singBoxLabel = singBoxLabel,
           snackbarHost = snackbarHost,
           vpnController = vpnController,
-          onAppSettings = {
-            navController.navigate(Routes.AppSettings) {
-              launchSingleTop = true
-              restoreState = true
-            }
-          },
-          onServiceMenu = {
-            navController.navigate(Routes.ServiceMenu) {
-              launchSingleTop = true
-              restoreState = true
-            }
-          },
+          onAppSettings = { navController.openOverlay(Routes.AppSettings) },
+          onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
         )
       }
       composable(Routes.AppSettings) {
@@ -72,5 +63,12 @@ fun AppRoot(singBoxLabel: String, vpnController: VpnController) {
       bottomInset = snackbarHostBottomInset(onMain),
       modifier = Modifier.align(Alignment.BottomCenter),
     )
+  }
+}
+
+private fun NavController.openOverlay(route: String) {
+  navigate(route) {
+    launchSingleTop = true
+    restoreState = true
   }
 }

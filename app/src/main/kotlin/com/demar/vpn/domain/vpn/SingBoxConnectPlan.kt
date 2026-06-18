@@ -2,8 +2,7 @@ package com.demar.vpn.domain.vpn
 
 data class SingBoxTunOptions(
   val dnsFinal: String,
-  val dnsBootstrapDomains: List<String>,
-  val directDomains: List<String>,
+  val bootstrapDomains: List<String>,
   val strictRoute: Boolean,
 )
 
@@ -45,8 +44,7 @@ data class SingBoxConnectPlan(
         directIPs = directIPs(profile.server),
         tun = SingBoxTunOptions(
           dnsFinal = SingBoxTags.DNS_REMOTE,
-          dnsBootstrapDomains = bootstrap,
-          directDomains = bootstrap,
+          bootstrapDomains = bootstrap,
           strictRoute = true,
         ),
       )
