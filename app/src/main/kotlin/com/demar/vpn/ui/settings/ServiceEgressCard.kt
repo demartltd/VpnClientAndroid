@@ -26,29 +26,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.data.network.EgressConstants
-import com.demar.vpn.data.network.EgressRouteKind
 import com.demar.vpn.data.network.InternetProbe
-import com.demar.vpn.data.network.censorPublicIpv4ForDisplay
 import com.demar.vpn.data.network.egressHostProbeLabel
-import com.demar.vpn.data.network.egressRouteLabel
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
-import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
 fun ServiceEgressCard(modifier: Modifier = Modifier) {
-  val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val spin = remember { Animatable(0f) }
   var inFlight by remember { mutableStateOf(false) }
-  var route by remember { mutableStateOf(EgressRouteKind.Direct) }
-  var ip by remember { mutableStateOf("") }
-  var country by remember { mutableStateOf("") }
   val probes = remember {
     mutableStateListOf<String>().also { list ->
       repeat(EgressConstants.TcpLatencyProbeHosts.size) { list.add("…") }
@@ -58,31 +49,17 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
   suspend fun load() {
     if (inFlight) return
     inFlight = true
-    ip = ""
-    country = ""
     for (i in probes.indices) probes[i] = "…"
     spin.snapTo(0f)
-    // Single full rotation over 2s — mirrors Flutter AnimationController.forward(from: 0).
     scope.launch { spin.animateTo(360f, tween(durationMillis = 2_000, easing = LinearEasing)) }
 
     coroutineScope {
-      // Route first — determines whether probes go through the tunnel.
-      route = InternetProbe.probeRoute(context)
-      val useTunnel = route == EgressRouteKind.DemarVpn
-
-      val geoD = async { InternetProbe.probePublicEgressGeo(useTunnel) }
-
-      // All hosts in parallel; each updates its row the moment it finishes (like Flutter onHostReady).
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
         launch {
-          val probe = InternetProbe.probeHost(host, useTunnel)
+          val probe = InternetProbe.probeHost(host)
           probes[i] = egressHostProbeLabel(probe.tcpMs, probe.httpsMs)
         }
       }
-
-      val geo = geoD.await()
-      ip = geo.ip
-      country = geo.country
     }
 
     inFlight = false
@@ -95,7 +72,6 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
     title = "Internet",
     icon = Icons.Filled.Cloud,
     trailing = {
-      // Flutter parity: overlayColor=transparent (no ripple), compact, primary tint, RotationTransition.
       Box(
         modifier = Modifier
           .size(36.dp)
@@ -120,9 +96,6 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
     },
   ) {
     Column {
-      KvRow("Route", egressRouteLabel(route))
-      KvRow("IP", if (ip.isEmpty()) "…" else censorPublicIpv4ForDisplay(ip))
-      KvRow("Country", country.ifEmpty { "…" })
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
         KvRow(host, probes.getOrElse(i) { "…" })
       }

@@ -4,7 +4,7 @@
 set -e
 
 PACKAGE_NAME="com.demar.vpn"
-TAGS="DemarVpn:D VpnTunnelProbe:D SingBoxCore:D DemarLibboxPlatform:D"
+TAGS="DemarVpn:D VpnTunnelProbe:D SingBoxCore:D DemarLibboxPlatform:D InternetProbe:D"
 
 echo "==================================="
 echo "Demar VPN Android — Debug"
