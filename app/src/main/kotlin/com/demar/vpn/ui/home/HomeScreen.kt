@@ -47,7 +47,6 @@ fun HomeScreen(
 ) {
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
-  val retryCooldown by vpnController.retryCooldownSecs.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val serverName = selected.displayName.ifEmpty { stringResource(R.string.server_not_selected) }
 
@@ -69,18 +68,17 @@ fun HomeScreen(
     Spacer(Modifier.weight(1f))
     VpnMainToggle(
       state = vpnState,
-      retryCooldownSecs = retryCooldown,
       onClick = {
-        when {
-          vpnState is VpnState.Disconnected && retryCooldown == 0 -> {
-            AppLog.append("[ui] android home: connect")
-            vpnController.connect()
-          }
-          vpnState is VpnState.Connected -> {
+        when (vpnState) {
+          VpnState.Connected -> {
             AppLog.append("[ui] android home: disconnect")
             vpnController.disconnect()
           }
-          else -> Unit
+          VpnState.Connecting, VpnState.Disconnecting -> Unit
+          else -> {
+            AppLog.append("[ui] android home: connect")
+            vpnController.connect()
+          }
         }
       },
     )
@@ -104,14 +102,13 @@ fun HomeScreen(
 }
 
 @Composable
-private fun VpnMainToggle(state: VpnState, retryCooldownSecs: Int, onClick: () -> Unit) {
+private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
   val cs = MaterialTheme.colorScheme
   val compact = state is VpnState.Connected || state is VpnState.Disconnecting
   val busy = state is VpnState.Connecting || state is VpnState.Disconnecting
-  val cooling = retryCooldownSecs > 0 && state is VpnState.Disconnected
   val diameter by animateDpAsState(if (compact) 116.dp else 200.dp)
   val fill = if (compact) cs.primaryContainer else cs.surfaceContainerHighest
-  val iconColor = if (compact) cs.onPrimaryContainer else if (cooling) cs.onSurfaceVariant.copy(alpha = 0.4f) else cs.onSurfaceVariant
+  val iconColor = if (compact) cs.onPrimaryContainer else cs.onSurfaceVariant
 
   Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
     Surface(
@@ -119,18 +116,12 @@ private fun VpnMainToggle(state: VpnState, retryCooldownSecs: Int, onClick: () -
       modifier = Modifier.size(diameter),
       shape = CircleShape,
       color = fill,
-      enabled = !cooling && !busy,
+      enabled = !busy,
     ) {
       Box(contentAlignment = Alignment.Center) {
         when {
           busy -> CircularProgressIndicator(Modifier.size(46.dp), color = iconColor)
           state is VpnState.Connected -> Icon(Icons.Filled.Shield, null, Modifier.size(44.dp), tint = iconColor)
-          cooling -> Text(
-            "$retryCooldownSecs",
-            style = MaterialTheme.typography.headlineLarge,
-            color = iconColor,
-            fontWeight = FontWeight.Bold,
-          )
           else -> Icon(Icons.Filled.PowerSettingsNew, null, Modifier.size(92.dp), tint = iconColor)
         }
       }

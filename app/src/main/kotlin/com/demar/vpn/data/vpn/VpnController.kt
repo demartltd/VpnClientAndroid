@@ -37,10 +37,6 @@ class VpnController(private val context: Context) {
   private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
   val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
-  /** Countdown seconds remaining before the next connection attempt is allowed (0 = ready). */
-  private val _retryCooldownSecs = MutableStateFlow(0)
-  val retryCooldownSecs: StateFlow<Int> = _retryCooldownSecs.asStateFlow()
-
   private val _selectedProfile = MutableStateFlow(testServers.first())
   val selectedProfile: StateFlow<ServerProfile> = _selectedProfile.asStateFlow()
 
@@ -48,13 +44,7 @@ class VpnController(private val context: Context) {
 
   private var connectStartedAt: Long = 0L
   private var watchdogJob: Job? = null
-  private var cooldownJob: Job? = null
   private val serviceStartInFlight = AtomicBoolean(false)
-
-  companion object {
-    /** Seconds to wait before allowing a reconnect after a connection failure. */
-    private const val FAILURE_COOLDOWN_SECS = 30
-  }
 
   var onNeedVpnPermission: ((Intent) -> Unit)? = null
 
@@ -69,7 +59,6 @@ class VpnController(private val context: Context) {
   fun dispose() {
     removeListener()
     watchdogJob?.cancel()
-    cooldownJob?.cancel()
   }
 
   fun selectProfile(profile: ServerProfile) {
@@ -86,7 +75,6 @@ class VpnController(private val context: Context) {
     if (current is VpnState.Connecting || current is VpnState.Connected || current is VpnState.Disconnecting) {
       return
     }
-    if (_retryCooldownSecs.value > 0) return
     val profile = _selectedProfile.value
     scope.launch {
       watchdogJob?.cancel()
@@ -171,20 +159,8 @@ class VpnController(private val context: Context) {
     }
     if (mapped is VpnState.Error) {
       _errorEvents.tryEmit(mapped.message)
-      startCooldown()
     }
     _state.value = mapped
-  }
-
-  private fun startCooldown() {
-    cooldownJob?.cancel()
-    cooldownJob = scope.launch {
-      for (secs in FAILURE_COOLDOWN_SECS downTo 1) {
-        _retryCooldownSecs.value = secs
-        delay(1_000L)
-      }
-      _retryCooldownSecs.value = 0
-    }
   }
 
   private fun shouldIgnoreStaleSnapshot(mapped: VpnState): Boolean {

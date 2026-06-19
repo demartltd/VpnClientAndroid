@@ -43,15 +43,6 @@ def cmd_connected(nodes: list[ET.Element]) -> None:
     print("1" if "Подключено" in texts else "0")
 
 
-def cmd_cooldown(nodes: list[ET.Element]) -> None:
-    for node in nodes:
-        text = (node.attrib.get("text") or "").strip()
-        if text.isdigit() and 0 < int(text) <= 60:
-            print(text)
-            return
-    print("0")
-
-
 def cmd_permission(nodes: list[ET.Element]) -> None:
     for node in nodes:
         text = (node.attrib.get("text") or "").lower()
@@ -100,7 +91,7 @@ def cmd_toggle(nodes: list[ET.Element], xml: str) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: adb_ui_parse.py <connected|cooldown|permission|toggle>", file=sys.stderr)
+        print("usage: adb_ui_parse.py <connected|permission|toggle>", file=sys.stderr)
         sys.exit(2)
     cmd = sys.argv[1]
     xml = sys.stdin.read()
@@ -112,8 +103,6 @@ def main() -> None:
     walk(root, nodes)
     if cmd == "connected":
         cmd_connected(nodes)
-    elif cmd == "cooldown":
-        cmd_cooldown(nodes)
     elif cmd == "permission":
         cmd_permission(nodes)
     elif cmd == "toggle":

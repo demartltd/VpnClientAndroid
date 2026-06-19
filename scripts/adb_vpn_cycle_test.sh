@@ -20,7 +20,6 @@ CYCLES=10
 HOLD_SECS=2
 CONNECT_TIMEOUT=45
 DISCONNECT_TIMEOUT=20
-COOLDOWN_SECS=31
 POLL_MS=250
 
 usage() {
@@ -143,15 +142,6 @@ wait_until_disconnected() {
   return 1
 }
 
-wait_cooldown_if_needed() {
-  local cd
-  cd="$(ui_query cooldown)"
-  if [[ -n "$cd" && "$cd" != "0" ]]; then
-    echo "→ cooldown ${cd}s, waiting ${COOLDOWN_SECS}s…"
-    sleep "$COOLDOWN_SECS"
-  fi
-}
-
 ensure_home_tab() {
   adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
   adb logcat -c >/dev/null 2>&1 || true
@@ -193,8 +183,6 @@ echo ""
 ensure_home_tab
 
 for ((i = 1; i <= CYCLES; i++)); do
-  wait_cooldown_if_needed
-
   echo ""
   echo "── Cycle $i/$CYCLES ──"
 
@@ -231,7 +219,6 @@ for ((i = 1; i <= CYCLES; i++)); do
     disconnect_ms="-"
     status="CONNECT_FAIL"
     echo "✗ connect timeout / failed"
-    wait_cooldown_if_needed
   fi
 
   RESULT_CONNECT+=("$connect_ms")
