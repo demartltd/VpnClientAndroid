@@ -36,7 +36,9 @@ class VpnPipelineTest {
       assertEquals("naive", naive.getString("type"))
       assertFalse(naive.getBoolean("quic"))
       assertFalse(naive.has("multiplex"))
-      assertTrue(naive.getJSONObject("udp_over_tcp").getBoolean("enabled"))
+      val uot = naive.getJSONObject("udp_over_tcp")
+      assertTrue(uot.getBoolean("enabled"))
+      assertEquals(2, uot.getInt("version"))
 
       val route = cfg.getJSONObject("route")
       assertEquals(SingBoxTags.PROXY, route.getString("final"))

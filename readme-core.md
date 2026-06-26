@@ -45,7 +45,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 
 | Поле | Значение |
 |------|----------|
-| `udp_over_tcp` | `true` |
+| `udp_over_tcp` | `enabled: true`, `version: 2` |
 | `quic` | `false` |
 | `tls` | enabled + `server_name` |
 | `domain_resolver` | `dns-direct`, `ipv4_only` |
