@@ -32,7 +32,7 @@ pwsh scripts/build_android.ps1
 | Экран | Статус |
 |-------|--------|
 | Home (VPN toggle) | Naive connect/disconnect через `VpnController` |
-| Servers | test server `backronym.ru` (`TestServer.kt`) |
+| Servers | test servers `backronym.ru`, `de-f-1.backronym.ru` (`TestServer.kt`) |
 | Settings + social links | FA6 brand icons, реальные URL (`x.com/demargames`, …) |
 | Account + login sheet | UI steps без API |
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
