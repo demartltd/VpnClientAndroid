@@ -10,14 +10,9 @@ data class ServerProfile(
       is ServerProfileKind.Naive -> SingBoxConnectPlan.naive(k.profile)
     }
 
-  val listTitle: String
+  val listSubtitle: String
     get() = when (val k = kind) {
       is ServerProfileKind.Naive -> "${k.profile.server}:${k.profile.port}"
-    }
-
-  val listSubtitle: String
-    get() = when (kind) {
-      is ServerProfileKind.Naive -> "Naive (test)"
     }
 
   val uplinkPort: Int?

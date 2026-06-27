@@ -71,7 +71,7 @@ private fun ServerRow(profile: ServerProfile, selected: Boolean, onSelect: () ->
     ),
   ) {
     ListItem(
-      headlineContent = { Text(profile.listTitle) },
+      headlineContent = { Text(profile.displayName) },
       supportingContent = { Text(profile.listSubtitle) },
       trailingContent = {
         Icon(

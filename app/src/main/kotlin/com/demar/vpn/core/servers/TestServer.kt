@@ -6,7 +6,7 @@ import com.demar.vpn.domain.vpn.ServerProfile
 val testServers = listOf(
   ServerProfile.naive(
     NaiveProfile(
-      displayName = "backronym.ru",
+      displayName = "FIN-DEV-1",
       server = "193.35.17.5",
       port = 443,
       username = "u_e06786d0488ce48f",
@@ -16,7 +16,7 @@ val testServers = listOf(
   ),
   ServerProfile.naive(
     NaiveProfile(
-      displayName = "de-f-1.backronym.ru",
+      displayName = "DE-FREE-1",
       server = "de-f-1.backronym.ru",
       port = 443,
       username = "u_5f0d9beeab98bf6c",
