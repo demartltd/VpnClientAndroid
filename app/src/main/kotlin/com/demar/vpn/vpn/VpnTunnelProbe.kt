@@ -11,14 +11,13 @@ import java.net.URL
 internal object VpnTunnelProbe {
   private const val TAG = "VpnTunnelProbe"
   private const val PROBE_URL = "https://www.cloudflare.com/cdn-cgi/trace"
-  private const val ATTEMPTS = 5
   private const val RETRY_DELAY_MS = 500L
   private const val READY_POLL_MS = 200L
   const val NAIVE_WARMUP_MS = 2_000L
-  const val POST_CONNECT_BUDGET_MS = 12_000L
+  const val POST_CONNECT_BUDGET_MS = 5_000L
   private const val TCP_PROBE_MS = 1000
 
-  const val TIMEOUT_MS = 3_000
+  const val TIMEOUT_MS = 5_000
 
   fun waitForDiagProxy(
     host: String = SingBoxTags.DIAG_LISTEN_HOST,
@@ -41,15 +40,12 @@ internal object VpnTunnelProbe {
     if (!waitForDiagProxy(budgetMs = minOf(budgetMs, 10_000L))) return ReadyResult.TcpFail
     val remaining = deadline - System.currentTimeMillis()
     if (remaining <= 0) return ReadyResult.HttpFail
-    // Naive needs time to establish the upstream connection before it can route.
     Thread.sleep(minOf(NAIVE_WARMUP_MS, remaining))
-    repeat(ATTEMPTS) { attempt ->
+    while (System.currentTimeMillis() < deadline) {
       if (httpOk()) return ReadyResult.Ok
-      if (attempt < ATTEMPTS - 1) {
-        val left = deadline - System.currentTimeMillis()
-        if (left <= 0) return ReadyResult.HttpFail
-        Thread.sleep(minOf(RETRY_DELAY_MS, left))
-      }
+      val left = deadline - System.currentTimeMillis()
+      if (left <= 0) break
+      Thread.sleep(minOf(RETRY_DELAY_MS, left))
     }
     return ReadyResult.HttpFail
   }
