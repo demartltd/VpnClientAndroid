@@ -1,6 +1,6 @@
 # Ядро VPN: Sing-box (NaiveProxy) — Demar VPN Android
 
-Целевая версия core: **sing-box 1.13.13**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
+Целевая версия core: **sing-box 1.13.14**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 

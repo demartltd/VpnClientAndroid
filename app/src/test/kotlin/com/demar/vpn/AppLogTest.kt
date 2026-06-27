@@ -3,6 +3,7 @@ package com.demar.vpn
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.logging.AppLogLimits
 import com.demar.vpn.data.logging.isVpnTrafficAccessNoise
+import com.demar.vpn.data.logging.journalStampUtc
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -10,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.nio.file.Files
+import java.time.Instant
 
 class AppLogTest {
   @After fun tearDown() = AppLog.resetForTest()
@@ -44,6 +46,20 @@ class AppLogTest {
     assertEquals(AppLogLimits.maxLines, logFile.readLines().size)
     assertTrue(AppLog.lines.value.last().contains("seed-0600"))
     assertFalse(AppLog.lines.value.any { it.contains("seed-0001") })
+  }
+
+  @Test
+  fun journalStampUtc_includesSeconds() {
+    val stamp = journalStampUtc(Instant.parse("2026-06-27T14:30:45Z"))
+    assertEquals("2026-06-27-14-30-45", stamp)
+  }
+
+  @Test
+  fun append_prependsSecondPrecisionStamp() {
+    val dir = Files.createTempDirectory("applog").toFile()
+    AppLog.bindForTest(dir)
+    AppLog.append("probe")
+    assertTrue(AppLog.lines.value.single().matches(Regex("""\d{4}-\d{2}-\d{2}-\d{2}-\d{2}-\d{2} probe""")))
   }
 
   @Test
