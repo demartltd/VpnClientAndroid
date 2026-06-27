@@ -69,10 +69,8 @@ Write-Host "Host: $script:Platform" -ForegroundColor Green
 
 $builds = @(
     @{ Title = 'APK Release'; Task = ':app:assembleRelease'; Output = 'app\build\outputs\apk\release' }
+    @{ Title = 'AAB Release'; Task = ':app:bundleRelease'; Output = 'app\build\outputs\bundle\release' }
 )
-if ($script:Platform -eq 'Windows') {
-    $builds += @{ Title = 'AAB Release'; Task = ':app:bundleRelease'; Output = 'app\build\outputs\bundle\release' }
-}
 
 foreach ($b in $builds) {
     if ($script:Platform -eq 'macOS') {
