@@ -113,7 +113,6 @@ class DemarVpnService :
     // START's executor task ran (rapid STOP → START scenario).
     startForegroundNotification()
     connecting = true
-    var connectFailed = false
     val epochAtStart = sessionEpoch.get()
     val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ConnectTimeouts.CONNECT_MS)
     try {
@@ -130,6 +129,10 @@ class DemarVpnService :
 
       SingBoxCore.ensureSetup(applicationContext)
       DefaultInterfaceMonitor.ensureStarted(ownerId, this)
+      if (!DefaultInterfaceMonitor.awaitReady(3_000)) {
+        emitLogLine("default network not ready")
+        throw TimeoutException("default network not ready")
+      }
       if (abortConnectIfStale(epochAtStart)) return
       checkConnectDeadline(deadlineNanos)
 
@@ -143,7 +146,6 @@ class DemarVpnService :
         emitState("error", "sing-box failed to start TUN.")
         shutdownSingBox()
         stopForegroundCompat()
-        connectFailed = true
         return
       }
 
@@ -160,7 +162,6 @@ class DemarVpnService :
         emitState("error", "Tunnel probe failed after ${verifyMs}ms")
         shutdownSingBox()
         stopForegroundCompat()
-        connectFailed = true
         return
       }
 
@@ -173,7 +174,6 @@ class DemarVpnService :
       emitState("error", "Connect timeout")
       shutdownSingBox()
       stopForegroundCompat()
-      connectFailed = true
     } catch (t: Throwable) {
       Log.e(TAG, "connectVpn failed", t)
       appendStderrTail()
@@ -181,16 +181,12 @@ class DemarVpnService :
       emitState("error", t.message ?: "Unknown error")
       shutdownSingBox()
       stopForegroundCompat()
-      connectFailed = true
     } finally {
       connecting = false
       val pending = pendingStart
       pendingStart = null
       if (pending != null) {
         executor.execute { connectVpn(pending) }
-      } else if (connectFailed) {
-        // Stop the service so onDestroy() transitions state to Disconnected.
-        stopSelf()
       }
     }
   }
@@ -331,7 +327,7 @@ class DemarVpnService :
     const val LOG_SOURCE_QS_TILE = "qs_tile"
     private const val NOTIFICATION_ID = 1
     private const val TAG = "DemarVpn"
-    private const val TUN_SETTLE_MS = 200L
+    private const val TUN_SETTLE_MS = 500L
 
     internal fun buildStartIntent(
       context: Context,

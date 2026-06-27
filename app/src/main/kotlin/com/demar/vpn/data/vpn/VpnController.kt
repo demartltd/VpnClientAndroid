@@ -8,6 +8,7 @@ import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.domain.vpn.ConnectTimeouts
+import com.demar.vpn.domain.vpn.isHostname
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
@@ -84,7 +85,11 @@ class VpnController(private val context: Context) {
 
       var plan = profile.connectPlan
       val resolved = resolveUplinkIpv4s(plan.uplinkHost)
-      if (resolved.isNotEmpty()) plan = plan.withExtraDirectIps(resolved)
+      if (resolved.isNotEmpty()) {
+        plan = plan.withExtraDirectIps(resolved)
+      } else if (isHostname(plan.uplinkHost)) {
+        AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
+      }
 
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val uplinkHost = plan.uplinkHost
@@ -169,6 +174,6 @@ class VpnController(private val context: Context) {
     val current = _state.value
     if (current !is VpnState.Connecting && current !is VpnState.Connected) return false
     if (connectStartedAt == 0L) return false
-    return System.currentTimeMillis() - connectStartedAt < 5_000
+    return System.currentTimeMillis() - connectStartedAt < 2_000
   }
 }

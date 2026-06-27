@@ -329,6 +329,17 @@ internal object DefaultInterfaceMonitor {
     latch.await(5, TimeUnit.SECONDS)
   }
 
+  fun awaitReady(timeoutMs: Long): Boolean {
+    val deadline = System.currentTimeMillis() + timeoutMs
+    while (System.currentTimeMillis() < deadline) {
+      val cm = connectivityManager ?: return false
+      val snap = readSnapshot(cm)
+      if (!snap.isLost && snap.index > 0) return true
+      Thread.sleep(50)
+    }
+    return false
+  }
+
   fun stop(owner: Long) {
     if (activeOwner != owner) return
     val latch = CountDownLatch(1)
