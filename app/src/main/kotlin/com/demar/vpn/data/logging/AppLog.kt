@@ -13,7 +13,7 @@ import java.util.ArrayDeque
 fun journalStampUtc(time: Instant = Instant.now()): String {
   val d = time.atZone(ZoneOffset.UTC)
   fun t2(x: Int) = x.toString().padStart(2, '0')
-  return "${d.year}-${t2(d.monthValue)}-${t2(d.dayOfMonth)}-${t2(d.hour)}-${t2(d.minute)}"
+  return "${d.year}-${t2(d.monthValue)}-${t2(d.dayOfMonth)}-${t2(d.hour)}-${t2(d.minute)}-${t2(d.second)}"
 }
 
 fun isVpnTrafficAccessNoise(line: String): Boolean {
@@ -74,13 +74,11 @@ object AppLog {
   }
 
   fun appendMany(raw: List<String>, prependStamp: Boolean = true) {
-    if (raw.isEmpty()) return
-    val stamp = if (prependStamp) journalStampUtc() else ""
     val rows = raw.mapNotNull { line ->
       val t = line.trim()
       when {
         t.isEmpty() || isVpnTrafficAccessNoise(t) -> null
-        prependStamp -> "$stamp $t"
+        prependStamp -> "${journalStampUtc()} $t"
         else -> t
       }
     }

@@ -26,6 +26,7 @@ class VpnPipelineTest {
       assertTrue(json.contains("\"type\": \"tun\""))
       assertTrue(json.contains("\"action\": \"hijack-dns\""))
       assertTrue(json.contains("\"override_android_vpn\": true"))
+      assertTrue(json.contains("\"timestamp\": true"))
       assertTrue(json.contains("\"tag\": \"${SingBoxTags.DIAG_INBOUND}\""))
 
       val outbounds = cfg.getJSONArray("outbounds")

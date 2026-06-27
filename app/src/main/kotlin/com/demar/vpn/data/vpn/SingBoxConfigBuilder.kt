@@ -19,7 +19,7 @@ object SingBoxConfigBuilder {
     mtu: Int,
     logLevel: String,
   ): JSONObject = JSONObject().apply {
-    put("log", JSONObject().put("level", logLevel))
+    put("log", JSONObject().put("level", logLevel).put("timestamp", true))
     put("dns", makeDns(plan.tun.dnsFinal, plan.tun.bootstrapDomains))
     put("inbounds", JSONArray().apply {
       put(makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute))
