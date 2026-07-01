@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -103,7 +104,7 @@ private fun OtpStep(
   Column {
     Text(title, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
     Spacer(Modifier.height(16.dp))
-    OtpField(onComplete = onComplete)
+    key(title) { OtpInput(onComplete = onComplete) }
     if (onResend != null) {
       Spacer(Modifier.height(16.dp))
       TextButton(onClick = onResend, modifier = Modifier.align(Alignment.CenterHorizontally)) {
@@ -111,20 +112,4 @@ private fun OtpStep(
       }
     }
   }
-}
-
-@Composable
-private fun OtpField(onComplete: () -> Unit) {
-  var code by rememberSaveable { mutableStateOf("") }
-  OutlinedTextField(
-    value = code,
-    onValueChange = {
-      code = it.filter(Char::isDigit).take(6)
-      if (code.length == 6) onComplete()
-    },
-    modifier = Modifier.fillMaxWidth(),
-    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-    singleLine = true,
-    textStyle = MaterialTheme.typography.headlineSmall,
-  )
 }
