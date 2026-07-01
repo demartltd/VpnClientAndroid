@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import com.demar.vpn.DemarAppContextHolder
 import com.demar.vpn.MainActivity
 import com.demar.vpn.domain.vpn.ConnectTimeouts
+import com.demar.vpn.domain.vpn.VpnConnectMessages
 import io.nekohasekai.libbox.CommandServerHandler
 import io.nekohasekai.libbox.SystemProxyStatus
 import java.io.File
@@ -31,6 +32,7 @@ class DemarVpnService :
   private val sessionEpoch = AtomicInteger(0)
   @Volatile private var connecting = false
   @Volatile private var pendingStart: ConnectRequest? = null
+  @Volatile private var lastDisconnectAt = 0L
   private lateinit var platform: DemarLibboxPlatform
 
   private data class ConnectRequest(
@@ -114,11 +116,12 @@ class DemarVpnService :
     startForegroundNotification()
     connecting = true
     val epochAtStart = sessionEpoch.get()
+    val connectStart = System.currentTimeMillis()
     val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ConnectTimeouts.CONNECT_MS)
     try {
       emitState("connecting", "")
       shutdownSingBox()
-      Thread.sleep(TUN_SETTLE_MS)
+      Thread.sleep(tunSettleMs())
       if (abortConnectIfStale(epochAtStart)) return
       checkConnectDeadline(deadlineNanos)
 
@@ -129,7 +132,7 @@ class DemarVpnService :
 
       SingBoxCore.ensureSetup(applicationContext)
       DefaultInterfaceMonitor.ensureStarted(ownerId, this)
-      if (!DefaultInterfaceMonitor.awaitReady(3_000)) {
+      if (!DefaultInterfaceMonitor.awaitReady(1_500)) {
         emitLogLine("default network not ready")
         throw TimeoutException("default network not ready")
       }
@@ -143,38 +146,54 @@ class DemarVpnService :
       checkConnectDeadline(deadlineNanos)
 
       if (!SingBoxCore.isRunning(ownerId) || platform.tunFd < 0) {
+        pendingStart = null
         emitState("error", "sing-box failed to start TUN.")
         shutdownSingBox()
         stopForegroundCompat()
         return
       }
 
-      val budgetMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()).coerceAtLeast(0)
+      val startupMs = System.currentTimeMillis() - connectStart
+      val remainingMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()).coerceAtLeast(0)
+      val probeBudget = minOf(remainingMs, ConnectTimeouts.PROBE_MS)
+      emitLogLine("probe budget=${probeBudget}ms")
       val verifyStart = System.currentTimeMillis()
-      val probeResult = VpnTunnelProbe.waitForTunnelReady(budgetMs)
+      val outcome = VpnTunnelProbe.waitForTunnelReady(probeBudget) {
+        epochAtStart != sessionEpoch.get()
+      }
+      if (abortConnectIfStale(epochAtStart)) return
       val verifyMs = System.currentTimeMillis() - verifyStart
-      if (probeResult != VpnTunnelProbe.ReadyResult.Ok) {
-        val reason = if (probeResult == VpnTunnelProbe.ReadyResult.TcpFail)
-          "diag proxy unreachable" else "upstream http fail"
+      if (outcome.result != VpnTunnelProbe.ReadyResult.Ok) {
+        pendingStart = null
+        val reason = if (outcome.result == VpnTunnelProbe.ReadyResult.TcpFail)
+          "diag_unreachable" else "http_fail"
         Log.w(TAG, "tunnel not ready after ${verifyMs}ms — $reason")
-        emitLogLine("tunnel not ready after ${verifyMs}ms — $reason")
+        emitLogLine(
+          "connect phases: startup=${startupMs}ms probe=${verifyMs}ms result=$reason " +
+            "attempts=${outcome.attempts} fails=${outcome.httpFails}",
+        )
         appendStderrTail()
-        emitState("error", "Tunnel probe failed after ${verifyMs}ms")
+        emitState("error", VpnConnectMessages.FAILED)
         shutdownSingBox()
         stopForegroundCompat()
         return
       }
 
       Log.i(TAG, "tunnel ready in ${verifyMs}ms")
-      emitLogLine("tunnel ready in ${verifyMs}ms")
+      emitLogLine(
+        "connect phases: startup=${startupMs}ms probe=${verifyMs}ms result=ok " +
+          "attempts=${outcome.attempts}",
+      )
       emitState("connected", "")
     } catch (t: TimeoutException) {
+      pendingStart = null
       Log.e(TAG, "connectVpn timed out", t)
       emitLogLine("connect timeout")
-      emitState("error", "Connect timeout")
+      emitState("error", VpnConnectMessages.FAILED)
       shutdownSingBox()
       stopForegroundCompat()
     } catch (t: Throwable) {
+      pendingStart = null
       Log.e(TAG, "connectVpn failed", t)
       appendStderrTail()
       emitLogLine("connectVpn error: ${t.message ?: t.javaClass.simpleName}")
@@ -183,6 +202,14 @@ class DemarVpnService :
       stopForegroundCompat()
     } finally {
       connecting = false
+      if (epochAtStart != sessionEpoch.get()) {
+        val pending = pendingStart
+        pendingStart = null
+        if (pending != null) {
+          executor.execute { connectVpn(pending) }
+        }
+        return
+      }
       val pending = pendingStart
       pendingStart = null
       if (pending != null) {
@@ -214,11 +241,20 @@ class DemarVpnService :
     }
   }
 
+  private fun tunSettleMs(): Long {
+    val since = System.currentTimeMillis() - lastDisconnectAt
+    return if (lastDisconnectAt > 0L && since < RAPID_RECONNECT_WINDOW_MS) {
+      TUN_SETTLE_RAPID_MS
+    } else {
+      TUN_SETTLE_MS
+    }
+  }
+
   private fun shutdownSingBox() {
     try {
-      SingBoxCore.stop(ownerId)
+      SingBoxCore.forceStop()
     } catch (t: Throwable) {
-      Log.w(TAG, "SingBoxCore.stop failed", t)
+      Log.w(TAG, "SingBoxCore.forceStop failed", t)
     }
     try {
       DefaultInterfaceMonitor.stop(ownerId)
@@ -229,6 +265,7 @@ class DemarVpnService :
   }
 
   private fun shutdown() {
+    lastDisconnectAt = System.currentTimeMillis()
     shutdownSingBox()
     stopForegroundCompat()
     emitState("disconnected", "")
@@ -327,7 +364,9 @@ class DemarVpnService :
     const val LOG_SOURCE_QS_TILE = "qs_tile"
     private const val NOTIFICATION_ID = 1
     private const val TAG = "DemarVpn"
-    private const val TUN_SETTLE_MS = 500L
+    private const val TUN_SETTLE_MS = 200L
+    private const val TUN_SETTLE_RAPID_MS = 600L
+    private const val RAPID_RECONNECT_WINDOW_MS = 2_000L
 
     internal fun buildStartIntent(
       context: Context,

@@ -2,6 +2,7 @@ package com.demar.vpn.data.vpn
 
 import com.demar.vpn.domain.vpn.SingBoxConnectPlan
 import com.demar.vpn.domain.vpn.SingBoxTags
+import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -47,6 +48,13 @@ object SingBoxConfigBuilder {
         put("action", "reject")
         put("method", "drop")
       })
+      VpnTunnelProbe.PREDEFINED_DNS.forEach { (host, ip) ->
+        put(JSONObject().apply {
+          put("domain", JSONArray().put(host))
+          put("action", "predefined")
+          put("answer", JSONArray().put("$host. IN A $ip"))
+        })
+      }
       bootstrapDomains.forEach { domain ->
         cleanedDomain(domain)?.let { clean ->
           put(JSONObject().apply {

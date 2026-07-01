@@ -5,7 +5,7 @@ import java.net.InetAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-suspend fun resolveUplinkIpv4s(host: String, attempts: Int = 3): List<String> = withContext(Dispatchers.IO) {
+suspend fun resolveUplinkIpv4s(host: String, attempts: Int = 2): List<String> = withContext(Dispatchers.IO) {
   val trimmed = host.trim()
   if (trimmed.isEmpty()) return@withContext emptyList()
   if (isLiteralIpv4(trimmed)) return@withContext listOf(trimmed)
@@ -18,7 +18,7 @@ suspend fun resolveUplinkIpv4s(host: String, attempts: Int = 3): List<String> = 
       if (ips.isNotEmpty()) return@withContext ips
     } catch (_: Exception) {
     }
-    if (attempt < attempts - 1) Thread.sleep(300)
+    if (attempt < attempts - 1) Thread.sleep(150)
   }
   emptyList()
 }
