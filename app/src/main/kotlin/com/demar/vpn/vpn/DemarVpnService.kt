@@ -59,8 +59,10 @@ class DemarVpnService :
         pendingStart = null
         emitState("disconnecting", "")
         executor.execute {
-          // Skip if a new START arrived after this STOP (epoch advanced past stopEpoch).
-          if (sessionEpoch.get() != stopEpoch) return@execute
+          if (sessionEpoch.get() != stopEpoch) {
+            if (!connecting) emitState("disconnected", "")
+            return@execute
+          }
           shutdown()
           stopSelf()
         }
@@ -139,30 +141,50 @@ class DemarVpnService :
       if (abortConnectIfStale(epochAtStart)) return
       checkConnectDeadline(deadlineNanos)
 
-      emitLogLine("libbox starting…")
-      SingBoxCore.start(ownerId, this, platform, request.configJson)
-      emitLogLine("libbox start returned tunFd=${platform.tunFd}")
-      if (abortConnectIfStale(epochAtStart)) return
-      checkConnectDeadline(deadlineNanos)
+      var probeAttempt = 0
+      var outcome: VpnTunnelProbe.ProbeOutcome
+      var verifyMs = 0L
+      while (true) {
+        if (probeAttempt > 0) {
+          emitLogLine("probe http_fail, retrying libbox after settle")
+          shutdownSingBox()
+          Thread.sleep(PROBE_RETRY_SETTLE_MS)
+          if (abortConnectIfStale(epochAtStart)) return
+          checkConnectDeadline(deadlineNanos)
+        }
 
-      if (!SingBoxCore.isRunning(ownerId) || platform.tunFd < 0) {
-        pendingStart = null
-        emitState("error", "sing-box failed to start TUN.")
-        shutdownSingBox()
-        stopForegroundCompat()
-        return
+        emitLogLine("libbox starting…")
+        SingBoxCore.start(ownerId, this, platform, request.configJson)
+        emitLogLine("libbox start returned tunFd=${platform.tunFd}")
+        if (abortConnectIfStale(epochAtStart)) return
+        checkConnectDeadline(deadlineNanos)
+
+        if (!SingBoxCore.isRunning(ownerId) || platform.tunFd < 0) {
+          pendingStart = null
+          emitState("error", "sing-box failed to start TUN.")
+          shutdownSingBox()
+          stopForegroundCompat()
+          return
+        }
+
+        val probeBudget = ConnectTimeouts.PROBE_MS
+        emitLogLine("probe budget=${probeBudget}ms attempt=${probeAttempt + 1}")
+        val verifyStart = System.currentTimeMillis()
+        outcome = VpnTunnelProbe.waitForTunnelReady(probeBudget) {
+          epochAtStart != sessionEpoch.get()
+        }
+        if (abortConnectIfStale(epochAtStart)) return
+        verifyMs = System.currentTimeMillis() - verifyStart
+        if (outcome.result == VpnTunnelProbe.ReadyResult.Ok) break
+        val slowProbeFail = verifyMs >= ConnectTimeouts.PROBE_MS - 3_000L
+        if (outcome.result == VpnTunnelProbe.ReadyResult.HttpFail && probeAttempt < MAX_PROBE_RETRIES && slowProbeFail) {
+          probeAttempt++
+          continue
+        }
+        break
       }
 
       val startupMs = System.currentTimeMillis() - connectStart
-      val remainingMs = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime()).coerceAtLeast(0)
-      val probeBudget = minOf(remainingMs, ConnectTimeouts.PROBE_MS)
-      emitLogLine("probe budget=${probeBudget}ms")
-      val verifyStart = System.currentTimeMillis()
-      val outcome = VpnTunnelProbe.waitForTunnelReady(probeBudget) {
-        epochAtStart != sessionEpoch.get()
-      }
-      if (abortConnectIfStale(epochAtStart)) return
-      val verifyMs = System.currentTimeMillis() - verifyStart
       if (outcome.result != VpnTunnelProbe.ReadyResult.Ok) {
         pendingStart = null
         val reason = if (outcome.result == VpnTunnelProbe.ReadyResult.TcpFail)
@@ -173,6 +195,7 @@ class DemarVpnService :
             "attempts=${outcome.attempts} fails=${outcome.httpFails}",
         )
         appendStderrTail()
+        emitLogLine("probe failed: uplink=${request.uplinkHost} stderr appended if present")
         emitState("error", VpnConnectMessages.FAILED)
         shutdownSingBox()
         stopForegroundCompat()
@@ -218,6 +241,7 @@ class DemarVpnService :
     if (epochAtStart == sessionEpoch.get()) return false
     shutdownSingBox()
     stopForegroundCompat()
+    if (pendingStart == null) emitState("disconnected", "")
     return true
   }
 
@@ -233,6 +257,7 @@ class DemarVpnService :
       val tail = log.readLines().takeLast(20).joinToString("\n").trim()
       if (tail.isNotEmpty()) {
         PendingNativeDiag.append(applicationContext, "[libbox stderr]\n$tail")
+        emitLogLine("[libbox stderr] $tail")
       }
     }
   }
@@ -361,8 +386,10 @@ class DemarVpnService :
     private const val NOTIFICATION_ID = 1
     private const val TAG = "DemarVpn"
     private const val TUN_SETTLE_MS = 200L
-    private const val TUN_SETTLE_RAPID_MS = 600L
+    private const val TUN_SETTLE_RAPID_MS = 1000L
     private const val RAPID_RECONNECT_WINDOW_MS = 2_000L
+    private const val PROBE_RETRY_SETTLE_MS = 1500L
+    private const val MAX_PROBE_RETRIES = 1
 
     internal fun buildStartIntent(
       context: Context,

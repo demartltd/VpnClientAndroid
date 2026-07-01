@@ -47,6 +47,8 @@ VPN connect (Naive MVP) — **реализовано**. Auth, share, egress diag
 ```bash
 ./gradlew :app:installDebug && adb shell am start -n com.demar.vpn/.MainActivity
 ./scripts/adb_debug.sh
+./scripts/adb_vpn_cycle_test.sh -n 5
+./scripts/adb_server_switch_test.sh -n 10
 ```
 
 ### Журнал (AppLog)

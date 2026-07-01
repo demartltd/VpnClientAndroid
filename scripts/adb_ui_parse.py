@@ -89,9 +89,49 @@ def cmd_toggle(nodes: list[ET.Element], xml: str) -> None:
         print("")
 
 
+def cmd_tab(nodes: list[ET.Element], xml: str, index: int) -> None:
+    height = screen_height(xml)
+    width_m = re.search(r'bounds="\[0,0\]\[(\d+),', xml)
+    width = int(width_m.group(1)) if width_m else 1080
+    bars: list[tuple[int, int, int, int]] = []
+    for node in nodes:
+        if node.attrib.get("package") != PACKAGE:
+            continue
+        bounds = parse_bounds(node.attrib.get("bounds", ""))
+        if not bounds:
+            continue
+        _, cy = center(bounds)
+        if cy < height * 0.85:
+            continue
+        if bounds[2] - bounds[0] > width * 0.45:
+            bars.append(bounds)
+    if bars:
+        x1, y1, x2, y2 = max(bars, key=area)
+        cx = int(x1 + (x2 - x1) * (index * 2 + 1) / 6)
+        cy = (y1 + y2) // 2
+        print(f"{cx},{cy}")
+        return
+    print("")
+
+
+def cmd_server(nodes: list[ET.Element], name: str) -> None:
+    target = name.lower()
+    for node in nodes:
+        text = (node.attrib.get("text") or "").strip()
+        if not text or target not in text.lower():
+            continue
+        bounds = parse_bounds(node.attrib.get("bounds", ""))
+        if not bounds:
+            continue
+        cx, cy = center(bounds)
+        print(f"{cx},{cy}")
+        return
+    print("")
+
+
 def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: adb_ui_parse.py <connected|permission|toggle>", file=sys.stderr)
+        print("usage: adb_ui_parse.py <connected|permission|toggle|tab|server> [arg]", file=sys.stderr)
         sys.exit(2)
     cmd = sys.argv[1]
     xml = sys.stdin.read()
@@ -107,6 +147,16 @@ def main() -> None:
         cmd_permission(nodes)
     elif cmd == "toggle":
         cmd_toggle(nodes, xml)
+    elif cmd == "tab":
+        if len(sys.argv) < 3:
+            print("", file=sys.stderr)
+            sys.exit(2)
+        cmd_tab(nodes, xml, int(sys.argv[2]))
+    elif cmd == "server":
+        if len(sys.argv) < 3:
+            print("", file=sys.stderr)
+            sys.exit(2)
+        cmd_server(nodes, sys.argv[2])
     else:
         print(f"unknown cmd: {cmd}", file=sys.stderr)
         sys.exit(2)

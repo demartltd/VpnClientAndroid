@@ -1,5 +1,6 @@
 package com.demar.vpn.vpn
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.demar.vpn.DemarAppContextHolder
@@ -37,16 +38,16 @@ internal object VpnEventStream {
     }
   }
 
-  fun vpnStateSnapshot(context: android.content.Context): Map<String, Any?>? {
+  fun vpnStateSnapshot(context: Context): Map<String, Any?>? {
     lastStateSnapshot()?.let { return it }
-    val stored = VpnControlStateStore.loadState(context)
-    if (!stored.isActive) {
-      return stateEvent(VpnControlStateStore.State.Disconnected)
+    VpnControlStateStore.hydrate(context)
+    return when (val stored = VpnControlStateStore.loadState(context)) {
+      VpnControlStateStore.State.Disconnecting -> stateEvent(stored)
+      VpnControlStateStore.State.Connecting,
+      VpnControlStateStore.State.Connected,
+      -> if (VpnActiveProbe.isActive(context)) stateEvent(stored) else stateEvent(VpnControlStateStore.State.Disconnected)
+      else -> stateEvent(stored)
     }
-    if (VpnActiveProbe.isActive(context)) {
-      return stateEvent(stored)
-    }
-    return stateEvent(VpnControlStateStore.State.Disconnected)
   }
 
   private fun stateEvent(state: VpnControlStateStore.State, message: String = ""): Map<String, Any?> =

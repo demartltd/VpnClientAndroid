@@ -27,6 +27,9 @@ internal object VpnControlStateStore {
     val isActive: Boolean
       get() = this == Connected || this == Connecting
 
+    val isTerminalInactive: Boolean
+      get() = this == Disconnected || this == Error || this == Unknown
+
     companion object {
       fun fromRaw(raw: String?): State {
         return entries.firstOrNull { it.raw == raw } ?: Unknown
@@ -34,20 +37,38 @@ internal object VpnControlStateStore {
     }
   }
 
+  @Volatile
+  private var memoryState: State = State.Disconnected
+
+  @Volatile
+  private var hydrated = false
+
+  fun hydrate(context: Context) {
+    synchronized(this) {
+      if (hydrated) return
+      val raw =
+        context
+          .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          .getString(KEY_STATE, State.Disconnected.raw)
+      memoryState = recoverStale(context, State.fromRaw(raw))
+      hydrated = true
+    }
+  }
+
   fun saveState(context: Context, state: String) {
+    val mapped = State.fromRaw(state)
+    memoryState = mapped
+    hydrated = true
     context
       .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
       .edit()
-      .putString(KEY_STATE, state)
+      .putString(KEY_STATE, mapped.raw)
       .apply()
   }
 
   fun loadState(context: Context): State {
-    val raw =
-      context
-        .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        .getString(KEY_STATE, State.Disconnected.raw)
-    return State.fromRaw(raw)
+    if (!hydrated) hydrate(context)
+    return memoryState
   }
 
   fun saveConnectPayload(
@@ -81,5 +102,11 @@ internal object VpnControlStateStore {
       uplinkHost = uplinkHost,
       uplinkPort = uplinkPort,
     )
+  }
+
+  private fun recoverStale(context: Context, stored: State): State {
+    if (stored.isTerminalInactive) return stored
+    if (VpnActiveProbe.isActive(context)) return stored
+    return State.Disconnected
   }
 }

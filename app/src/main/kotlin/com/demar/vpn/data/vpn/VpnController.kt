@@ -14,6 +14,7 @@ import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.vpn.DemarVpnService
+import com.demar.vpn.vpn.VpnActiveProbe
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
 import java.util.concurrent.atomic.AtomicBoolean
@@ -46,12 +47,16 @@ class VpnController(private val context: Context) {
   val serverProfiles: List<ServerProfile> = testServers
 
   private var watchdogJob: Job? = null
+  private var disconnectWatchdogJob: Job? = null
   private var connectJob: Job? = null
   private val connectGeneration = AtomicInteger(0)
+  private var activeConnectGeneration = 0
+  private var connectSessionStartedAt = 0L
   private val serviceStartInFlight = AtomicBoolean(false)
   private var pendingStartService = false
   private var pendingConnect = false
   private var reconnectAfterDisconnect = false
+  private var lastStopAt = 0L
 
   var onNeedVpnPermission: ((Intent) -> Unit)? = null
 
@@ -60,12 +65,14 @@ class VpnController(private val context: Context) {
   }
 
   init {
+    VpnControlStateStore.hydrate(context)
     syncPlatformState()
   }
 
   fun dispose() {
     removeListener()
     watchdogJob?.cancel()
+    disconnectWatchdogJob?.cancel()
     connectJob?.cancel()
   }
 
@@ -82,6 +89,11 @@ class VpnController(private val context: Context) {
   }
 
   fun syncPlatformState() {
+    if (connectJob?.isActive == true) return
+    when (_state.value) {
+      VpnState.Connecting, VpnState.Disconnecting -> return
+      else -> Unit
+    }
     val snap = VpnEventStream.vpnStateSnapshot(context) ?: return
     applyStateEvent(parseVpnStateEvent(snap) ?: return)
   }
@@ -93,7 +105,10 @@ class VpnController(private val context: Context) {
         AppLog.append("[ui] android home: disconnect")
         stopVpn(clearReconnect = true)
       }
-      VpnState.Disconnecting -> Unit
+      VpnState.Disconnecting -> {
+        AppLog.append("[ui] android home: cancel disconnect")
+        stopVpn(clearReconnect = true)
+      }
       else -> {
         AppLog.append("[ui] android home: connect")
         connect()
@@ -118,6 +133,7 @@ class VpnController(private val context: Context) {
     } else {
       watchdogJob?.cancel()
       connectJob?.cancel()
+      activeConnectGeneration = 0
       _state.value = VpnState.Error("VPN permission denied")
     }
   }
@@ -136,10 +152,13 @@ class VpnController(private val context: Context) {
     connectJob?.cancel()
     connectJob = null
     connectGeneration.incrementAndGet()
+    activeConnectGeneration = 0
+    lastStopAt = System.currentTimeMillis()
     watchdogJob?.cancel()
     if (_state.value !is VpnState.Disconnecting) {
       _state.value = VpnState.Disconnecting
     }
+    armDisconnectWatchdog()
     val stop = Intent(context, DemarVpnService::class.java).apply {
       action = DemarVpnService.ACTION_STOP
       putExtra(DemarVpnService.EXTRA_LOG_SOURCE, DemarVpnService.LOG_SOURCE_UI)
@@ -147,12 +166,27 @@ class VpnController(private val context: Context) {
     context.startService(stop)
   }
 
+  private fun armDisconnectWatchdog() {
+    disconnectWatchdogJob?.cancel()
+    disconnectWatchdogJob = scope.launch {
+      delay(DISCONNECT_WATCHDOG_MS)
+      if (_state.value is VpnState.Disconnecting) {
+        AppLog.append("[app] disconnect watchdog: force disconnected")
+        VpnControlStateStore.saveState(context, VpnControlStateStore.State.Disconnected.raw)
+        applyStateEvent(VpnState.Disconnected)
+      }
+    }
+  }
+
   private fun startConnect() {
     connectJob?.cancel()
     val generation = connectGeneration.incrementAndGet()
+    activeConnectGeneration = generation
+    connectSessionStartedAt = System.currentTimeMillis()
     connectJob = scope.launch {
       awaitVpnInactive()
       if (generation != connectGeneration.get()) return@launch
+      awaitPostStopSettle()
 
       watchdogJob?.cancel()
       _state.value = VpnState.Connecting
@@ -161,11 +195,16 @@ class VpnController(private val context: Context) {
       AppLog.append("[app] new connect session profile=${profile.id}")
 
       var plan = profile.connectPlan
-      val resolved = resolveUplinkIpv4s(plan.uplinkHost)
+      var resolved = resolveUplinkIpv4s(plan.uplinkHost)
       if (generation != connectGeneration.get()) return@launch
 
+      if (resolved.isEmpty() && isHostname(plan.uplinkHost)) {
+        delay(200)
+        resolved = resolveUplinkIpv4s(plan.uplinkHost)
+      }
+
       if (resolved.isNotEmpty()) {
-        plan = plan.withExtraDirectIps(resolved).withResolvedUplink(resolved.first())
+        plan = plan.withExtraDirectIps(resolved)
       } else if (isHostname(plan.uplinkHost)) {
         AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
       }
@@ -201,14 +240,18 @@ class VpnController(private val context: Context) {
   private suspend fun awaitVpnInactive(timeoutMs: Long = 8_000) {
     val deadline = System.currentTimeMillis() + timeoutMs
     while (System.currentTimeMillis() < deadline) {
-      when (VpnControlStateStore.loadState(context)) {
-        VpnControlStateStore.State.Connected,
-        VpnControlStateStore.State.Connecting,
-        VpnControlStateStore.State.Disconnecting,
-        -> delay(50)
-        else -> return
-      }
+      val stored = VpnControlStateStore.loadState(context)
+      val vpnUp = VpnActiveProbe.isActive(context)
+      if (stored.isTerminalInactive && !vpnUp) return
+      delay(50)
     }
+    AppLog.append("[app] awaitVpnInactive timeout (${timeoutMs}ms)")
+  }
+
+  private suspend fun awaitPostStopSettle(minGapMs: Long = 600L) {
+    val elapsed = System.currentTimeMillis() - lastStopAt
+    val wait = minGapMs - elapsed
+    if (wait > 0) delay(wait)
   }
 
   private fun startVpnService() {
@@ -232,6 +275,7 @@ class VpnController(private val context: Context) {
       val payload = VpnControlStateStore.loadConnectPayload(context)
       if (payload == null) {
         watchdogJob?.cancel()
+        activeConnectGeneration = 0
         _state.value = VpnState.Error("Missing configJson")
         return
       }
@@ -242,13 +286,20 @@ class VpnController(private val context: Context) {
       _state.value = VpnState.Connecting
     } catch (t: Throwable) {
       watchdogJob?.cancel()
+      activeConnectGeneration = 0
       _state.value = VpnState.Error(t.message ?: "Failed to start VPN service")
     }
   }
 
   private fun applyStateEvent(mapped: VpnState) {
+    if (shouldIgnoreStaleDisconnected(mapped)) return
     if (mapped is VpnState.Connected || mapped is VpnState.Disconnected || mapped is VpnState.Error) {
       watchdogJob?.cancel()
+      disconnectWatchdogJob?.cancel()
+      activeConnectGeneration = 0
+    }
+    if (mapped is VpnState.Connecting) {
+      disconnectWatchdogJob?.cancel()
     }
     if (mapped is VpnState.Error) {
       pendingConnect = false
@@ -263,5 +314,19 @@ class VpnController(private val context: Context) {
       pendingConnect = false
       if (shouldConnect) startConnect()
     }
+  }
+
+  private fun shouldIgnoreStaleDisconnected(mapped: VpnState): Boolean {
+    if (mapped !is VpnState.Disconnected) return false
+    if (reconnectAfterDisconnect || pendingConnect) return false
+    if (activeConnectGeneration == 0) return false
+    val current = _state.value
+    if (current !is VpnState.Connecting && current !is VpnState.Connected) return false
+    return System.currentTimeMillis() - connectSessionStartedAt < STALE_DISCONNECTED_MS
+  }
+
+  companion object {
+    private const val DISCONNECT_WATCHDOG_MS = 5_000L
+    private const val STALE_DISCONNECTED_MS = 2_000L
   }
 }
