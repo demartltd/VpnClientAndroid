@@ -14,38 +14,21 @@ internal object VpnTunnelProbe {
   const val PROBE_URL = "https://$PROBE_HOST/cdn-cgi/trace"
   const val FALLBACK_HOST_GOOGLE = "www.google.com"
   const val FALLBACK_URL_GOOGLE = "https://$FALLBACK_HOST_GOOGLE/generate_204"
-  const val FALLBACK_HOST_GSTATIC = "connectivitycheck.gstatic.com"
-  const val FALLBACK_URL_GSTATIC = "https://$FALLBACK_HOST_GSTATIC/generate_204"
 
   val PREDEFINED_DNS: List<Pair<String, String>> = listOf(
     PROBE_HOST to "1.1.1.1",
     FALLBACK_HOST_GOOGLE to "142.250.185.78",
-    FALLBACK_HOST_GSTATIC to "142.250.185.78",
   )
 
-  private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE, FALLBACK_URL_GSTATIC)
+  private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE)
 
   private const val RETRY_DELAY_MS = 150L
   private const val READY_POLL_MS = 100L
-  const val POST_CONNECT_BUDGET_MS = 5_000L
   private const val TCP_PROBE_MS = 500
   const val MAX_CONSECUTIVE_HTTP_FAILS = 10
   private const val FIRST_HTTP_SETTLE_MS = 300L
 
   const val TIMEOUT_MS = 3_000
-
-  fun waitForDiagProxy(
-    host: String = SingBoxTags.DIAG_LISTEN_HOST,
-    port: Int = SingBoxTags.DIAG_LISTEN_PORT,
-    budgetMs: Long = POST_CONNECT_BUDGET_MS,
-  ): Boolean {
-    val deadline = System.currentTimeMillis() + budgetMs
-    while (System.currentTimeMillis() < deadline) {
-      if (tcpOpen(host, port)) return true
-      Thread.sleep(READY_POLL_MS)
-    }
-    return false
-  }
 
   enum class ReadyResult { Ok, TcpFail, HttpFail }
 
@@ -99,11 +82,6 @@ internal object VpnTunnelProbe {
     val result = if (diagOpen) ReadyResult.HttpFail else ReadyResult.TcpFail
     return ProbeOutcome(result, attempts, consecutiveHttpFails)
   }
-
-  fun isDiagProxyOpen(
-    host: String = SingBoxTags.DIAG_LISTEN_HOST,
-    port: Int = SingBoxTags.DIAG_LISTEN_PORT,
-  ): Boolean = tcpOpen(host, port)
 
   private fun httpOk(attempt: Int): Boolean {
     val url = PROBE_URLS[(attempt - 1) % PROBE_URLS.size]

@@ -202,19 +202,15 @@ class DemarVpnService :
       stopForegroundCompat()
     } finally {
       connecting = false
-      if (epochAtStart != sessionEpoch.get()) {
-        val pending = pendingStart
-        pendingStart = null
-        if (pending != null) {
-          executor.execute { connectVpn(pending) }
-        }
-        return
-      }
-      val pending = pendingStart
-      pendingStart = null
-      if (pending != null) {
-        executor.execute { connectVpn(pending) }
-      }
+      dispatchPendingConnect()
+    }
+  }
+
+  private fun dispatchPendingConnect() {
+    val pending = pendingStart
+    pendingStart = null
+    if (pending != null) {
+      executor.execute { connectVpn(pending) }
     }
   }
 

@@ -9,9 +9,9 @@ class ConnectTimeoutsTest {
   @Test
   fun timeouts_withinPlan() {
     assertEquals(25_000L, ConnectTimeouts.CONNECT_MS)
-    assertEquals(10_000L, ConnectTimeouts.STARTUP_MS)
     assertEquals(15_000L, ConnectTimeouts.PROBE_MS)
     assert(ConnectTimeouts.PROBE_MS < ConnectTimeouts.CONNECT_MS)
+    assert(ConnectTimeouts.WATCHDOG_MS > ConnectTimeouts.CONNECT_MS)
   }
 }
 
@@ -33,15 +33,9 @@ class VpnTunnelProbeTest {
   }
 
   @Test
-  fun maxConsecutiveHttpFails_isTen() {
-    assertEquals(10, VpnTunnelProbe.MAX_CONSECUTIVE_HTTP_FAILS)
-  }
-
-  @Test
   fun predefinedDns_coversAllProbeHosts() {
     val hosts = VpnTunnelProbe.PREDEFINED_DNS.map { it.first }.toSet()
     assert(hosts.contains(VpnTunnelProbe.PROBE_HOST))
     assert(hosts.contains(VpnTunnelProbe.FALLBACK_HOST_GOOGLE))
-    assert(hosts.contains(VpnTunnelProbe.FALLBACK_HOST_GSTATIC))
   }
 }

@@ -1,7 +1,6 @@
 package com.demar.vpn.vpn
 
 import android.content.Context
-import android.util.Log
 import com.demar.vpn.DemarAppContextHolder
 import io.nekohasekai.libbox.CommandServer
 import io.nekohasekai.libbox.CommandServerHandler
@@ -11,7 +10,6 @@ import io.nekohasekai.libbox.PlatformInterface
 import java.util.concurrent.atomic.AtomicLong
 
 object SingBoxCore {
-  private const val TAG = "SingBoxCore"
   private val nextOwnerId = AtomicLong(1L)
 
   @Volatile
@@ -45,15 +43,6 @@ object SingBoxCore {
 
   @Synchronized
   fun forceStop() {
-    closeLocked()
-  }
-
-  @Synchronized
-  fun stop(owner: Long) {
-    if (activeOwner != owner && commandServer == null) return
-    if (activeOwner != owner) {
-      Log.w(TAG, "stop: owner mismatch expected=$owner active=$activeOwner, forcing close")
-    }
     closeLocked()
   }
 
