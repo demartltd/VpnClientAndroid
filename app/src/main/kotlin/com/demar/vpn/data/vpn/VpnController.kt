@@ -45,7 +45,6 @@ class VpnController(private val context: Context) {
 
   val serverProfiles: List<ServerProfile> = testServers
 
-  private var connectStartedAt: Long = 0L
   private var watchdogJob: Job? = null
   private var connectJob: Job? = null
   private val connectGeneration = AtomicInteger(0)
@@ -138,7 +137,6 @@ class VpnController(private val context: Context) {
     connectJob = null
     connectGeneration.incrementAndGet()
     watchdogJob?.cancel()
-    connectStartedAt = 0L
     if (_state.value !is VpnState.Disconnecting) {
       _state.value = VpnState.Disconnecting
     }
@@ -157,7 +155,6 @@ class VpnController(private val context: Context) {
       if (generation != connectGeneration.get()) return@launch
 
       watchdogJob?.cancel()
-      connectStartedAt = System.currentTimeMillis()
       _state.value = VpnState.Connecting
 
       val profile = _selectedProfile.value
@@ -186,7 +183,7 @@ class VpnController(private val context: Context) {
       if (generation != connectGeneration.get()) return@launch
 
       watchdogJob = scope.launch {
-        delay(ConnectTimeouts.CONNECT_MS)
+        delay(ConnectTimeouts.WATCHDOG_MS)
         if (_state.value is VpnState.Connecting) {
           _state.value = VpnState.Error(VpnConnectMessages.FAILED)
         }
@@ -250,10 +247,8 @@ class VpnController(private val context: Context) {
   }
 
   private fun applyStateEvent(mapped: VpnState) {
-    if (shouldIgnoreStaleSnapshot(mapped)) return
     if (mapped is VpnState.Connected || mapped is VpnState.Disconnected || mapped is VpnState.Error) {
       watchdogJob?.cancel()
-      connectStartedAt = 0L
     }
     if (mapped is VpnState.Error) {
       pendingConnect = false
@@ -268,15 +263,5 @@ class VpnController(private val context: Context) {
       pendingConnect = false
       if (shouldConnect) startConnect()
     }
-  }
-
-  private fun shouldIgnoreStaleSnapshot(mapped: VpnState): Boolean {
-    if (mapped is VpnState.Error) return false
-    if (mapped !is VpnState.Disconnected) return false
-    if (reconnectAfterDisconnect || pendingConnect) return false
-    val current = _state.value
-    if (current !is VpnState.Connecting && current !is VpnState.Connected) return false
-    if (connectStartedAt == 0L) return false
-    return System.currentTimeMillis() - connectStartedAt < 2_000
   }
 }

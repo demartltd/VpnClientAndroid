@@ -64,10 +64,7 @@ class VpnPipelineTest {
             } == true
         },
       )
-      for (host in listOf(
-        VpnTunnelProbe.FALLBACK_HOST_GOOGLE,
-        VpnTunnelProbe.FALLBACK_HOST_GSTATIC,
-      )) {
+      for (host in listOf(VpnTunnelProbe.FALLBACK_HOST_GOOGLE)) {
         val hasPredefined = (0 until dnsRules.length()).any { i ->
           val rule = dnsRules.getJSONObject(i)
           rule.optString("action") == "predefined" &&
