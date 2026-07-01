@@ -10,6 +10,7 @@ import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
+import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
@@ -31,6 +32,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class VpnController(private val context: Context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -205,8 +209,24 @@ class VpnController(private val context: Context) {
 
       if (resolved.isNotEmpty()) {
         plan = plan.withExtraDirectIps(resolved)
-      } else if (isHostname(plan.uplinkHost)) {
+      }
+
+      val connectTarget = when {
+        resolved.isNotEmpty() -> resolved.first()
+        isLiteralIpv4(plan.uplinkHost) -> plan.uplinkHost
+        else -> null
+      }
+      if (connectTarget == null) {
         AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
+        if (generation != connectGeneration.get()) return@launch
+        _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
+        return@launch
+      }
+      if (!verifyUplinkReachable(connectTarget, profile.uplinkPort ?: 443)) {
+        AppLog.append("[app] uplink preflight failed for $connectTarget:${profile.uplinkPort ?: 443}")
+        if (generation != connectGeneration.get()) return@launch
+        _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
+        return@launch
       }
 
       val naiveServer = plan.proxyOutbound["server"]
@@ -236,6 +256,16 @@ class VpnController(private val context: Context) {
       }
     }
   }
+
+  private suspend fun verifyUplinkReachable(host: String, port: Int): Boolean =
+    withContext(Dispatchers.IO) {
+      try {
+        Socket().use { it.connect(InetSocketAddress(host, port), 5_000) }
+        true
+      } catch (_: Exception) {
+        false
+      }
+    }
 
   private suspend fun awaitVpnInactive(timeoutMs: Long = 8_000) {
     val deadline = System.currentTimeMillis() + timeoutMs
@@ -281,7 +311,11 @@ class VpnController(private val context: Context) {
       }
       ContextCompat.startForegroundService(
         context,
-        DemarVpnService.buildStartIntent(context, payload, DemarVpnService.LOG_SOURCE_UI),
+        DemarVpnService.buildStartIntent(
+          context,
+          payload,
+          DemarVpnService.LOG_SOURCE_UI,
+        ),
       )
       _state.value = VpnState.Connecting
     } catch (t: Throwable) {

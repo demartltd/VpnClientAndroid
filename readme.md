@@ -46,9 +46,10 @@ VPN connect (Naive MVP) — **реализовано**. Auth, share, egress diag
 
 ```bash
 ./gradlew :app:installDebug && adb shell am start -n com.demar.vpn/.MainActivity
-./scripts/adb_debug.sh
-./scripts/adb_vpn_cycle_test.sh -n 5
-./scripts/adb_server_switch_test.sh -n 10
+./scripts/adb/debug.sh
+./scripts/adb/vpn_cycle_test.sh -n 5
+./scripts/adb/server_switch_test.sh -n 10
+./scripts/adb/test_all_devices.sh -n 5
 ```
 
 ### Журнал (AppLog)
@@ -57,10 +58,10 @@ UI-журнал («Настройки → Настройки приложени�
 
 ```bash
 # Весь журнал в терминал
-./scripts/adb_journal.sh
+./scripts/adb/journal.sh
 
 # Сохранить в файл
-./scripts/adb_journal.sh -o journal.txt
+./scripts/adb/journal.sh -o journal.txt
 ```
 
 Путь на устройстве (ручной `adb pull`):

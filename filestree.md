@@ -41,6 +41,14 @@ app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
 
 ```
 scripts/
+├── adb/                         # ADB install + UI automation tests
+│   ├── common.sh
+│   ├── ui_parse.py
+│   ├── debug.sh
+│   ├── journal.sh
+│   ├── vpn_cycle_test.sh
+│   ├── server_switch_test.sh
+│   └── test_all_devices.sh
 ├── libbox-build-android.py
 ├── generate_icons.py
 ├── singbox-cleaner.py
@@ -50,8 +58,6 @@ scripts/
 ├── backup-android-signing.ps1
 ├── open_output_folders.ps1
 ├── push-github.ps1
-├── adb_debug.sh
-└── adb_journal.sh
 ```
 
 ## Res
