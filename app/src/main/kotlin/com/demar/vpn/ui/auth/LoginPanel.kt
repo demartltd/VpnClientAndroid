@@ -102,9 +102,10 @@ private fun OtpStep(
 ) {
   Column {
     Text(title, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(16.dp))
     OtpField(onComplete = onComplete)
     if (onResend != null) {
+      Spacer(Modifier.height(16.dp))
       TextButton(onClick = onResend, modifier = Modifier.align(Alignment.CenterHorizontally)) {
         Text(stringResource(R.string.login_resend))
       }

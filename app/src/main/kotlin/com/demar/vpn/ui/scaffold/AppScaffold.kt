@@ -24,6 +24,7 @@ import com.demar.vpn.data.network.ThroughputSampler
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.account.AccountScreen
+import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.AppFloatingToolbar
 import com.demar.vpn.ui.home.HomeScreen
 import com.demar.vpn.ui.servers.ServersScreen
@@ -41,6 +42,8 @@ fun AppScaffold(
   modifier: Modifier = Modifier,
 ) {
   var tab by rememberSaveable { mutableIntStateOf(0) }
+  var signedIn by rememberSaveable { mutableStateOf(false) }
+  var showLoginSheet by rememberSaveable { mutableStateOf(false) }
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val throughput = rememberHomeThroughput(tab, vpnState)
 
@@ -61,18 +64,37 @@ fun AppScaffold(
           onAppSettings = onAppSettings,
           onServiceMenu = onServiceMenu,
         )
-        AccountScreen(active = tab == 3)
+        AccountScreen(
+          active = tab == 3,
+          onSignOut = {
+            signedIn = false
+            tab = 0
+          },
+        )
       }
     }
     AppFloatingToolbar(
       selectedIndex = tab,
-      onDestinationSelected = { tab = it },
+      onDestinationSelected = { index ->
+        if (index == 3 && !signedIn) showLoginSheet = true
+        else tab = index
+      },
       modifier = Modifier
         .align(Alignment.BottomCenter)
         .fillMaxWidth()
         .navigationBarsPadding()
         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
     )
+    if (showLoginSheet) {
+      LoginBottomSheet(
+        onDismiss = { showLoginSheet = false },
+        onSignedIn = {
+          signedIn = true
+          showLoginSheet = false
+          tab = 3
+        },
+      )
+    }
   }
 }
 
