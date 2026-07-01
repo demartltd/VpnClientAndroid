@@ -4,6 +4,7 @@
   При отсутствии .git инициализирует репозиторий (ветка main), настраивает origin,
   показывает изменения (включая снятие с индекса файлов из .gitignore), коммитит и push.
   Переменные окружения:
+    GIT_COMMIT_MESSAGE=... — сообщение коммита без интерактивного ввода (на macOS иначе — диалог);
     GIT_ALLOW_DIRTY_PUSH=1 — не коммитить: пушить при локальных правках без коммита (выход 2, если не задано);
     GIT_PUSH_FORCE_LEASE=1 — push с --force-with-lease.
   Заметка: .gitignore не убирает уже отслеживаемые файлы с GitHub — скрипт находит их через
@@ -38,19 +39,17 @@ function Initialize-GitRepository {
 }
 
 function Get-GitCurrentBranch {
-    $branch = (git branch --show-current 2>$null)
-    if ($null -ne $branch) { $branch = $branch.Trim() }
-    if (-not [string]::IsNullOrWhiteSpace($branch)) { return $branch }
-
-    $branch = (git symbolic-ref --short HEAD 2>$null)
-    if ($null -ne $branch) { $branch = $branch.Trim() }
-    if (-not [string]::IsNullOrWhiteSpace($branch)) { return $branch }
-
-    $configured = (git config --get init.defaultBranch 2>$null)
-    if ($null -ne $configured -and -not [string]::IsNullOrWhiteSpace($configured.Trim())) {
-        return $configured.Trim()
+    foreach ($source in @(
+            { git branch --show-current 2>$null }
+            { git symbolic-ref --short HEAD 2>$null }
+            { git config --get init.defaultBranch 2>$null }
+        )) {
+        $branch = (& $source)
+        if ($null -ne $branch) {
+            $branch = $branch.Trim()
+            if ($branch) { return $branch }
+        }
     }
-
     return $DefaultBranch
 }
 
@@ -60,20 +59,15 @@ function Set-GitRemoteOrigin {
         [string]$Url
     )
 
-    $names = @(git remote 2>$null | ForEach-Object { $_.Trim() } | Where-Object { $_ })
-
-    if ($names -contains 'origin') {
+    $hasOrigin = 'origin' -in @(git remote 2>$null | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($hasOrigin) {
         git remote set-url origin $Url
-        if ($LASTEXITCODE -ne 0) {
-            throw "git remote set-url завершился с кодом $LASTEXITCODE"
-        }
+        if ($LASTEXITCODE -ne 0) { throw "git remote set-url завершился с кодом $LASTEXITCODE" }
         Write-Host "origin → $Url" -ForegroundColor Cyan
     }
     else {
         git remote add origin $Url
-        if ($LASTEXITCODE -ne 0) {
-            throw "git remote add завершился с кодом $LASTEXITCODE"
-        }
+        if ($LASTEXITCODE -ne 0) { throw "git remote add завершился с кодом $LASTEXITCODE" }
         Write-Host "origin added: $Url" -ForegroundColor Green
     }
 }
@@ -187,9 +181,6 @@ function Get-GitPushChangeSets {
 
         $status = $parts[0]
         $path = $parts[-1].Trim()
-        if ($status -match '^R') {
-            $path = $parts[-1].Trim()
-        }
 
         switch -Regex ($status) {
             '^A' { [void]$new.Add($path) }
@@ -206,61 +197,71 @@ function Get-GitPushChangeSets {
     }
 }
 
-function Write-GitFileChangeSets {
-    param($ChangeSets)
-
-    $sections = @(
-        @{ Title = 'Новые';       Color = 'Green';  Items = $ChangeSets.New }
-        @{ Title = 'Изменённые';  Color = 'Yellow'; Items = $ChangeSets.Modified }
-        @{ Title = 'Удалённые';   Color = 'Red';    Items = $ChangeSets.Deleted }
+function Write-GitChangeReport {
+    param(
+        [string]$Header,
+        [array]$Sections,
+        [switch]$SkipEmptySections,
+        [string]$AllEmptyText
     )
-    if ($ChangeSets.PSObject.Properties.Name -contains 'UntrackFromRepo') {
-        $sections += @{ Title = 'Уйдут с GitHub (.gitignore, git rm --cached)'; Color = 'Magenta'; Items = $ChangeSets.UntrackFromRepo }
+
+    if ($Header) {
+        Write-Host ''
+        Write-Host $Header -ForegroundColor Cyan
     }
 
-    foreach ($section in $sections) {
-        Write-Host ''
+    $any = $false
+    foreach ($section in $Sections) {
+        if ($SkipEmptySections -and $section.Items.Count -eq 0) { continue }
+        $any = $true
         Write-Host $section.Title -ForegroundColor $section.Color
         if ($section.Items.Count -eq 0) {
             Write-Host '  (нет)' -ForegroundColor DarkGray
         }
         else {
+            $indent = if ($section.ItemIndent) { $section.ItemIndent } else { '  ' }
             foreach ($item in $section.Items) {
-                Write-Host "  $item"
+                Write-Host "$indent$item"
             }
         }
     }
+
+    if (-not $any -and $AllEmptyText) {
+        Write-Host $AllEmptyText -ForegroundColor DarkGray
+    }
     Write-Host ''
+}
+
+function Write-GitFileChangeSets {
+    param($ChangeSets)
+
+    $sections = @(
+        @{ Title = 'Новые';      Color = 'Green';  Items = $ChangeSets.New }
+        @{ Title = 'Изменённые'; Color = 'Yellow'; Items = $ChangeSets.Modified }
+        @{ Title = 'Удалённые';  Color = 'Red';    Items = $ChangeSets.Deleted }
+    )
+    if ($ChangeSets.PSObject.Properties.Name -contains 'UntrackFromRepo') {
+        $sections += @{ Title = 'Уйдут с GitHub (.gitignore, git rm --cached)'; Color = 'Magenta'; Items = $ChangeSets.UntrackFromRepo }
+    }
+    Write-Host ''
+    Write-GitChangeReport -Sections $sections
 }
 
 function Write-GitPushPreview {
     param($ChangeSets)
 
-    Write-Host ''
-    Write-Host 'На origin после push (коммиты относительно upstream):' -ForegroundColor Cyan
     if (-not $ChangeSets.HasUpstream) {
-        Write-Host '  upstream не настроен — будет первая публикация ветки' -ForegroundColor DarkGray
+        Write-GitChangeReport -Header 'На origin после push (коммиты относительно upstream):' -Sections @() `
+            -AllEmptyText '  upstream не настроен — будет первая публикация ветки'
         return
     }
 
-    $sections = @(
-        @{ Title = '  + новые';       Color = 'Green';  Items = $ChangeSets.New }
-        @{ Title = '  ~ изменённые';  Color = 'Yellow'; Items = $ChangeSets.Modified }
-        @{ Title = '  - удалённые';   Color = 'Red';    Items = $ChangeSets.Deleted }
+    Write-GitChangeReport -Header 'На origin после push (коммиты относительно upstream):' -SkipEmptySections `
+        -AllEmptyText '  (нет отличий от upstream в локальных коммитах)' -Sections @(
+        @{ Title = '  + новые';      Color = 'Green';  Items = $ChangeSets.New;      ItemIndent = '    ' }
+        @{ Title = '  ~ изменённые'; Color = 'Yellow'; Items = $ChangeSets.Modified; ItemIndent = '    ' }
+        @{ Title = '  - удалённые';  Color = 'Red';    Items = $ChangeSets.Deleted;  ItemIndent = '    ' }
     )
-    $any = $false
-    foreach ($section in $sections) {
-        if ($section.Items.Count -eq 0) { continue }
-        $any = $true
-        Write-Host $section.Title -ForegroundColor $section.Color
-        foreach ($item in $section.Items) {
-            Write-Host "    $item"
-        }
-    }
-    if (-not $any) {
-        Write-Host '  (нет отличий от upstream в локальных коммитах)' -ForegroundColor DarkGray
-    }
-    Write-Host ''
 }
 
 function Test-GitHasCommitsToPush {
@@ -280,6 +281,42 @@ function Test-GitHasCommitsToPush {
     }
 
     return ([int]$ahead -gt 0)
+}
+
+function Get-CommitMessageFromUser {
+    if (-not [string]::IsNullOrWhiteSpace($env:GIT_COMMIT_MESSAGE)) {
+        return $env:GIT_COMMIT_MESSAGE.Trim()
+    }
+
+    # macOS: диалог вместо TTY — Cursor/Python подставляет «source …/activate» в терминал.
+    if (Get-Command osascript -ErrorAction SilentlyContinue) {
+        while ($true) {
+            $msg = (osascript -e 'text returned of (display dialog "Что сделано?" default answer "" with title "Сообщение коммита" buttons {"Отмена", "OK"} default button "OK")' 2>$null)
+            if ($LASTEXITCODE -ne 0) { throw 'Коммит отменён.' }
+            $msg = $msg.Trim()
+            if ([string]::IsNullOrWhiteSpace($msg)) {
+                [void](osascript -e 'display alert "Сообщение не может быть пустым." as warning')
+                continue
+            }
+            Write-Host "Сообщение: $msg" -ForegroundColor Cyan
+            return $msg
+        }
+    }
+
+    while ($true) {
+        $msg = (Read-Host 'Сообщение коммита (что сделано)').Trim()
+        if ([string]::IsNullOrWhiteSpace($msg)) {
+            Write-Host 'Сообщение не может быть пустым.' -ForegroundColor Yellow
+            continue
+        }
+        Write-Host "Сообщение: $msg" -ForegroundColor Cyan
+        $confirm = (Read-Host 'Подтвердить коммит? [y/N]').Trim()
+        if ($confirm -notmatch '^[yY]$') {
+            Write-Host 'Отменено — введите другое сообщение.' -ForegroundColor Yellow
+            continue
+        }
+        return $msg
+    }
 }
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -302,11 +339,7 @@ if ($needsCommit) {
     Write-Host 'Планируемые изменения (рабочая копия + снятие с индекса):' -ForegroundColor Cyan
     Write-GitFileChangeSets -ChangeSets $changeSets
 
-    do {
-        $msg = (Read-Host 'Сообщение коммита (что сделано)').Trim()
-        if (-not [string]::IsNullOrWhiteSpace($msg)) { break }
-        Write-Host 'Сообщение не может быть пустым.' -ForegroundColor Yellow
-    } while ($true)
+    $msg = Get-CommitMessageFromUser
 
     if ($trackedIgnored.Count -gt 0) {
         [void](Remove-GitTrackedIgnoredPaths)
