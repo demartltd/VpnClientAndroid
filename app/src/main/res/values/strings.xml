@@ -43,5 +43,9 @@
     <string name="login_totp">Код из аутентификатора</string>
     <string name="soon">Скоро</string>
     <string name="server_selected">Сервер выбран</string>
+    <string name="server_status_online">Сервер доступен</string>
+    <string name="server_status_offline">Сервер недоступен</string>
+    <string name="server_status_checking">Проверка сервера</string>
+    <string name="server_status_degraded">Сервер с ограничениями</string>
     <string name="platform_android">Android</string>
 </resources>

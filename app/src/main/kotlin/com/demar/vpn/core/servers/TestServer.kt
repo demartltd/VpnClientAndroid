@@ -13,6 +13,8 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "backronym.ru",
     ),
+    countryCode = "FI",
+    countryName = "Финляндия",
   ),
   ServerProfile.naive(
     NaiveProfile(
@@ -23,5 +25,7 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "de-f-1.backronym.ru",
     ),
+    countryCode = "DE",
+    countryName = "Германия",
   ),
 )
