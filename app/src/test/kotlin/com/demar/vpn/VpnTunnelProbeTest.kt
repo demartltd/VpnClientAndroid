@@ -8,8 +8,8 @@ import org.junit.Test
 class ConnectTimeoutsTest {
   @Test
   fun timeouts_withinPlan() {
-    assertEquals(25_000L, ConnectTimeouts.CONNECT_MS)
-    assertEquals(15_000L, ConnectTimeouts.PROBE_MS)
+    assertEquals(30_000L, ConnectTimeouts.CONNECT_MS)
+    assertEquals(20_000L, ConnectTimeouts.PROBE_MS)
     assert(ConnectTimeouts.PROBE_MS < ConnectTimeouts.CONNECT_MS)
     assert(ConnectTimeouts.WATCHDOG_MS > ConnectTimeouts.CONNECT_MS)
   }

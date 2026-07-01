@@ -22,13 +22,13 @@ internal object VpnTunnelProbe {
 
   private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE)
 
-  private const val RETRY_DELAY_MS = 150L
+  private const val RETRY_DELAY_MS = 200L
   private const val READY_POLL_MS = 100L
   private const val TCP_PROBE_MS = 500
-  const val MAX_CONSECUTIVE_HTTP_FAILS = 10
-  private const val FIRST_HTTP_SETTLE_MS = 300L
+  const val MAX_CONSECUTIVE_HTTP_FAILS = 15
+  private const val FIRST_HTTP_SETTLE_MS = 1200L
 
-  const val TIMEOUT_MS = 3_000
+  const val TIMEOUT_MS = 5_000
 
   enum class ReadyResult { Ok, TcpFail, HttpFail }
 
@@ -77,7 +77,8 @@ internal object VpnTunnelProbe {
       }
       val left = deadline - System.currentTimeMillis()
       if (left <= 0) break
-      Thread.sleep(minOf(RETRY_DELAY_MS, left))
+      val backoff = minOf(RETRY_DELAY_MS * consecutiveHttpFails, 1_000L)
+      Thread.sleep(minOf(backoff, left))
     }
     val result = if (diagOpen) ReadyResult.HttpFail else ReadyResult.TcpFail
     return ProbeOutcome(result, attempts, consecutiveHttpFails)
@@ -119,8 +120,8 @@ internal object VpnTunnelProbe {
           ) as HttpURLConnection)
           .apply {
             requestMethod = "GET"
-            connectTimeout = timeoutMs * 2 / 3
-            readTimeout = timeoutMs / 3
+            connectTimeout = timeoutMs
+            readTimeout = timeoutMs
             instanceFollowRedirects = false
             setRequestProperty("Accept", "*/*")
           }

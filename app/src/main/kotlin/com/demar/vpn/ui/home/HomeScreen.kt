@@ -92,7 +92,6 @@ fun HomeScreen(
 private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
   val cs = MaterialTheme.colorScheme
   val compact = state is VpnState.Connected || state is VpnState.Disconnecting
-  val busy = state is VpnState.Disconnecting
   val diameter by animateDpAsState(if (compact) 116.dp else 200.dp)
   val fill = if (compact) cs.primaryContainer else cs.surfaceContainerHighest
   val iconColor = if (compact) cs.onPrimaryContainer else cs.onSurfaceVariant
@@ -103,11 +102,10 @@ private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
       modifier = Modifier.size(diameter),
       shape = CircleShape,
       color = fill,
-      enabled = !busy,
     ) {
       Box(contentAlignment = Alignment.Center) {
         when {
-          busy -> CircularProgressIndicator(Modifier.size(46.dp), color = iconColor)
+          state is VpnState.Disconnecting -> CircularProgressIndicator(Modifier.size(46.dp), color = iconColor)
           state is VpnState.Connected -> Icon(Icons.Filled.Shield, null, Modifier.size(44.dp), tint = iconColor)
           state is VpnState.Connecting -> CircularProgressIndicator(Modifier.size(if (compact) 46.dp else 72.dp), color = iconColor)
           else -> Icon(Icons.Filled.PowerSettingsNew, null, Modifier.size(92.dp), tint = iconColor)
