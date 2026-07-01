@@ -7,11 +7,14 @@ import androidx.core.content.ContextCompat
 import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.resolveUplinkIpv4s
+import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerReachState
+import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.vpn.DemarVpnService
@@ -32,9 +35,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.net.InetSocketAddress
-import java.net.Socket
+import kotlinx.coroutines.coroutineScope
 
 class VpnController(private val context: Context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -49,6 +50,11 @@ class VpnController(private val context: Context) {
   val selectedProfile: StateFlow<ServerProfile> = _selectedProfile.asStateFlow()
 
   val serverProfiles: List<ServerProfile> = testServers
+
+  private val _serverReachability = MutableStateFlow(initialReachability())
+  val serverReachability: StateFlow<Map<String, ServerReachState>> = _serverReachability.asStateFlow()
+  private var reachabilityJob: Job? = null
+  private var initialReachabilityDone = false
 
   private var watchdogJob: Job? = null
   private var disconnectWatchdogJob: Job? = null
@@ -75,10 +81,47 @@ class VpnController(private val context: Context) {
 
   fun dispose() {
     removeListener()
+    reachabilityJob?.cancel()
     watchdogJob?.cancel()
     disconnectWatchdogJob?.cancel()
     connectJob?.cancel()
   }
+
+  fun setServersTabActive(active: Boolean) {
+    if (!active) {
+      reachabilityJob?.cancel()
+      reachabilityJob = null
+      return
+    }
+    if (initialReachabilityDone) return
+    initialReachabilityDone = true
+    reachabilityJob?.cancel()
+    reachabilityJob = scope.launch { probeAllServers() }
+  }
+
+  suspend fun refreshServerReachability() {
+    probeAllServers()
+  }
+
+  private suspend fun probeAllServers() {
+    markServersChecking()
+    coroutineScope {
+      serverProfiles.forEach { profile ->
+        launch {
+          val state = UplinkProbe.probe(profile)
+          _serverReachability.value = _serverReachability.value + (profile.id to state)
+        }
+      }
+    }
+  }
+
+  private fun markServersChecking() {
+    val checking = serverProfiles.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
+    _serverReachability.value = _serverReachability.value + checking
+  }
+
+  private fun initialReachability(): Map<String, ServerReachState> =
+    serverProfiles.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
 
   fun selectProfile(profile: ServerProfile) {
     if (profile.id == _selectedProfile.value.id) return
@@ -222,7 +265,7 @@ class VpnController(private val context: Context) {
         _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
-      if (!verifyUplinkReachable(connectTarget, profile.uplinkPort ?: 443)) {
+      if (!UplinkProbe.tcpReachable(connectTarget, profile.uplinkPort ?: 443)) {
         AppLog.append("[app] uplink preflight failed for $connectTarget:${profile.uplinkPort ?: 443}")
         if (generation != connectGeneration.get()) return@launch
         _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
@@ -256,16 +299,6 @@ class VpnController(private val context: Context) {
       }
     }
   }
-
-  private suspend fun verifyUplinkReachable(host: String, port: Int): Boolean =
-    withContext(Dispatchers.IO) {
-      try {
-        Socket().use { it.connect(InetSocketAddress(host, port), 5_000) }
-        true
-      } catch (_: Exception) {
-        false
-      }
-    }
 
   private suspend fun awaitVpnInactive(timeoutMs: Long = 8_000) {
     val deadline = System.currentTimeMillis() + timeoutMs

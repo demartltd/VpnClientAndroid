@@ -3,6 +3,8 @@ package com.demar.vpn.domain.vpn
 data class ServerProfile(
   val id: String,
   val displayName: String,
+  val countryCode: String? = null,
+  val countryName: String? = null,
   val kind: ServerProfileKind,
 ) {
   val connectPlan: SingBoxConnectPlan
@@ -21,9 +23,11 @@ data class ServerProfile(
     }
 
   companion object {
-    fun naive(profile: NaiveProfile) = ServerProfile(
+    fun naive(profile: NaiveProfile, countryCode: String? = null, countryName: String? = null) = ServerProfile(
       id = "naive:${profile.displayName}",
       displayName = profile.displayName,
+      countryCode = countryCode,
+      countryName = countryName,
       kind = ServerProfileKind.Naive(profile),
     )
   }
