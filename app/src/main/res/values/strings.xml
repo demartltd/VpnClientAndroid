@@ -33,7 +33,7 @@
     <string name="share_app_subject">Demar VPN</string>
     <string name="share_app_pitch">Demar VPN — клиент NaiveProxy / sing-box.\n\nПодробности в репозитории проекта.</string>
     <string name="service_menu_title">Service menu</string>
-    <string name="login_sheet_title">Вход в аккаунт</string>
+    <string name="login_sheet_title">Вход/Регистрация</string>
     <string name="login_email_hint">Email</string>
     <string name="login_continue">Продолжить</string>
     <string name="login_sending">Отправка…</string>
