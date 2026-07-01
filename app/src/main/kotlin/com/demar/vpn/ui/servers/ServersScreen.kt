@@ -5,12 +5,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,7 +20,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -38,7 +36,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -59,8 +56,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val REFRESH_STUB_MIN_MS = 1_500L
-private val RefreshIndicatorSize = 48.dp
-private val RefreshGap = 12.dp
+private val RefreshPullDistance = 56.dp
 private val ServerRowShape = RoundedCornerShape(12.dp)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -97,82 +93,45 @@ fun ServersScreen(
       }
     }
 
-    Column(
+    val pullOffset = RefreshPullDistance * pullState.distanceFraction
+
+    Box(
       Modifier
         .fillMaxSize()
         .pullToRefresh(
           state = pullState,
           isRefreshing = refreshing,
           onRefresh = onRefresh,
-        )
-        .verticalScroll(scrollState)
-        .padding(horizontal = 16.dp, vertical = 12.dp)
-        .padding(bottom = toolbarBottomInset(24.dp)),
+          threshold = RefreshPullDistance,
+        ),
     ) {
-      RefreshHeaderSlot(
-        pullFraction = pullState.distanceFraction,
-        refreshing = refreshing,
+      Column(
+        Modifier
+          .fillMaxSize()
+          .offset(y = pullOffset)
+          .verticalScroll(scrollState)
+          .padding(horizontal = 16.dp, vertical = 12.dp)
+          .padding(bottom = toolbarBottomInset(24.dp)),
+      ) {
+        vpnController.serverProfiles.forEach { profile ->
+          ServerRow(
+            profile = profile,
+            selected = profile.id == selected.id,
+            reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
+            onSelect = {
+              vpnController.selectProfile(profile)
+              scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
+            },
+          )
+        }
+      }
+      PullToRefreshDefaults.LoadingIndicator(
+        state = pullState,
+        isRefreshing = refreshing,
+        modifier = Modifier.align(Alignment.TopCenter),
+        maxDistance = RefreshPullDistance,
       )
-      vpnController.serverProfiles.forEach { profile ->
-        ServerRow(
-          profile = profile,
-          selected = profile.id == selected.id,
-          reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
-          onSelect = {
-            vpnController.selectProfile(profile)
-            scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
-          },
-        )
-      }
     }
-  }
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun RefreshHeaderSlot(pullFraction: Float, refreshing: Boolean) {
-  val fraction = if (refreshing) 1f else pullFraction.coerceIn(0f, 1f)
-  if (fraction <= 0f) return
-
-  val threshold = PullToRefreshDefaults.PositionalThreshold
-  val travel = threshold * fraction
-  val indicatorBlock = RefreshIndicatorSize + RefreshGap
-  val reveal = (travel / indicatorBlock).coerceIn(0f, 1f)
-  val headerHeight = travel + indicatorBlock * reveal
-
-  Box(
-    Modifier
-      .fillMaxWidth()
-      .height(headerHeight)
-      .padding(bottom = RefreshGap * reveal),
-    contentAlignment = Alignment.Center,
-  ) {
-    RefreshIndicatorChip(reveal = reveal)
-  }
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun RefreshIndicatorChip(reveal: Float) {
-  if (reveal <= 0f) return
-  val cs = MaterialTheme.colorScheme
-
-  Box(
-    Modifier
-      .size(RefreshIndicatorSize)
-      .graphicsLayer {
-        alpha = reveal
-        scaleX = reveal
-        scaleY = reveal
-      }
-      .clip(CircleShape)
-      .background(cs.primaryContainer),
-    contentAlignment = Alignment.Center,
-  ) {
-    LoadingIndicator(
-      modifier = Modifier.size(28.dp),
-      color = cs.onPrimaryContainer,
-    )
   }
 }
 
