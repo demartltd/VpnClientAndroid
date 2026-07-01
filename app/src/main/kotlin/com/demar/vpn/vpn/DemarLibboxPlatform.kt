@@ -223,7 +223,7 @@ class DemarLibboxPlatform(
 
   override fun readWIFIState(): WIFIState? = null
 
-  override fun localDNSTransport(): LocalDNSTransport? = null
+  override fun localDNSTransport(): LocalDNSTransport? = LocalResolver
 
   override fun systemCertificates(): StringIterator {
     val certificates = mutableListOf<String>()
@@ -278,6 +278,8 @@ internal object DefaultInterfaceMonitor {
   private var callback: ConnectivityManager.NetworkCallback? = null
   private var listener: InterfaceUpdateListener? = null
   @Volatile private var activeOwner: Long = 0L
+  @Volatile var defaultNetwork: Network? = null
+    private set
   private var registered = false
   private var lossRunnable: Runnable? = null
   private var lastReported: InterfaceSnapshot? = null
@@ -288,8 +290,10 @@ internal object DefaultInterfaceMonitor {
     val index: Int,
     val isExpensive: Boolean,
     val isConstrained: Boolean,
+    val networkReady: Boolean,
   ) {
     val isLost: Boolean get() = index < 0
+    val isReady: Boolean get() = !isLost && index > 0 && networkReady
   }
 
   fun ensureStarted(owner: Long, service: VpnService) {
@@ -314,6 +318,8 @@ internal object DefaultInterfaceMonitor {
             object : ConnectivityManager.NetworkCallback() {
               override fun onAvailable(network: Network) = report()
 
+              override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = report()
+
               override fun onLost(network: Network) = report()
             }
           callback = cb
@@ -334,10 +340,10 @@ internal object DefaultInterfaceMonitor {
     while (System.currentTimeMillis() < deadline) {
       val cm = connectivityManager ?: return false
       val snap = readSnapshot(cm)
-      if (!snap.isLost && snap.index > 0) return true
+      if (snap.isReady && defaultNetwork != null) return true
       Thread.sleep(50)
     }
-    return false
+    return defaultNetwork != null
   }
 
   fun stop(owner: Long) {
@@ -349,6 +355,7 @@ internal object DefaultInterfaceMonitor {
         listener = null
         lastReported = null
         lossPending = false
+        defaultNetwork = null
         val cb = callback
         val cm = connectivityManager
         callback = null
@@ -398,7 +405,8 @@ internal object DefaultInterfaceMonitor {
           lossRunnable = null
           if (!lossPending) return@Runnable
           lossPending = false
-          val lost = InterfaceSnapshot("", -1, false, false)
+          defaultNetwork = null
+          val lost = InterfaceSnapshot("", -1, false, false, false)
           lastReported = lost
           target.updateDefaultInterface(lost.name, lost.index, lost.isExpensive, lost.isConstrained)
         }
@@ -419,7 +427,7 @@ internal object DefaultInterfaceMonitor {
   }
 
   private fun readSnapshot(cm: ConnectivityManager): InterfaceSnapshot {
-    val active = cm.activeNetwork ?: return InterfaceSnapshot("", -1, false, false)
+    val active = cm.activeNetwork ?: return InterfaceSnapshot("", -1, false, false, false)
     val link = cm.getLinkProperties(active)
     val caps = cm.getNetworkCapabilities(active)
     val name = link?.interfaceName.orEmpty()
@@ -429,6 +437,15 @@ internal object DefaultInterfaceMonitor {
       }.getOrDefault(-1)
     val isExpensive =
       caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == false
-    return InterfaceSnapshot(name, index, isExpensive, false)
+    val networkReady =
+      caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+        (
+          caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ||
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+          )
+    if (networkReady && caps?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) != true) {
+      defaultNetwork = active
+    }
+    return InterfaceSnapshot(name, index, isExpensive, false, networkReady)
   }
 }

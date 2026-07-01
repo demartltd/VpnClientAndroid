@@ -2,8 +2,8 @@
 # Demar VPN Android — hot-switch servers while VPN stays up (ADB).
 #
 # Usage:
-#   ./scripts/adb_server_switch_test.sh
-#   ./scripts/adb_server_switch_test.sh -n 10
+#   ./scripts/adb/server_switch_test.sh
+#   ./scripts/adb/server_switch_test.sh -n 10
 
 set -euo pipefail
 
@@ -17,21 +17,23 @@ SERVER_B="DE-FREE-1"
 
 CYCLES=10
 CONNECT_TIMEOUT=60
-POLL_MS=300
+POLL_MS=200
 
 usage() {
   cat <<'EOF'
-Usage: adb_server_switch_test.sh [-n cycles] [-h]
+Usage: server_switch_test.sh [-n cycles] [-s serial] [-h]
 
   -n  Number of server hot-switch cycles (default: 10)
+  -s  ADB device serial (default: ANDROID_SERIAL or sole connected device)
   -h  Show this help
 EOF
   exit "${1:-0}"
 }
 
-while getopts "n:h" opt; do
+while getopts "n:s:h" opt; do
   case "$opt" in
     n) CYCLES="$OPTARG" ;;
+    s) ANDROID_SERIAL="$OPTARG" ;;
     h) usage 0 ;;
     *) usage 1 ;;
   esac
@@ -42,13 +44,11 @@ if ! command -v adb &>/dev/null; then
   exit 1
 fi
 
-if ! adb devices 2>/dev/null | grep -q "device$"; then
-  echo "Error: no Android device connected." >&2
-  exit 1
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UI_PARSE="${SCRIPT_DIR}/adb_ui_parse.py"
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+adb_require_device
+UI_PARSE="${SCRIPT_DIR}/ui_parse.py"
 
 now_ms() {
   python3 -c 'import time; print(int(time.time() * 1000))'
@@ -59,8 +59,8 @@ sleep_ms() {
 }
 
 ui_dump() {
-  adb shell uiautomator dump "$REMOTE_UI" >/dev/null 2>&1 || true
-  adb shell cat "$REMOTE_UI" 2>/dev/null || echo ""
+  "${ADB[@]}" shell uiautomator dump "$REMOTE_UI" >/dev/null 2>&1 || true
+  "${ADB[@]}" shell cat "$REMOTE_UI" 2>/dev/null || echo ""
 }
 
 ui_query() {
@@ -76,7 +76,7 @@ ui_query() {
 }
 
 tap_xy() {
-  adb shell input tap "$1" "$2"
+  "${ADB[@]}" shell input tap "$1" "$2"
 }
 
 tap_toggle() {
@@ -128,7 +128,7 @@ dismiss_vpn_permission_if_needed() {
 wait_until_connected() {
   local deadline="$1"
   tap_tab 0 >/dev/null 2>&1 || true
-  sleep_ms 400
+  sleep_ms 250
   while [[ "$(now_ms)" -lt "$deadline" ]]; do
     if [[ "$(ui_query connected)" == "1" ]]; then
       return 0
@@ -139,10 +139,10 @@ wait_until_connected() {
 }
 
 ensure_connected() {
-  adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-  adb logcat -c >/dev/null 2>&1 || true
-  adb shell am start -n "$ACTIVITY" >/dev/null
-  sleep 2
+  "${ADB[@]}" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+  "${ADB[@]}" logcat -c >/dev/null 2>&1 || true
+  "${ADB[@]}" shell am start -n "$ACTIVITY" >/dev/null
+  sleep 1.5
   dismiss_vpn_permission_if_needed
 
   if [[ "$(ui_query connected)" == "1" ]]; then
@@ -166,7 +166,7 @@ RESULT_STATUS=()
 echo "==============================================="
 echo "Demar VPN — ADB server hot-switch test"
 echo "==============================================="
-echo "Device: $(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r')"
+echo "Device: $(adb_device_label)"
 echo "Cycles: $CYCLES"
 echo ""
 
@@ -188,10 +188,10 @@ for ((i = 1; i <= CYCLES; i++)); do
   t0="$(now_ms)"
   echo "→ servers tab"
   tap_tab 1
-  sleep_ms 500
+  sleep_ms 300
   echo "→ select $target"
   tap_server "$target"
-  sleep_ms 400
+  sleep_ms 250
   echo "→ home tab"
   tap_tab 0
 
@@ -220,14 +220,14 @@ echo ""
 echo "==============================================="
 echo "Recent logcat"
 echo "==============================================="
-adb logcat -d -s DemarVpn:I DemarVpn:W DemarVpn:E 2>/dev/null | tail -60 || true
+"${ADB[@]}" logcat -d -s DemarVpn:I DemarVpn:W DemarVpn:E 2>/dev/null | tail -60 || true
 
 echo ""
 echo "==============================================="
 echo "App journal"
 echo "==============================================="
-if [[ -x "${SCRIPT_DIR}/adb_journal.sh" ]]; then
-  "${SCRIPT_DIR}/adb_journal.sh" 2>/dev/null | tail -80 || echo "(journal unavailable)"
+if [[ -x "${SCRIPT_DIR}/journal.sh" ]]; then
+  ANDROID_SERIAL="${ANDROID_SERIAL:-}" "${SCRIPT_DIR}/journal.sh" 2>/dev/null | tail -80 || echo "(journal unavailable)"
 fi
 
 echo ""

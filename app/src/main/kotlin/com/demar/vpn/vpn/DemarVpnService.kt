@@ -18,7 +18,8 @@ import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import io.nekohasekai.libbox.CommandServerHandler
 import io.nekohasekai.libbox.SystemProxyStatus
-import java.io.File
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
@@ -134,7 +135,7 @@ class DemarVpnService :
 
       SingBoxCore.ensureSetup(applicationContext)
       DefaultInterfaceMonitor.ensureStarted(ownerId, this)
-      if (!DefaultInterfaceMonitor.awaitReady(1_500)) {
+      if (!DefaultInterfaceMonitor.awaitReady(3_000)) {
         emitLogLine("default network not ready")
         throw TimeoutException("default network not ready")
       }
@@ -144,6 +145,7 @@ class DemarVpnService :
       var probeAttempt = 0
       var outcome: VpnTunnelProbe.ProbeOutcome
       var verifyMs = 0L
+      val protectFd: (Int) -> Boolean = { fd -> protect(fd) }
       while (true) {
         if (probeAttempt > 0) {
           emitLogLine("probe http_fail, retrying libbox after settle")
@@ -170,14 +172,15 @@ class DemarVpnService :
         val probeBudget = ConnectTimeouts.PROBE_MS
         emitLogLine("probe budget=${probeBudget}ms attempt=${probeAttempt + 1}")
         val verifyStart = System.currentTimeMillis()
-        outcome = VpnTunnelProbe.waitForTunnelReady(probeBudget) {
-          epochAtStart != sessionEpoch.get()
-        }
+        outcome = VpnTunnelProbe.waitForTunnelReady(
+          probeBudget,
+          shouldAbort = { epochAtStart != sessionEpoch.get() },
+          protectFd = protectFd,
+        )
         if (abortConnectIfStale(epochAtStart)) return
         verifyMs = System.currentTimeMillis() - verifyStart
         if (outcome.result == VpnTunnelProbe.ReadyResult.Ok) break
-        val slowProbeFail = verifyMs >= ConnectTimeouts.PROBE_MS - 3_000L
-        if (outcome.result == VpnTunnelProbe.ReadyResult.HttpFail && probeAttempt < MAX_PROBE_RETRIES && slowProbeFail) {
+        if (outcome.result == VpnTunnelProbe.ReadyResult.HttpFail && probeAttempt < MAX_PROBE_RETRIES) {
           probeAttempt++
           continue
         }
@@ -187,16 +190,26 @@ class DemarVpnService :
       val startupMs = System.currentTimeMillis() - connectStart
       if (outcome.result != VpnTunnelProbe.ReadyResult.Ok) {
         pendingStart = null
-        val reason = if (outcome.result == VpnTunnelProbe.ReadyResult.TcpFail)
-          "diag_unreachable" else "http_fail"
+        val uplinkPort = request.uplinkPort ?: 443
+        val uplinkTarget = request.uplinkHost?.trim().orEmpty()
+        val uplinkReachable =
+          uplinkTarget.isNotEmpty() && uplinkTcpReachable(uplinkTarget, uplinkPort, protectFd)
+        val reason = when {
+          outcome.result == VpnTunnelProbe.ReadyResult.TcpFail -> "diag_unreachable"
+          !uplinkReachable -> "uplink_unreachable"
+          else -> "http_fail"
+        }
         Log.w(TAG, "tunnel not ready after ${verifyMs}ms — $reason")
         emitLogLine(
           "connect phases: startup=${startupMs}ms probe=${verifyMs}ms result=$reason " +
-            "attempts=${outcome.attempts} fails=${outcome.httpFails}",
+            "attempts=${outcome.attempts} fails=${outcome.httpFails} uplinkReachable=$uplinkReachable",
         )
         appendStderrTail()
         emitLogLine("probe failed: uplink=${request.uplinkHost} stderr appended if present")
-        emitState("error", VpnConnectMessages.FAILED)
+        val message =
+          if (reason == "uplink_unreachable") VpnConnectMessages.SERVER_UNREACHABLE
+          else VpnConnectMessages.FAILED
+        emitState("error", message)
         shutdownSingBox()
         stopForegroundCompat()
         return
@@ -259,6 +272,18 @@ class DemarVpnService :
         PendingNativeDiag.append(applicationContext, "[libbox stderr]\n$tail")
         emitLogLine("[libbox stderr] $tail")
       }
+    }
+  }
+
+  private fun uplinkTcpReachable(host: String, port: Int, protectFd: (Int) -> Boolean): Boolean {
+    return try {
+      Socket().use { socket ->
+        SocketProtect.protect(socket, protectFd)
+        socket.connect(InetSocketAddress(host, port), 5_000)
+        true
+      }
+    } catch (_: Throwable) {
+      false
     }
   }
 

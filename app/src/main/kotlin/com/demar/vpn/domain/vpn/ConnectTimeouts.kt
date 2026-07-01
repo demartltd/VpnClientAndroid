@@ -9,4 +9,5 @@ object ConnectTimeouts {
 
 object VpnConnectMessages {
   const val FAILED = "Не удалось подключиться"
+  const val SERVER_UNREACHABLE = "Сервер недоступен"
 }

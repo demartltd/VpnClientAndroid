@@ -7,6 +7,9 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 object SingBoxConfigBuilder {
+  private const val DNS_UPSTREAM = "1.1.1.1"
+  private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
+
   fun buildTunConfigJson(
     plan: SingBoxConnectPlan,
     tunName: String = "tun0",
@@ -14,180 +17,112 @@ object SingBoxConfigBuilder {
     logLevel: String = "warning",
   ): String = buildTunConfig(plan, tunName, mtu, logLevel).toString(2)
 
-  private fun buildTunConfig(
-    plan: SingBoxConnectPlan,
-    tunName: String,
-    mtu: Int,
-    logLevel: String,
-  ): JSONObject = JSONObject().apply {
-    put("log", JSONObject().put("level", logLevel).put("timestamp", true))
-    put("dns", makeDns(plan.tun.dnsFinal, plan.tun.bootstrapDomains))
-    put("inbounds", JSONArray().apply {
-      put(makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute))
-      put(JSONObject().apply {
-        put("type", "mixed")
-        put("tag", SingBoxTags.DIAG_INBOUND)
-        put("listen", SingBoxTags.DIAG_LISTEN_HOST)
-        put("listen_port", SingBoxTags.DIAG_LISTEN_PORT)
-      })
-    })
-    put("route", makeRoute(SingBoxTags.TUN_INBOUND, plan.directIPs, plan.tun.bootstrapDomains))
-    put("outbounds", JSONArray().apply {
-      put(toJson(plan.proxyOutbound))
-      put(JSONObject().apply {
-        put("type", "direct")
-        put("tag", SingBoxTags.DIRECT)
-      })
-    })
+  private fun buildTunConfig(plan: SingBoxConnectPlan, tunName: String, mtu: Int, logLevel: String): JSONObject {
+    val bootstrap = (plan.tun.bootstrapDomains + VpnTunnelProbe.probeBootstrapDomains).distinct()
+    return jObj(
+      "log" to jObj("level" to logLevel, "timestamp" to true),
+      "dns" to makeDns(plan.tun.dnsFinal, bootstrap),
+      "inbounds" to jArr(
+        makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute),
+        jObj(
+          "type" to "mixed",
+          "tag" to SingBoxTags.DIAG_INBOUND,
+          "listen" to SingBoxTags.DIAG_LISTEN_HOST,
+          "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
+        ),
+      ),
+      "route" to makeRoute(plan.directIPs, bootstrap),
+      "outbounds" to jArr(
+        toJson(plan.proxyOutbound),
+        jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
+      ),
+    )
   }
 
-  private fun makeDns(dnsFinal: String, bootstrapDomains: List<String>): JSONObject {
-    val rules = JSONArray().apply {
-      put(JSONObject().apply {
-        put("query_type", JSONArray().put("PTR"))
-        put("action", "reject")
-        put("method", "drop")
-      })
-      VpnTunnelProbe.PREDEFINED_DNS.forEach { (host, ip) ->
-        put(JSONObject().apply {
-          put("domain", JSONArray().put(host))
-          put("action", "predefined")
-          put("answer", JSONArray().put("$host. IN A $ip"))
-        })
-      }
-      bootstrapDomains.forEach { domain ->
-        cleanedDomain(domain)?.let { clean ->
-          put(JSONObject().apply {
-            put("domain", JSONArray().put(clean))
-            put("action", "route")
-            put("server", SingBoxTags.DNS_DIRECT)
-          })
-        }
-      }
+  private fun makeDns(dnsFinal: String, bootstrapDomains: List<String>) = jObj(
+    "servers" to jArr(
+      jObj("type" to "local", "tag" to SingBoxTags.DNS_DIRECT),
+      jObj(
+        "type" to "https",
+        "tag" to SingBoxTags.DNS_REMOTE,
+        "server" to DNS_UPSTREAM,
+        "detour" to SingBoxTags.PROXY,
+      ),
+    ),
+    "rules" to jArr(
+      jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
+      *domainDnsRules(bootstrapDomains, "route", "server" to SingBoxTags.DNS_DIRECT),
+    ),
+    "final" to dnsFinal,
+    "strategy" to "ipv4_only",
+  )
+
+  private fun makeRoute(directIPs: List<String>, bootstrapDomains: List<String>) = jObj(
+    "auto_detect_interface" to true,
+    "override_android_vpn" to true,
+    "default_domain_resolver" to DOMAIN_RESOLVER,
+    "final" to SingBoxTags.PROXY,
+    "rules" to jArr(
+      jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "sniff"),
+      jObj("protocol" to "dns", "action" to "hijack-dns"),
+      jObj("network" to jArr("udp"), "port" to jArr(443), "action" to "reject"),
+      jObj("ip_is_private" to true, "action" to "route", "outbound" to SingBoxTags.DIRECT),
+      *directIpRules(directIPs),
+      *domainRouteRules(bootstrapDomains, SingBoxTags.DIRECT),
+      jObj("ip_version" to 6, "action" to "reject"),
+      jObj("inbound" to jArr(SingBoxTags.DIAG_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
+      jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
+    ),
+  )
+
+  private fun makeTunInbound(tunName: String, mtu: Int, directIPs: List<String>, strictRoute: Boolean) =
+    jObj(
+      "type" to "tun",
+      "tag" to SingBoxTags.TUN_INBOUND,
+      "interface_name" to tunName,
+      "mtu" to mtu.coerceAtMost(1400),
+      "auto_route" to true,
+      "strict_route" to strictRoute,
+      "address" to jArr("172.19.0.1/30"),
+      "stack" to "gvisor",
+      "udp_timeout" to "5m",
+      "endpoint_independent_nat" to false,
+    ).also { tun ->
+      if (directIPs.isEmpty()) return@also
+      tun.put("route_address", jArr("0.0.0.0/1", "128.0.0.0/1"))
+      tun.put("route_exclude_address", jArr(*directIPs.map { "$it/32" }.toTypedArray()))
     }
-    return JSONObject().apply {
-      put("servers", JSONArray().apply {
-        put(JSONObject().apply {
-          put("type", "udp")
-          put("tag", SingBoxTags.DNS_DIRECT)
-          put("server", "1.1.1.1")
-        })
-        put(JSONObject().apply {
-          put("type", "https")
-          put("tag", SingBoxTags.DNS_REMOTE)
-          put("server", "1.1.1.1")
-          put("detour", SingBoxTags.PROXY)
-        })
-      })
-      put("rules", rules)
-      put("final", dnsFinal)
-      put("strategy", "ipv4_only")
-    }
+
+  private fun domainDnsRules(domains: List<String>, action: String, vararg extra: Pair<String, Any?>) =
+    cleanDomains(domains).map { domain ->
+      jObj("domain" to jArr(domain), "action" to action, *extra)
+    }.toTypedArray()
+
+  private fun domainRouteRules(domains: List<String>, outbound: String) =
+    cleanDomains(domains).map { domain ->
+      jObj("domain" to jArr(domain), "action" to "route", "outbound" to outbound)
+    }.toTypedArray()
+
+  private fun directIpRules(ips: List<String>) =
+    ips.map { ip ->
+      jObj("ip_cidr" to jArr("$ip/32"), "action" to "route", "outbound" to SingBoxTags.DIRECT)
+    }.toTypedArray()
+
+  private fun cleanDomains(domains: List<String>) =
+    domains.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+
+  private fun jObj(vararg pairs: Pair<String, Any?>) = JSONObject().apply {
+    pairs.forEach { (k, v) -> put(k, toJson(v)) }
   }
 
-  private fun makeRoute(
-    inboundTag: String,
-    directIPs: List<String>,
-    bootstrapDomains: List<String>,
-  ): JSONObject {
-    val rules = JSONArray().apply {
-      put(JSONObject().apply {
-        put("inbound", JSONArray().put(inboundTag))
-        put("action", "sniff")
-      })
-      put(JSONObject().apply {
-        put("protocol", "dns")
-        put("action", "hijack-dns")
-      })
-      put(JSONObject().apply {
-        put("network", JSONArray().put("udp"))
-        put("port", JSONArray().put(443))
-        put("action", "reject")
-      })
-      put(JSONObject().apply {
-        put("ip_is_private", true)
-        put("action", "route")
-        put("outbound", SingBoxTags.DIRECT)
-      })
-      directIPs.forEach { ip ->
-        put(JSONObject().apply {
-          put("ip_cidr", JSONArray().put("$ip/32"))
-          put("action", "route")
-          put("outbound", SingBoxTags.DIRECT)
-        })
-      }
-      bootstrapDomains.forEach { domain ->
-        cleanedDomain(domain)?.let { clean ->
-          put(JSONObject().apply {
-            put("domain", JSONArray().put(clean))
-            put("action", "route")
-            put("outbound", SingBoxTags.DIRECT)
-          })
-        }
-      }
-      put(JSONObject().apply {
-        put("ip_version", 6)
-        put("action", "reject")
-      })
-      put(JSONObject().apply {
-        put("inbound", JSONArray().put(SingBoxTags.DIAG_INBOUND))
-        put("action", "route")
-        put("outbound", SingBoxTags.PROXY)
-      })
-      put(JSONObject().apply {
-        put("inbound", JSONArray().put(inboundTag))
-        put("action", "route")
-        put("outbound", SingBoxTags.PROXY)
-      })
-    }
-    return JSONObject().apply {
-      put("auto_detect_interface", true)
-      put("override_android_vpn", true)
-      put("default_domain_resolver", JSONObject().apply {
-        put("server", SingBoxTags.DNS_DIRECT)
-        put("strategy", "ipv4_only")
-      })
-      put("final", SingBoxTags.PROXY)
-      put("rules", rules)
-    }
-  }
-
-  private fun makeTunInbound(
-    tunName: String,
-    mtu: Int,
-    directIPs: List<String>,
-    strictRoute: Boolean,
-  ): JSONObject = JSONObject().apply {
-    put("type", "tun")
-    put("tag", SingBoxTags.TUN_INBOUND)
-    put("interface_name", tunName)
-    put("mtu", mtu.coerceAtMost(1400))
-    put("auto_route", true)
-    put("strict_route", strictRoute)
-    put("address", JSONArray().put("172.19.0.1/30"))
-    put("stack", "gvisor")
-    put("udp_timeout", "5m")
-    put("endpoint_independent_nat", false)
-    if (directIPs.isNotEmpty()) {
-      put("route_address", JSONArray().put("0.0.0.0/1").put("128.0.0.0/1"))
-      put("route_exclude_address", JSONArray().apply {
-        directIPs.forEach { put("$it/32") }
-      })
-    }
-  }
-
-  private fun cleanedDomain(raw: String): String? {
-    val trimmed = raw.trim()
-    return trimmed.ifEmpty { null }
-  }
+  private fun jArr(vararg items: Any?) = JSONArray().apply { items.forEach { put(toJson(it)) } }
 
   private fun toJson(value: Any?): Any = when (value) {
     null -> JSONObject.NULL
-    is Map<*, *> -> JSONObject().apply {
-      value.forEach { (k, v) -> if (k is String) put(k, toJson(v)) }
-    }
+    is Map<*, *> -> JSONObject().apply { value.forEach { (k, v) -> if (k is String) put(k, toJson(v)) } }
     is List<*> -> JSONArray().apply { value.forEach { put(toJson(it)) } }
     is Boolean, is Int, is Long, is Double, is String -> value
+    is JSONObject, is JSONArray -> value
     else -> value.toString()
   }
 }

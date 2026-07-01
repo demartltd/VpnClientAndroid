@@ -6,8 +6,8 @@
 # Then prints a timing table and recent journal/logcat excerpts.
 #
 # Usage:
-#   ./scripts/adb_vpn_cycle_test.sh
-#   ./scripts/adb_vpn_cycle_test.sh -n 5 -d 3
+#   ./scripts/adb/vpn_cycle_test.sh
+#   ./scripts/adb/vpn_cycle_test.sh -n 5 -d 0.5
 
 set -euo pipefail
 
@@ -17,26 +17,28 @@ REMOTE_UI="/sdcard/demar_ui.xml"
 REMOTE_JOURNAL="/sdcard/Android/data/${PACKAGE}/files/demar/demar_app.log"
 
 CYCLES=10
-HOLD_SECS=2
+HOLD_SECS=0.5
 CONNECT_TIMEOUT=45
 DISCONNECT_TIMEOUT=20
-POLL_MS=250
+POLL_MS=200
 
 usage() {
   cat <<'EOF'
-Usage: adb_vpn_cycle_test.sh [-n cycles] [-d hold_secs] [-h]
+Usage: vpn_cycle_test.sh [-n cycles] [-d hold_secs] [-s serial] [-h]
 
   -n  Number of connect/disconnect cycles (default: 10)
-  -d  Seconds to stay connected each cycle (default: 2)
+  -d  Seconds to stay connected each cycle (default: 0.5)
+  -s  ADB device serial (default: ANDROID_SERIAL or sole connected device)
   -h  Show this help
 EOF
   exit "${1:-0}"
 }
 
-while getopts "n:d:h" opt; do
+while getopts "n:d:s:h" opt; do
   case "$opt" in
     n) CYCLES="$OPTARG" ;;
     d) HOLD_SECS="$OPTARG" ;;
+    s) ANDROID_SERIAL="$OPTARG" ;;
     h) usage 0 ;;
     *) usage 1 ;;
   esac
@@ -47,13 +49,11 @@ if ! command -v adb &>/dev/null; then
   exit 1
 fi
 
-if ! adb devices 2>/dev/null | grep -q "device$"; then
-  echo "Error: no Android device connected." >&2
-  exit 1
-fi
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-UI_PARSE="${SCRIPT_DIR}/adb_ui_parse.py"
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+adb_require_device
+UI_PARSE="${SCRIPT_DIR}/ui_parse.py"
 
 now_ms() {
   python3 -c 'import time; print(int(time.time() * 1000))'
@@ -64,8 +64,8 @@ sleep_ms() {
 }
 
 ui_dump() {
-  adb shell uiautomator dump "$REMOTE_UI" >/dev/null 2>&1 || true
-  adb shell cat "$REMOTE_UI" 2>/dev/null || echo ""
+  "${ADB[@]}" shell uiautomator dump "$REMOTE_UI" >/dev/null 2>&1 || true
+  "${ADB[@]}" shell cat "$REMOTE_UI" 2>/dev/null || echo ""
 }
 
 ui_query() {
@@ -80,7 +80,7 @@ ui_query() {
 }
 
 tap_xy() {
-  adb shell input tap "$1" "$2"
+  "${ADB[@]}" shell input tap "$1" "$2"
 }
 
 find_toggle() {
@@ -143,10 +143,10 @@ wait_until_disconnected() {
 }
 
 ensure_home_tab() {
-  adb shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-  adb logcat -c >/dev/null 2>&1 || true
-  adb shell am start -n "$ACTIVITY" >/dev/null
-  sleep 2
+  "${ADB[@]}" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
+  "${ADB[@]}" logcat -c >/dev/null 2>&1 || true
+  "${ADB[@]}" shell am start -n "$ACTIVITY" >/dev/null
+  sleep 1.5
   dismiss_vpn_permission_if_needed
   if ! find_toggle; then
     echo "Error: home screen toggle not found after launch." >&2
@@ -166,7 +166,7 @@ trap 'rm -f "$MARKER_FILE"' EXIT
 journal_pull() {
   local tmp
   tmp="$(mktemp)"
-  if adb pull "$REMOTE_JOURNAL" "$tmp" >/dev/null 2>&1; then
+  if "${ADB[@]}" pull "$REMOTE_JOURNAL" "$tmp" >/dev/null 2>&1; then
     cat "$tmp"
   fi
   rm -f "$tmp"
@@ -175,7 +175,7 @@ journal_pull() {
 echo "==============================================="
 echo "Demar VPN — ADB toggle cycle test"
 echo "==============================================="
-echo "Device:   $(adb shell getprop ro.product.model 2>/dev/null | tr -d '\r')"
+echo "Device:   $(adb_device_label)"
 echo "Cycles:   $CYCLES"
 echo "Hold:     ${HOLD_SECS}s"
 echo ""
@@ -261,14 +261,14 @@ echo ""
 echo "==============================================="
 echo "Recent logcat (DemarVpn, VpnTunnelProbe)"
 echo "==============================================="
-adb logcat -d -s DemarVpn:I DemarVpn:W DemarVpn:E VpnTunnelProbe:D 2>/dev/null | tail -80 || true
+"${ADB[@]}" logcat -d -s DemarVpn:I DemarVpn:W DemarVpn:E VpnTunnelProbe:D 2>/dev/null | tail -80 || true
 
 echo ""
 echo "==============================================="
 echo "App journal (AppLog mirror)"
 echo "==============================================="
-if [[ -x "${SCRIPT_DIR}/adb_journal.sh" ]]; then
-  "${SCRIPT_DIR}/adb_journal.sh" 2>/dev/null | tail -120 || echo "(journal unavailable)"
+if [[ -x "${SCRIPT_DIR}/journal.sh" ]]; then
+  ANDROID_SERIAL="${ANDROID_SERIAL:-}" "${SCRIPT_DIR}/journal.sh" 2>/dev/null | tail -120 || echo "(journal unavailable)"
 else
   journal_pull | tail -120 || echo "(journal unavailable)"
 fi

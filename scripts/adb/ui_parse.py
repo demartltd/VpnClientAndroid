@@ -131,7 +131,7 @@ def cmd_server(nodes: list[ET.Element], name: str) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: adb_ui_parse.py <connected|permission|toggle|tab|server> [arg]", file=sys.stderr)
+        print("usage: ui_parse.py <connected|permission|toggle|tab|server> [arg]", file=sys.stderr)
         sys.exit(2)
     cmd = sys.argv[1]
     xml = sys.stdin.read()

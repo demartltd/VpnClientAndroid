@@ -42,6 +42,8 @@ class VpnPipelineTest {
       assertTrue(uot.getBoolean("enabled"))
       assertEquals(2, uot.getInt("version"))
       assertEquals("10s", naive.getString("connect_timeout"))
+      assertEquals(SingBoxTags.DNS_DIRECT, naive.getJSONObject("domain_resolver").getString("server"))
+      assertEquals("ipv4_only", naive.getJSONObject("domain_resolver").getString("strategy"))
 
       val route = cfg.getJSONObject("route")
       assertEquals(SingBoxTags.PROXY, route.getString("final"))
@@ -54,25 +56,24 @@ class VpnPipelineTest {
 
       val dns = cfg.getJSONObject("dns")
       assertEquals(SingBoxTags.DNS_REMOTE, dns.getString("final"))
+      val dnsServers = dns.getJSONArray("servers")
+      val directDns = (0 until dnsServers.length())
+        .map { dnsServers.getJSONObject(it) }
+        .first { it.getString("tag") == SingBoxTags.DNS_DIRECT }
+      assertEquals("local", directDns.getString("type"))
+
       val dnsRules = dns.getJSONArray("rules")
-      assertTrue(
-        (0 until dnsRules.length()).any { i ->
-          val rule = dnsRules.getJSONObject(i)
-          rule.optString("action") == "predefined" &&
-            rule.optJSONArray("domain")?.let { arr ->
-              (0 until arr.length()).any { j -> arr.getString(j) == VpnTunnelProbe.PROBE_HOST }
-            } == true
-        },
+      assertFalse(
+        (0 until dnsRules.length()).any { dnsRules.getJSONObject(it).optString("action") == "predefined" },
       )
-      for (host in listOf(VpnTunnelProbe.FALLBACK_HOST_GOOGLE)) {
-        val hasPredefined = (0 until dnsRules.length()).any { i ->
+      for (host in VpnTunnelProbe.probeBootstrapDomains) {
+        val hasBootstrap = (0 until dnsRules.length()).any { i ->
           val rule = dnsRules.getJSONObject(i)
-          rule.optString("action") == "predefined" &&
-            rule.optJSONArray("domain")?.let { arr ->
-              (0 until arr.length()).any { j -> arr.getString(j) == host }
-            } == true
+          rule.optJSONArray("domain")?.let { arr ->
+            (0 until arr.length()).any { j -> arr.getString(j) == host }
+          } == true
         }
-        assertTrue("predefined DNS for $host", hasPredefined)
+        assertTrue("DNS bootstrap for $host", hasBootstrap)
       }
       for (domain in plan.tun.bootstrapDomains) {
         val hasBootstrap = (0 until dnsRules.length()).any { i ->

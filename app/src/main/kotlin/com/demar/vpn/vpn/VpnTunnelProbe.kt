@@ -15,10 +15,7 @@ internal object VpnTunnelProbe {
   const val FALLBACK_HOST_GOOGLE = "www.google.com"
   const val FALLBACK_URL_GOOGLE = "https://$FALLBACK_HOST_GOOGLE/generate_204"
 
-  val PREDEFINED_DNS: List<Pair<String, String>> = listOf(
-    PROBE_HOST to "1.1.1.1",
-    FALLBACK_HOST_GOOGLE to "142.250.185.78",
-  )
+  val probeBootstrapDomains = listOf(PROBE_HOST, FALLBACK_HOST_GOOGLE)
 
   private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE)
 
@@ -26,7 +23,8 @@ internal object VpnTunnelProbe {
   private const val READY_POLL_MS = 100L
   private const val TCP_PROBE_MS = 500
   const val MAX_CONSECUTIVE_HTTP_FAILS = 15
-  private const val FIRST_HTTP_SETTLE_MS = 1200L
+  private const val FIRST_HTTP_SETTLE_MS = 2_500L
+  private const val HTTP_WARMUP_MS = 4_000L
 
   const val TIMEOUT_MS = 5_000
 
@@ -41,20 +39,23 @@ internal object VpnTunnelProbe {
   fun waitForTunnelReady(
     budgetMs: Long,
     shouldAbort: () -> Boolean = { false },
+    protectFd: ((Int) -> Boolean)? = null,
   ): ProbeOutcome {
     if (budgetMs <= 0) return ProbeOutcome(ReadyResult.TcpFail)
     val deadline = System.currentTimeMillis() + budgetMs
     val host = SingBoxTags.DIAG_LISTEN_HOST
     val port = SingBoxTags.DIAG_LISTEN_PORT
     var diagOpen = false
+    var diagOpenAt = 0L
     var attempts = 0
     var consecutiveHttpFails = 0
     var httpSettled = false
     while (System.currentTimeMillis() < deadline) {
       if (shouldAbort()) return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
       if (!diagOpen) {
-        if (tcpOpen(host, port)) {
+        if (tcpOpen(host, port, protectFd)) {
           diagOpen = true
+          diagOpenAt = System.currentTimeMillis()
         } else {
           val left = deadline - System.currentTimeMillis()
           if (left <= 0) return ProbeOutcome(ReadyResult.TcpFail, attempts, consecutiveHttpFails)
@@ -68,23 +69,26 @@ internal object VpnTunnelProbe {
         httpSettled = true
       }
       attempts++
-      if (httpOk(attempts)) return ProbeOutcome(ReadyResult.Ok, attempts, consecutiveHttpFails)
-      consecutiveHttpFails++
-      if (shouldAbort()) return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
-      if (consecutiveHttpFails >= MAX_CONSECUTIVE_HTTP_FAILS) {
-        Log.w(TAG, "probe give up after $consecutiveHttpFails http fails")
-        return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
+      if (httpOk(attempts, protectFd)) return ProbeOutcome(ReadyResult.Ok, attempts, consecutiveHttpFails)
+      val pastWarmup = System.currentTimeMillis() - diagOpenAt >= HTTP_WARMUP_MS
+      if (pastWarmup) {
+        consecutiveHttpFails++
+        if (shouldAbort()) return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
+        if (consecutiveHttpFails >= MAX_CONSECUTIVE_HTTP_FAILS) {
+          Log.w(TAG, "probe give up after $consecutiveHttpFails http fails")
+          return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
+        }
       }
       val left = deadline - System.currentTimeMillis()
       if (left <= 0) break
-      val backoff = minOf(RETRY_DELAY_MS * consecutiveHttpFails, 1_000L)
+      val backoff = if (pastWarmup) minOf(RETRY_DELAY_MS * consecutiveHttpFails.coerceAtLeast(1), 1_000L) else RETRY_DELAY_MS
       Thread.sleep(minOf(backoff, left))
     }
     val result = if (diagOpen) ReadyResult.HttpFail else ReadyResult.TcpFail
     return ProbeOutcome(result, attempts, consecutiveHttpFails)
   }
 
-  private fun httpOk(attempt: Int): Boolean {
+  private fun httpOk(attempt: Int, protectFd: ((Int) -> Boolean)?): Boolean {
     val url = PROBE_URLS[(attempt - 1) % PROBE_URLS.size]
     val body = httpGetViaDiagProxy(
       SingBoxTags.DIAG_LISTEN_HOST,
@@ -95,9 +99,10 @@ internal object VpnTunnelProbe {
     return url != PROBE_URL || body.contains("ip=")
   }
 
-  private fun tcpOpen(host: String, port: Int): Boolean {
+  private fun tcpOpen(host: String, port: Int, protectFd: ((Int) -> Boolean)?): Boolean {
     return try {
       Socket().use { socket ->
+        SocketProtect.protect(socket, protectFd)
         socket.connect(InetSocketAddress(host, port), TCP_PROBE_MS)
         true
       }
@@ -111,6 +116,7 @@ internal object VpnTunnelProbe {
     port: Int,
     url: String,
     timeoutMs: Int = TIMEOUT_MS,
+    protectFd: ((Int) -> Boolean)? = null,
   ): String? {
     var conn: HttpURLConnection? = null
     return try {

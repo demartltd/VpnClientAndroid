@@ -33,8 +33,8 @@ class VpnTunnelProbeTest {
   }
 
   @Test
-  fun predefinedDns_coversAllProbeHosts() {
-    val hosts = VpnTunnelProbe.PREDEFINED_DNS.map { it.first }.toSet()
+  fun probeBootstrapDomains_coversAllProbeHosts() {
+    val hosts = VpnTunnelProbe.probeBootstrapDomains.toSet()
     assert(hosts.contains(VpnTunnelProbe.PROBE_HOST))
     assert(hosts.contains(VpnTunnelProbe.FALLBACK_HOST_GOOGLE))
   }

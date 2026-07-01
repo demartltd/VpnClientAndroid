@@ -14,9 +14,10 @@ usage() {
   exit 1
 }
 
-while getopts "o:h" opt; do
+while getopts "o:s:h" opt; do
   case "$opt" in
     o) OUT="$OPTARG" ;;
+    s) ANDROID_SERIAL="$OPTARG" ;;
     h) usage ;;
     *) usage ;;
   esac
@@ -27,15 +28,15 @@ if ! command -v adb &>/dev/null; then
   exit 1
 fi
 
-if ! adb devices | grep -q "device$"; then
-  echo "Error: No Android device connected." >&2
-  exit 1
-fi
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=common.sh
+source "${SCRIPT_DIR}/common.sh"
+adb_require_device
 
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
-if ! adb pull "$REMOTE" "$TMP" 2>/dev/null; then
+if ! "${ADB[@]}" pull "$REMOTE" "$TMP" 2>/dev/null; then
   echo "Journal mirror not found on device." >&2
   echo "Path: $REMOTE" >&2
   echo "Launch the app and generate log entries (e.g. connect VPN), then retry." >&2
