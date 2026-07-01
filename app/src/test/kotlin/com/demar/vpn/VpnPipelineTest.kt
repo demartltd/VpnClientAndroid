@@ -6,6 +6,7 @@ import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.isLiteralIpv4
+import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,6 +41,7 @@ class VpnPipelineTest {
       val uot = naive.getJSONObject("udp_over_tcp")
       assertTrue(uot.getBoolean("enabled"))
       assertEquals(2, uot.getInt("version"))
+      assertEquals("10s", naive.getString("connect_timeout"))
 
       val route = cfg.getJSONObject("route")
       assertEquals(SingBoxTags.PROXY, route.getString("final"))
@@ -52,9 +54,32 @@ class VpnPipelineTest {
 
       val dns = cfg.getJSONObject("dns")
       assertEquals(SingBoxTags.DNS_REMOTE, dns.getString("final"))
+      val dnsRules = dns.getJSONArray("rules")
+      assertTrue(
+        (0 until dnsRules.length()).any { i ->
+          val rule = dnsRules.getJSONObject(i)
+          rule.optString("action") == "predefined" &&
+            rule.optJSONArray("domain")?.let { arr ->
+              (0 until arr.length()).any { j -> arr.getString(j) == VpnTunnelProbe.PROBE_HOST }
+            } == true
+        },
+      )
+      for (host in listOf(
+        VpnTunnelProbe.FALLBACK_HOST_GOOGLE,
+        VpnTunnelProbe.FALLBACK_HOST_GSTATIC,
+      )) {
+        val hasPredefined = (0 until dnsRules.length()).any { i ->
+          val rule = dnsRules.getJSONObject(i)
+          rule.optString("action") == "predefined" &&
+            rule.optJSONArray("domain")?.let { arr ->
+              (0 until arr.length()).any { j -> arr.getString(j) == host }
+            } == true
+        }
+        assertTrue("predefined DNS for $host", hasPredefined)
+      }
       for (domain in plan.tun.bootstrapDomains) {
-        val hasBootstrap = (0 until dns.getJSONArray("rules").length()).any { i ->
-          val rule = dns.getJSONArray("rules").getJSONObject(i)
+        val hasBootstrap = (0 until dnsRules.length()).any { i ->
+          val rule = dnsRules.getJSONObject(i)
           rule.optJSONArray("domain")?.let { arr ->
             (0 until arr.length()).any { j -> arr.getString(j) == domain }
           } == true
@@ -103,6 +128,15 @@ class VpnPipelineTest {
   fun withExtraDirectIps_mergesBypass() {
     val plan = testServers.first().connectPlan.withExtraDirectIps(listOf("10.0.0.1"))
     assertTrue(plan.directIPs.containsAll(listOf(plan.uplinkHost, "10.0.0.1")))
+  }
+
+  @Test
+  fun withResolvedUplink_patchesServer_keepsTlsServerName() {
+    val plan = testServers[1].connectPlan.withResolvedUplink("93.184.216.34")
+    val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
+    val naive = JSONObject(json).getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("93.184.216.34", naive.getString("server"))
+    assertEquals("de-f-1.backronym.ru", naive.getJSONObject("tls").getString("server_name"))
   }
 
   @Test

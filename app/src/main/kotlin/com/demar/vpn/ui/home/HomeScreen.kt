@@ -29,7 +29,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
-import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.ThroughputRates
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.VpnState
@@ -68,19 +67,7 @@ fun HomeScreen(
     Spacer(Modifier.weight(1f))
     VpnMainToggle(
       state = vpnState,
-      onClick = {
-        when (vpnState) {
-          VpnState.Connected -> {
-            AppLog.append("[ui] android home: disconnect")
-            vpnController.disconnect()
-          }
-          VpnState.Connecting, VpnState.Disconnecting -> Unit
-          else -> {
-            AppLog.append("[ui] android home: connect")
-            vpnController.connect()
-          }
-        }
-      },
+      onClick = { vpnController.toggle() },
     )
     Spacer(Modifier.height(20.dp))
     Text(
@@ -105,7 +92,7 @@ fun HomeScreen(
 private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
   val cs = MaterialTheme.colorScheme
   val compact = state is VpnState.Connected || state is VpnState.Disconnecting
-  val busy = state is VpnState.Connecting || state is VpnState.Disconnecting
+  val busy = state is VpnState.Disconnecting
   val diameter by animateDpAsState(if (compact) 116.dp else 200.dp)
   val fill = if (compact) cs.primaryContainer else cs.surfaceContainerHighest
   val iconColor = if (compact) cs.onPrimaryContainer else cs.onSurfaceVariant
@@ -122,6 +109,7 @@ private fun VpnMainToggle(state: VpnState, onClick: () -> Unit) {
         when {
           busy -> CircularProgressIndicator(Modifier.size(46.dp), color = iconColor)
           state is VpnState.Connected -> Icon(Icons.Filled.Shield, null, Modifier.size(44.dp), tint = iconColor)
+          state is VpnState.Connecting -> CircularProgressIndicator(Modifier.size(if (compact) 46.dp else 72.dp), color = iconColor)
           else -> Icon(Icons.Filled.PowerSettingsNew, null, Modifier.size(92.dp), tint = iconColor)
         }
       }

@@ -17,6 +17,12 @@ data class SingBoxConnectPlan(
     return copy(directIPs = (directIPs + ips).distinct())
   }
 
+  fun withResolvedUplink(ip: String): SingBoxConnectPlan {
+    val trimmed = ip.trim()
+    if (trimmed.isEmpty()) return this
+    return copy(proxyOutbound = proxyOutbound + ("server" to trimmed))
+  }
+
   companion object {
     fun naive(profile: NaiveProfile): SingBoxConnectPlan {
       val bootstrap = bootstrapDomains(profile)
@@ -33,6 +39,7 @@ data class SingBoxConnectPlan(
             "server" to SingBoxTags.DNS_DIRECT,
             "strategy" to "ipv4_only",
           ),
+          "connect_timeout" to "10s",
           "udp_over_tcp" to mapOf("enabled" to true, "version" to 2),
           "quic" to false,
           "tls" to mapOf(
