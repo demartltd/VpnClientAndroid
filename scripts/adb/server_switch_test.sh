@@ -12,7 +12,7 @@ ACTIVITY="${PACKAGE}/.MainActivity"
 REMOTE_UI="/sdcard/demar_ui.xml"
 REMOTE_JOURNAL="/sdcard/Android/data/${PACKAGE}/files/demar/demar_app.log"
 
-SERVER_A="FIN-DEV-1"
+SERVER_A="FI-DEV-99"
 SERVER_B="DE-FREE-1"
 
 CYCLES=10

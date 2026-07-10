@@ -1,5 +1,7 @@
 package com.demar.vpn.domain.vpn
 
+import java.util.Locale
+
 data class ServerProfile(
   val id: String,
   val displayName: String,
@@ -30,6 +32,27 @@ data class ServerProfile(
       countryName = countryName,
       kind = ServerProfileKind.Naive(profile),
     )
+
+    fun naiveFromTag(profile: NaiveProfile): ServerProfile {
+      val countryCode = countryCodeFromTag(profile.displayName)
+      return naive(profile, countryCode, countryNameFromCode(countryCode))
+    }
+
+    fun countryCodeFromTag(tag: String): String? {
+      val dash = tag.indexOf('-')
+      if (dash <= 0) return null
+      val code = tag.substring(0, dash)
+      return if (code.length == 2 && code.all { it.isLetter() }) code.uppercase(Locale.ROOT) else null
+    }
+
+    fun countryNameFromCode(countryCode: String?): String? {
+      if (countryCode.isNullOrBlank()) return null
+      return try {
+        Locale("", countryCode).getDisplayCountry(Locale("", countryCode)).takeIf { it.isNotEmpty() }
+      } catch (_: Exception) {
+        null
+      }
+    }
   }
 }
 

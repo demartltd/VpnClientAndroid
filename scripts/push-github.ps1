@@ -291,9 +291,21 @@ function Get-CommitMessageFromUser {
     # macOS: диалог вместо TTY — Cursor/Python подставляет «source …/activate» в терминал.
     if (Get-Command osascript -ErrorAction SilentlyContinue) {
         while ($true) {
-            $msg = (osascript -e 'text returned of (display dialog "Что сделано?" default answer "" with title "Сообщение коммита" buttons {"Отмена", "OK"} default button "OK")' 2>$null)
-            if ($LASTEXITCODE -ne 0) { throw 'Коммит отменён.' }
-            $msg = $msg.Trim()
+            $dialogResult = (osascript -e @'
+set dlg to display dialog "Что сделано?" default answer "" with title "Сообщение коммита" buttons {"Отмена", "OK"} default button "OK"
+return (button returned of dlg) & linefeed & (text returned of dlg)
+'@ 2>$null)
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host 'Отменено.' -ForegroundColor Yellow
+                exit 0
+            }
+            $dialogParts = @($dialogResult -split "`n", 2)
+            $button = $dialogParts[0].Trim()
+            $msg = if ($dialogParts.Count -gt 1) { $dialogParts[1].Trim() } else { '' }
+            if ($button -eq 'Отмена') {
+                Write-Host 'Отменено.' -ForegroundColor Yellow
+                exit 0
+            }
             if ([string]::IsNullOrWhiteSpace($msg)) {
                 [void](osascript -e 'display alert "Сообщение не может быть пустым." as warning')
                 continue
@@ -312,8 +324,8 @@ function Get-CommitMessageFromUser {
         Write-Host "Сообщение: $msg" -ForegroundColor Cyan
         $confirm = (Read-Host 'Подтвердить коммит? [y/N]').Trim()
         if ($confirm -notmatch '^[yY]$') {
-            Write-Host 'Отменено — введите другое сообщение.' -ForegroundColor Yellow
-            continue
+            Write-Host 'Отменено.' -ForegroundColor Yellow
+            exit 0
         }
         return $msg
     }
@@ -413,4 +425,3 @@ Push отклонён (часто: на GitHub другая история по�
 
 Write-Host "Push выполнен: origin/$branch" -ForegroundColor Green
 exit 0
-

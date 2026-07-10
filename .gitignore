@@ -40,6 +40,9 @@ key.properties
 .venv/
 scripts/build/
 
+# Docs (generated screenshots)
+docs/
+
 # Misc
 *.class
 *.log

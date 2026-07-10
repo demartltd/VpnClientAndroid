@@ -89,7 +89,55 @@ def cmd_toggle(nodes: list[ET.Element], xml: str) -> None:
         print("")
 
 
+def cmd_account_tab(nodes: list[ET.Element], xml: str) -> None:
+    height = screen_height(xml)
+    width_m = re.search(r'bounds="\[0,0\]\[(\d+),', xml)
+    width = int(width_m.group(1)) if width_m else 1080
+    best: tuple[int, int] | None = None
+    best_x = -1
+    for node in nodes:
+        if node.attrib.get("package") != PACKAGE:
+            continue
+        if node.attrib.get("clickable") != "true":
+            continue
+        bounds = parse_bounds(node.attrib.get("bounds", ""))
+        if not bounds:
+            continue
+        _, cy = center(bounds)
+        if cy < height * 0.85:
+            continue
+        w = bounds[2] - bounds[0]
+        if w < 50 or w > 250:
+            continue
+        cx, _ = center(bounds)
+        if cx > width * 0.7 and cx > best_x:
+            best_x = cx
+            best = center(bounds)
+    if best:
+        print(f"{best[0]},{best[1]}")
+        return
+    print(f"{int(width * 0.92)},{int(height * 0.94)}")
+
+
+def cmd_label(nodes: list[ET.Element], label: str) -> None:
+    target = label.lower()
+    for node in nodes:
+        text = (node.attrib.get("text") or node.attrib.get("content-desc") or "").strip()
+        if not text or target not in text.lower():
+            continue
+        bounds = parse_bounds(node.attrib.get("bounds", ""))
+        if not bounds:
+            continue
+        cx, cy = center(bounds)
+        print(f"{cx},{cy}")
+        return
+    print("")
+
+
 def cmd_tab(nodes: list[ET.Element], xml: str, index: int) -> None:
+    if index == 3:
+        cmd_account_tab(nodes, xml)
+        return
     height = screen_height(xml)
     width_m = re.search(r'bounds="\[0,0\]\[(\d+),', xml)
     width = int(width_m.group(1)) if width_m else 1080
@@ -131,7 +179,7 @@ def cmd_server(nodes: list[ET.Element], name: str) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: ui_parse.py <connected|permission|toggle|tab|server> [arg]", file=sys.stderr)
+        print("usage: ui_parse.py <connected|permission|toggle|tab|server|label> [arg]", file=sys.stderr)
         sys.exit(2)
     cmd = sys.argv[1]
     xml = sys.stdin.read()
@@ -157,6 +205,11 @@ def main() -> None:
             print("", file=sys.stderr)
             sys.exit(2)
         cmd_server(nodes, sys.argv[2])
+    elif cmd == "label":
+        if len(sys.argv) < 3:
+            print("", file=sys.stderr)
+            sys.exit(2)
+        cmd_label(nodes, sys.argv[2])
     else:
         print(f"unknown cmd: {cmd}", file=sys.stderr)
         sys.exit(2)
