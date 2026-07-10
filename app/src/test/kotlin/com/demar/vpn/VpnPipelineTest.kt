@@ -116,7 +116,15 @@ class VpnPipelineTest {
 
   @Test
   fun literalIpv4Server_hasRouteExclude() {
-    val plan = testServers.first().connectPlan
+    val profile = NaiveProfile(
+      displayName = "IP-TEST-1",
+      server = "193.35.17.5",
+      port = 443,
+      username = "u",
+      password = "p",
+      tlsServerName = "example.com",
+    )
+    val plan = ServerProfile.naive(profile).connectPlan
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
     assertTrue(json.contains("\"route_exclude_address\""))
     assertTrue(plan.directIPs.isNotEmpty())
@@ -124,7 +132,15 @@ class VpnPipelineTest {
 
   @Test
   fun withExtraDirectIps_mergesBypass() {
-    val plan = testServers.first().connectPlan.withExtraDirectIps(listOf("10.0.0.1"))
+    val profile = NaiveProfile(
+      displayName = "IP-TEST-2",
+      server = "193.35.17.5",
+      port = 443,
+      username = "u",
+      password = "p",
+      tlsServerName = "example.com",
+    )
+    val plan = ServerProfile.naive(profile).connectPlan.withExtraDirectIps(listOf("10.0.0.1"))
     assertTrue(plan.directIPs.containsAll(listOf(plan.uplinkHost, "10.0.0.1")))
   }
 
@@ -139,7 +155,31 @@ class VpnPipelineTest {
 
   @Test
   fun isLiteralIpv4_matchesConnectPlan() {
-    assertEquals(listOf("193.35.17.5"), testServers.first().connectPlan.directIPs)
+    val profile = NaiveProfile(
+      displayName = "IP-TEST-3",
+      server = "193.35.17.5",
+      port = 443,
+      username = "u",
+      password = "p",
+      tlsServerName = "example.com",
+    )
+    assertEquals(listOf("193.35.17.5"), ServerProfile.naive(profile).connectPlan.directIPs)
     assertTrue(isLiteralIpv4("193.35.17.5"))
+  }
+
+  @Test
+  fun naiveFromTag_derivesCountryFromDisplayName() {
+    val profile = ServerProfile.naiveFromTag(
+      NaiveProfile(
+        displayName = "FI-DEV-99",
+        server = "backronym.ru",
+        port = 8443,
+        username = "u",
+        password = "p",
+        tlsServerName = "backronym.ru",
+      ),
+    )
+    assertEquals("FI", profile.countryCode)
+    assertEquals("Suomi", profile.countryName)
   }
 }
