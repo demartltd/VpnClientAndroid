@@ -233,7 +233,11 @@ class DemarVpnService :
       Log.e(TAG, "connectVpn failed", t)
       appendStderrTail()
       emitLogLine("connectVpn error: ${t.message ?: t.javaClass.simpleName}")
-      emitState("error", t.message ?: "Unknown error")
+      val message = when {
+        t.message?.contains("establish() returned null") == true -> VpnConnectMessages.OTHER_VPN
+        else -> t.message ?: "Unknown error"
+      }
+      emitState("error", message)
       shutdownSingBox()
       stopForegroundCompat()
     } finally {

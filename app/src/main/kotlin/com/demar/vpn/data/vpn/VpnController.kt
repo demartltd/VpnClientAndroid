@@ -18,7 +18,6 @@ import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.vpn.DemarVpnService
-import com.demar.vpn.vpn.VpnActiveProbe
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
 import java.util.concurrent.atomic.AtomicBoolean
@@ -178,10 +177,7 @@ class VpnController(private val context: Context) {
     if (granted) {
       startVpnService()
     } else {
-      watchdogJob?.cancel()
-      connectJob?.cancel()
-      activeConnectGeneration = 0
-      _state.value = VpnState.Error("VPN permission denied")
+      failConnect(VpnConnectMessages.PERMISSION_DENIED)
     }
   }
 
@@ -230,13 +226,13 @@ class VpnController(private val context: Context) {
     val generation = connectGeneration.incrementAndGet()
     activeConnectGeneration = generation
     connectSessionStartedAt = System.currentTimeMillis()
+    watchdogJob?.cancel()
+    _state.value = VpnState.Connecting
     connectJob = scope.launch {
       awaitVpnInactive()
       if (generation != connectGeneration.get()) return@launch
       awaitPostStopSettle()
-
-      watchdogJob?.cancel()
-      _state.value = VpnState.Connecting
+      if (generation != connectGeneration.get()) return@launch
 
       val profile = _selectedProfile.value
       AppLog.append("[app] new connect session profile=${profile.id}")
@@ -262,13 +258,13 @@ class VpnController(private val context: Context) {
       if (connectTarget == null) {
         AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
         if (generation != connectGeneration.get()) return@launch
-        _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
+        failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
       if (!UplinkProbe.tcpReachable(connectTarget, profile.uplinkPort ?: 443)) {
         AppLog.append("[app] uplink preflight failed for $connectTarget:${profile.uplinkPort ?: 443}")
         if (generation != connectGeneration.get()) return@launch
-        _state.value = VpnState.Error(VpnConnectMessages.SERVER_UNREACHABLE)
+        failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
 
@@ -287,7 +283,7 @@ class VpnController(private val context: Context) {
       watchdogJob = scope.launch {
         delay(ConnectTimeouts.WATCHDOG_MS)
         if (_state.value is VpnState.Connecting) {
-          _state.value = VpnState.Error(VpnConnectMessages.FAILED)
+          failConnect(VpnConnectMessages.FAILED)
         }
       }
 
@@ -300,15 +296,21 @@ class VpnController(private val context: Context) {
     }
   }
 
+  /** Wait for our service teardown only — do not block on a foreign app's TRANSPORT_VPN. */
   private suspend fun awaitVpnInactive(timeoutMs: Long = 8_000) {
     val deadline = System.currentTimeMillis() + timeoutMs
     while (System.currentTimeMillis() < deadline) {
-      val stored = VpnControlStateStore.loadState(context)
-      val vpnUp = VpnActiveProbe.isActive(context)
-      if (stored.isTerminalInactive && !vpnUp) return
+      if (VpnControlStateStore.loadState(context).isTerminalInactive) return
       delay(50)
     }
     AppLog.append("[app] awaitVpnInactive timeout (${timeoutMs}ms)")
+  }
+
+  private fun failConnect(message: String) {
+    watchdogJob?.cancel()
+    connectJob?.cancel()
+    activeConnectGeneration = 0
+    applyStateEvent(VpnState.Error(message))
   }
 
   private suspend fun awaitPostStopSettle(minGapMs: Long = 600L) {
@@ -337,9 +339,7 @@ class VpnController(private val context: Context) {
     try {
       val payload = VpnControlStateStore.loadConnectPayload(context)
       if (payload == null) {
-        watchdogJob?.cancel()
-        activeConnectGeneration = 0
-        _state.value = VpnState.Error("Missing configJson")
+        failConnect("Missing configJson")
         return
       }
       ContextCompat.startForegroundService(
@@ -352,9 +352,7 @@ class VpnController(private val context: Context) {
       )
       _state.value = VpnState.Connecting
     } catch (t: Throwable) {
-      watchdogJob?.cancel()
-      activeConnectGeneration = 0
-      _state.value = VpnState.Error(t.message ?: "Failed to start VPN service")
+      failConnect(t.message ?: "Failed to start VPN service")
     }
   }
 
