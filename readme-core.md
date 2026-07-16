@@ -56,7 +56,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 
 | Tag | Тип | Назначение |
 |-----|-----|------------|
-| `dns-direct` | UDP `1.1.1.1` | bootstrap, domain resolver |
+| `dns-direct` | `type: local` | bootstrap, domain resolver |
 | `dns-remote` | HTTPS `1.1.1.1` | DoH через proxy |
 
 Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `final: dns-remote`, `strategy: ipv4_only`.
