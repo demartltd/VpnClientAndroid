@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -27,11 +28,20 @@ object Routes {
 }
 
 @Composable
-fun AppRoot(singBoxLabel: String, vpnController: VpnController) {
+fun AppRoot(
+  singBoxLabel: String,
+  vpnController: VpnController,
+  openHomeTick: Int = 0,
+) {
   val navController = rememberNavController()
   val snackbarHost = remember { SnackbarHostState() }
   val backStack by navController.currentBackStackEntryAsState()
   val onMain = backStack?.destination?.route == Routes.Main
+
+  LaunchedEffect(openHomeTick) {
+    if (openHomeTick == 0) return@LaunchedEffect
+    navController.popBackStack(Routes.Main, inclusive = false)
+  }
 
   Box(Modifier.fillMaxSize()) {
     NavHost(navController, startDestination = Routes.Main, Modifier.fillMaxSize()) {
@@ -40,6 +50,7 @@ fun AppRoot(singBoxLabel: String, vpnController: VpnController) {
           singBoxLabel = singBoxLabel,
           snackbarHost = snackbarHost,
           vpnController = vpnController,
+          openHomeTick = openHomeTick,
           onAppSettings = { navController.openOverlay(Routes.AppSettings) },
           onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
         )

@@ -13,6 +13,7 @@ import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProfileKind
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VpnState
@@ -75,6 +76,9 @@ class VpnController(private val context: Context) {
 
   init {
     VpnControlStateStore.hydrate(context)
+    VpnControlStateStore.loadLastProfileId(context)?.let { id ->
+      serverProfiles.firstOrNull { it.id == id }?.let { _selectedProfile.value = it }
+    }
     syncPlatformState()
   }
 
@@ -125,6 +129,7 @@ class VpnController(private val context: Context) {
   fun selectProfile(profile: ServerProfile) {
     if (profile.id == _selectedProfile.value.id) return
     _selectedProfile.value = profile
+    VpnControlStateStore.saveLastProfileId(context, profile.id)
     when (_state.value) {
       VpnState.Connected, VpnState.Connecting -> {
         reconnectAfterDisconnect = true
@@ -261,22 +266,25 @@ class VpnController(private val context: Context) {
         failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
-      if (!UplinkProbe.tcpReachable(connectTarget, profile.uplinkPort ?: 443)) {
+      if (profile.kind !is ServerProfileKind.Hysteria2 &&
+        !UplinkProbe.tcpReachable(connectTarget, profile.uplinkPort ?: 443)
+      ) {
         AppLog.append("[app] uplink preflight failed for $connectTarget:${profile.uplinkPort ?: 443}")
         if (generation != connectGeneration.get()) return@launch
         failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
 
-      val naiveServer = plan.proxyOutbound["server"]
+      val proxyServer = plan.proxyOutbound["server"]
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
       AppLog.append(
-        "connect uplinkHost=$uplinkHost naiveServer=$naiveServer uplinkPort=$uplinkPort " +
+        "connect uplinkHost=$uplinkHost proxyServer=$proxyServer uplinkPort=$uplinkPort " +
           "resolved=${resolved.joinToString()}",
       )
+      VpnControlStateStore.saveLastProfileId(context, profile.id)
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)
       if (generation != connectGeneration.get()) return@launch
 

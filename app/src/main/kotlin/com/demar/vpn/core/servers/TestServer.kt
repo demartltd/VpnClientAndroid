@@ -1,5 +1,6 @@
 package com.demar.vpn.core.servers
 
+import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 
@@ -13,6 +14,7 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "backronym.ru",
     ),
+    city = "Helsinki",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -23,6 +25,7 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "swe-f-1.backronym.ru",
     ),
+    city = "Stockholm",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -33,6 +36,7 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "ne-f-1.backronym.ru",
     ),
+    city = "Athens",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -43,5 +47,17 @@ val testServers = listOf(
       password = "REDACTED",
       tlsServerName = "de-f-1.backronym.ru",
     ),
+    city = "Berlin",
+  ),
+  ServerProfile.hysteria2FromTag(
+    Hysteria2Profile(
+      displayName = "FI-FREE-89",
+      server = "fi-f-1.xyzdeer.space",
+      port = 8443,
+      password = "REDACTED",
+      tlsServerName = "fi-f-1.xyzdeer.space",
+      alpn = listOf("h3"),
+    ),
+    city = "Helsinki",
   ),
 )

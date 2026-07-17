@@ -1,6 +1,7 @@
 package com.demar.vpn
 
 import com.demar.vpn.data.network.UplinkProbe
+import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachStatus
@@ -23,6 +24,21 @@ class UplinkProbeTest {
     )
     val state = UplinkProbe.probe(profile)
     assertEquals(ServerReachStatus.Offline, state.status)
+  }
+
+  @Test
+  fun probe_hysteria2_literalIp_skipsTcp() = runBlocking {
+    val profile = ServerProfile.hysteria2(
+      Hysteria2Profile(
+        displayName = "HY2-DNS",
+        server = "127.0.0.1",
+        port = 1,
+        password = "p",
+        tlsServerName = "example.com",
+      ),
+    )
+    val state = UplinkProbe.probe(profile)
+    assertEquals(ServerReachStatus.Online, state.status)
   }
 
   @Test

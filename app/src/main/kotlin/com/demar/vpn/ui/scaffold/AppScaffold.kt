@@ -39,6 +39,7 @@ fun AppScaffold(
   vpnController: VpnController,
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
+  openHomeTick: Int = 0,
   modifier: Modifier = Modifier,
 ) {
   var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -46,6 +47,12 @@ fun AppScaffold(
   var showLoginSheet by rememberSaveable { mutableStateOf(false) }
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val throughput = rememberHomeThroughput(tab, vpnState)
+
+  LaunchedEffect(openHomeTick) {
+    if (openHomeTick == 0) return@LaunchedEffect
+    tab = 0
+    showLoginSheet = false
+  }
 
   Box(modifier.fillMaxSize()) {
     Scaffold { padding ->

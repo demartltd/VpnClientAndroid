@@ -3,12 +3,15 @@ package com.demar.vpn.ui.servers
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -36,28 +40,39 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
+import com.demar.vpn.domain.vpn.ServerTier
+import com.demar.vpn.domain.vpn.filterServers
+import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.toolbarBottomInset
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 private const val REFRESH_STUB_MIN_MS = 1_500L
 private val RefreshPullDistance = 56.dp
 private val ServerRowShape = RoundedCornerShape(12.dp)
+private val ChipShape = RoundedCornerShape(8.dp)
+private val ProtocolBarShape = RoundedCornerShape(10.dp)
+private val ProtocolBarHeight = 48.dp
+private val TierBarHeight = 40.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -73,8 +88,14 @@ fun ServersScreen(
     val selectedMsg = stringResource(R.string.server_selected)
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
-    val scrollState = rememberScrollState()
     var refreshing by remember { mutableStateOf(false) }
+    val profiles = vpnController.serverProfiles
+    var protocol by remember(selected.id) { mutableStateOf(selected.protocol) }
+    var tierFilter by remember { mutableStateOf<ServerTier?>(null) }
+    val tierChips = remember(profiles) { profiles.visibleTiers() }
+    val list = remember(profiles, protocol, tierFilter) {
+      profiles.filterServers(protocol, tierFilter)
+    }
 
     DisposableEffect(active) {
       vpnController.setServersTabActive(active)
@@ -95,43 +116,164 @@ fun ServersScreen(
 
     val pullOffset = RefreshPullDistance * pullState.distanceFraction
 
-    Box(
+    Column(
       Modifier
         .fillMaxSize()
-        .pullToRefresh(
+        .padding(top = 12.dp)
+        .padding(bottom = toolbarBottomInset(24.dp)),
+    ) {
+      ProtocolBar(selected = protocol, onSelect = { protocol = it })
+      TierBar(
+        tiers = tierChips,
+        selected = tierFilter,
+        onSelect = { tierFilter = it },
+      )
+      HorizontalDivider(
+        Modifier
+          .padding(horizontal = 16.dp)
+          .padding(top = 12.dp),
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+      )
+      Box(
+        Modifier
+          .weight(1f)
+          .fillMaxWidth()
+          .pullToRefresh(
+            state = pullState,
+            isRefreshing = refreshing,
+            onRefresh = onRefresh,
+            threshold = RefreshPullDistance,
+          ),
+      ) {
+        Column(
+          Modifier
+            .fillMaxSize()
+            .offset(y = pullOffset)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp, bottom = 12.dp)
+            .semantics { contentDescription = "server_list" },
+        ) {
+          list.forEach { profile ->
+            ServerRow(
+              profile = profile,
+              selected = profile.id == selected.id,
+              reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
+              onSelect = {
+                vpnController.selectProfile(profile)
+                scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
+              },
+            )
+          }
+        }
+        PullToRefreshDefaults.LoadingIndicator(
           state = pullState,
           isRefreshing = refreshing,
-          onRefresh = onRefresh,
-          threshold = RefreshPullDistance,
-        ),
-    ) {
-      Column(
-        Modifier
-          .fillMaxSize()
-          .offset(y = pullOffset)
-          .verticalScroll(scrollState)
-          .padding(horizontal = 16.dp, vertical = 12.dp)
-          .padding(bottom = toolbarBottomInset(24.dp)),
-      ) {
-        vpnController.serverProfiles.forEach { profile ->
-          ServerRow(
-            profile = profile,
-            selected = profile.id == selected.id,
-            reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
-            onSelect = {
-              vpnController.selectProfile(profile)
-              scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
-            },
-          )
-        }
+          modifier = Modifier.align(Alignment.TopCenter),
+          maxDistance = RefreshPullDistance,
+        )
       }
-      PullToRefreshDefaults.LoadingIndicator(
-        state = pullState,
-        isRefreshing = refreshing,
-        modifier = Modifier.align(Alignment.TopCenter),
-        maxDistance = RefreshPullDistance,
+    }
+  }
+}
+
+@Composable
+private fun ProtocolBar(selected: ServerProtocol, onSelect: (ServerProtocol) -> Unit) {
+  val cs = MaterialTheme.colorScheme
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 16.dp)
+      .height(ProtocolBarHeight)
+      .clip(ProtocolBarShape)
+      .background(cs.surfaceContainerHighest)
+      .border(1.dp, cs.outline.copy(alpha = 0.2f), ProtocolBarShape),
+  ) {
+    ServerProtocol.entries.forEach { proto ->
+      val isSelected = proto == selected
+      Box(
+        Modifier
+          .weight(1f)
+          .fillMaxSize()
+          .background(if (isSelected) cs.secondaryContainer else Color.Transparent)
+          .clickable { onSelect(proto) }
+          .semantics { contentDescription = "server_protocol_${proto.name.uppercase(Locale.ROOT)}" },
+        contentAlignment = Alignment.Center,
+      ) {
+        Text(
+          proto.name,
+          style = MaterialTheme.typography.titleSmall,
+          fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+          color = if (isSelected) cs.onSecondaryContainer else cs.onSurfaceVariant,
+          textAlign = TextAlign.Center,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun TierBar(
+  tiers: List<ServerTier>,
+  selected: ServerTier?,
+  onSelect: (ServerTier?) -> Unit,
+) {
+  val cs = MaterialTheme.colorScheme
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .padding(horizontal = 16.dp)
+      .padding(top = 12.dp)
+      .height(TierBarHeight),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    TierCell(
+      label = "All",
+      selected = selected == null,
+      onClick = { onSelect(null) },
+      contentDescription = "server_tier_ALL",
+      modifier = Modifier.weight(1f),
+      cs = cs,
+    )
+    tiers.forEach { tier ->
+      TierCell(
+        label = tier.label.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) },
+        selected = selected == tier,
+        onClick = { onSelect(tier) },
+        contentDescription = "server_tier_${tier.label}",
+        modifier = Modifier.weight(1f),
+        cs = cs,
       )
     }
+  }
+}
+
+@Composable
+private fun TierCell(
+  label: String,
+  selected: Boolean,
+  onClick: () -> Unit,
+  contentDescription: String,
+  modifier: Modifier = Modifier,
+  cs: ColorScheme,
+) {
+  Box(
+    modifier
+      .fillMaxHeight()
+      .clip(ChipShape)
+      .background(if (selected) cs.secondaryContainer else cs.surfaceContainerHighest)
+      .border(1.dp, cs.outline.copy(alpha = 0.2f), ChipShape)
+      .clickable(onClick = onClick)
+      .semantics { this.contentDescription = contentDescription },
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(
+      label,
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+      color = if (selected) cs.onSecondaryContainer else cs.onSurfaceVariant,
+      textAlign = TextAlign.Center,
+    )
   }
 }
 
@@ -154,6 +296,7 @@ private fun ServerRow(
       .background(container)
       .border(1.dp, borderColor, ServerRowShape)
       .clickable(onClick = onSelect)
+      .semantics { contentDescription = profile.displayName }
       .padding(horizontal = 16.dp, vertical = 14.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
@@ -161,14 +304,14 @@ private fun ServerRow(
     Spacer(Modifier.width(12.dp))
     Column(Modifier.weight(1f)) {
       Text(
-        profile.displayName,
+        profile.listTitle,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
         color = if (selected) cs.onPrimaryContainer else cs.onSurface,
       )
-      profile.countryName?.let { country ->
+      if (profile.listSubtitle.isNotEmpty()) {
         Text(
-          country,
+          profile.listSubtitle,
           style = MaterialTheme.typography.bodySmall,
           color = if (selected) cs.onPrimaryContainer.copy(alpha = 0.75f) else cs.onSurfaceVariant,
         )

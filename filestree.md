@@ -10,7 +10,7 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── core/servers/TestServer.kt
-├── domain/vpn/                  # NaiveProfile, SingBoxConnectPlan, …
+├── domain/vpn/                  # NaiveProfile, Hysteria2Profile, SingBoxConnectPlan, …
 ├── data/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController
 │   ├── network/UplinkIpv4.kt
@@ -24,7 +24,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── scaffold/AppScaffold.kt
 │   ├── components/
 │   ├── home/HomeScreen.kt
-│   ├── servers/ServersScreen.kt
+│   ├── servers/ServersScreen.kt  # Protocol + tier chips above list
 │   ├── settings/
 │   ├── account/
 │   └── auth/
@@ -67,7 +67,6 @@ app/src/main/res/
 ├── mipmap-*/ic_launcher.png
 ├── drawable-*/ic_launcher_*.png
 ├── drawable/ic_brand_*.xml
-├── drawable/ic_qs_vpn_placeholder.xml
 └── values/strings.xml
 ```
 

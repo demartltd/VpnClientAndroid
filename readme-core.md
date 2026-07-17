@@ -1,10 +1,11 @@
-# Ядро VPN: Sing-box (NaiveProxy) — Demar VPN Android
+# Ядро VPN: Sing-box (NaiveProxy + Hysteria2) — Demar VPN Android
 
 Целевая версия core: **sing-box 1.13.14**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 
 - [Naive outbound](https://sing-box.sagernet.org/configuration/outbound/naive/) (since 1.13.0)
+- [Hysteria2 outbound](https://sing-box.sagernet.org/configuration/outbound/hysteria2/)
 - [DNS rule action](https://sing-box.sagernet.org/configuration/dns/rule_action/) (since 1.11.0)
 - [Dial Fields](https://sing-box.sagernet.org/configuration/shared/dial/) — `domain_resolver`
 
@@ -49,6 +50,30 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 | `quic` | `false` |
 | `tls` | enabled + `server_name` |
 | `domain_resolver` | `dns-direct`, `ipv4_only` |
+
+---
+
+## Hysteria2
+
+| App field | sing-box key |
+|-----------|--------------|
+| `server` | `server` |
+| `port` | `server_port` |
+| `password` | `password` |
+| `tlsServerName` | `tls.server_name` |
+| `alpn` | `tls.alpn` (default `["h3"]`) |
+| `obfsPassword` | `obfs.type=salamander` + `obfs.password` (если задан) |
+| `displayName` | UI only |
+
+### Outbound defaults (`SingBoxConnectPlan.hysteria2`)
+
+| Поле | Значение |
+|------|----------|
+| `tls` | enabled + `server_name` + `alpn` |
+| `domain_resolver` | `dns-direct`, `ipv4_only` |
+| `up_mbps` / `down_mbps` | omitted → BBR |
+
+Uplink preflight: DNS-only (QUIC/UDP). Naive остаётся на TCP.
 
 ---
 
@@ -100,11 +125,14 @@ python3 scripts/libbox-build-android.py
 
 Очистка: `python3 scripts/singbox-cleaner.py -y`
 
-### Build tags (MVP)
+### Build tags
 
 ```
-with_gvisor,with_naive_outbound,with_clash_api,badlinkname,tfogo_checklinkname0
+with_gvisor,with_quic,with_naive_outbound,with_clash_api,badlinkname,tfogo_checklinkname0
 ```
+
+- `with_quic` — Hysteria2 / QUIC
+- `with_naive_outbound` — NaiveProxy outbound
 
 AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 

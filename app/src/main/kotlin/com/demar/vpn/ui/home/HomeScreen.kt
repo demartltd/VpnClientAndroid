@@ -47,7 +47,7 @@ fun HomeScreen(
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
-  val serverName = selected.displayName.ifEmpty { stringResource(R.string.server_not_selected) }
+  val serverName = selected.listTitle.ifEmpty { stringResource(R.string.server_not_selected) }
 
   LaunchedEffect(Unit) {
     vpnController.errorEvents.collect { msg -> DemarSnackbar.showError(snackbarHost, msg) }
