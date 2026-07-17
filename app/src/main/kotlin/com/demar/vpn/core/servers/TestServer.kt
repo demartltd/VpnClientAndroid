@@ -1,5 +1,6 @@
 package com.demar.vpn.core.servers
 
+import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 
@@ -13,6 +14,7 @@ val testServers = listOf(
       password = "QmKxb6pt1LfINYKak8CUdO3qFw4dxvuP",
       tlsServerName = "backronym.ru",
     ),
+    city = "Helsinki",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -23,6 +25,7 @@ val testServers = listOf(
       password = "cPtKkgK5ALTDhAgogOElOuBQS-auN1h8",
       tlsServerName = "swe-f-1.backronym.ru",
     ),
+    city = "Stockholm",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -33,6 +36,7 @@ val testServers = listOf(
       password = "ukENr-LbKZ_Tjrn6V5yoTgnTJZtK6pXF",
       tlsServerName = "ne-f-1.backronym.ru",
     ),
+    city = "Athens",
   ),
   ServerProfile.naiveFromTag(
     NaiveProfile(
@@ -43,5 +47,17 @@ val testServers = listOf(
       password = "AjcvRkaQALvRlyEqCUZznp7bX66-6vbF",
       tlsServerName = "de-f-1.backronym.ru",
     ),
+    city = "Berlin",
+  ),
+  ServerProfile.hysteria2FromTag(
+    Hysteria2Profile(
+      displayName = "FI-FREE-89",
+      server = "fi-f-1.xyzdeer.space",
+      port = 8443,
+      password = "AX9shERdOhYTWhsUZ21_8dY3ZCBWyTTN",
+      tlsServerName = "fi-f-1.xyzdeer.space",
+      alpn = listOf("h3"),
+    ),
+    city = "Helsinki",
   ),
 )

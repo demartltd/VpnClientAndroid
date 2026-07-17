@@ -2,10 +2,17 @@ package com.demar.vpn
 
 import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
+import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProfileKind
+import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.ServerTier
 import com.demar.vpn.domain.vpn.SingBoxTags
+import com.demar.vpn.domain.vpn.byTier
+import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
+import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -20,9 +27,11 @@ class VpnPipelineTest {
       val plan = server.connectPlan
       val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val cfg = JSONObject(json)
+      val outbound = cfg.getJSONArray("outbounds").getJSONObject(0)
+      val type = outbound.getString("type")
 
       assertTrue(plan.uplinkHost.isNotEmpty())
-      assertTrue(json.contains("\"type\": \"naive\""))
+      assertEquals(plan.proxyOutbound["type"], type)
       assertTrue(json.contains("\"server\": \"${plan.uplinkHost}\""))
       assertTrue(json.contains("\"type\": \"tun\""))
       assertTrue(json.contains("\"action\": \"hijack-dns\""))
@@ -34,16 +43,30 @@ class VpnPipelineTest {
       val tags = (0 until outbounds.length()).map { outbounds.getJSONObject(it).getString("tag") }
       assertTrue(tags.containsAll(listOf(SingBoxTags.PROXY, SingBoxTags.DIRECT)))
 
-      val naive = outbounds.getJSONObject(0)
-      assertEquals("naive", naive.getString("type"))
-      assertFalse(naive.getBoolean("quic"))
-      assertFalse(naive.has("multiplex"))
-      val uot = naive.getJSONObject("udp_over_tcp")
-      assertTrue(uot.getBoolean("enabled"))
-      assertEquals(2, uot.getInt("version"))
-      assertEquals("10s", naive.getString("connect_timeout"))
-      assertEquals(SingBoxTags.DNS_DIRECT, naive.getJSONObject("domain_resolver").getString("server"))
-      assertEquals("ipv4_only", naive.getJSONObject("domain_resolver").getString("strategy"))
+      assertEquals(SingBoxTags.DNS_DIRECT, outbound.getJSONObject("domain_resolver").getString("server"))
+      assertEquals("ipv4_only", outbound.getJSONObject("domain_resolver").getString("strategy"))
+      val tls = outbound.getJSONObject("tls")
+      assertTrue(tls.getBoolean("enabled"))
+      assertTrue(tls.has("server_name"))
+
+      when (server.kind) {
+        is ServerProfileKind.Naive -> {
+          assertEquals("naive", type)
+          assertFalse(outbound.getBoolean("quic"))
+          assertFalse(outbound.has("multiplex"))
+          val uot = outbound.getJSONObject("udp_over_tcp")
+          assertTrue(uot.getBoolean("enabled"))
+          assertEquals(2, uot.getInt("version"))
+          assertEquals("10s", outbound.getString("connect_timeout"))
+        }
+        is ServerProfileKind.Hysteria2 -> {
+          assertEquals("hysteria2", type)
+          assertFalse(outbound.has("udp_over_tcp"))
+          assertTrue(outbound.has("password"))
+          val alpn = tls.getJSONArray("alpn")
+          assertTrue((0 until alpn.length()).any { alpn.getString(it) == "h3" })
+        }
+      }
 
       val route = cfg.getJSONObject("route")
       assertEquals(SingBoxTags.PROXY, route.getString("final"))
@@ -150,7 +173,8 @@ class VpnPipelineTest {
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
     val naive = JSONObject(json).getJSONArray("outbounds").getJSONObject(0)
     assertEquals("93.184.216.34", naive.getString("server"))
-    assertEquals("de-f-1.backronym.ru", naive.getJSONObject("tls").getString("server_name"))
+    assertEquals("swe-f-1.backronym.ru", naive.getJSONObject("tls").getString("server_name"))
+    assertTrue(naive.getJSONObject("tls").getBoolean("enabled"))
   }
 
   @Test
@@ -178,8 +202,92 @@ class VpnPipelineTest {
         password = "p",
         tlsServerName = "backronym.ru",
       ),
+      city = "Helsinki",
     )
     assertEquals("FI", profile.countryCode)
-    assertEquals("Suomi", profile.countryName)
+    assertEquals(ServerProfile.countryNameFromCode("FI"), profile.countryName)
+    assertEquals("Naive", profile.protocolLabel)
+    assertEquals(ServerTier.Dev, profile.tier)
+    assertEquals(99, profile.tagNumber)
+    assertEquals("${profile.countryName} | DEV", profile.listTitle)
+    assertEquals("Helsinki #99", profile.listSubtitle)
+  }
+
+  @Test
+  fun serverTier_fromTag() {
+    assertEquals(ServerTier.Free, ServerTier.fromTag("SE-FREE-71"))
+    assertEquals(ServerTier.Dev, ServerTier.fromTag("FI-DEV-99"))
+    assertEquals(ServerTier.Plus, ServerTier.fromTag("DE-PLUS-1"))
+    assertEquals(ServerTier.Vip, ServerTier.fromTag("US-VIP-3"))
+    assertEquals(ServerTier.Free, ServerTier.fromTag("no-tier"))
+  }
+
+  @Test
+  fun byTier_sortsByDisplayName() {
+    val free = testServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
+    assertEquals(listOf("DE-FREE-1", "FI-FREE-89", "GR-FREE-22", "SE-FREE-71"), free)
+  }
+
+  @Test
+  fun visibleTiers_includesDevOnlyWhenPresent() {
+    assertTrue(testServers.visibleTiers().contains(ServerTier.Dev))
+    val noDev = testServers.filter { it.tier != ServerTier.Dev }
+    assertFalse(noDev.visibleTiers().contains(ServerTier.Dev))
+    assertEquals(
+      listOf(ServerTier.Free, ServerTier.Plus, ServerTier.Vip),
+      noDev.visibleTiers(),
+    )
+  }
+
+  @Test
+  fun filterServers_protocolAndTier() {
+    val naiveAll = testServers.filterServers(ServerProtocol.Naive, null)
+    assertEquals(listOf("DE-FREE-1", "FI-DEV-99", "GR-FREE-22", "SE-FREE-71"), naiveAll.map { it.displayName })
+    val hy2Free = testServers.filterServers(ServerProtocol.Hysteria2, ServerTier.Free)
+    assertEquals(listOf("FI-FREE-89"), hy2Free.map { it.displayName })
+    assertTrue(hy2Free.single().listSubtitle == "Helsinki #89")
+  }
+
+  @Test
+  fun hysteria2FromTag_buildsOutboundWithAlpn() {
+    val profile = ServerProfile.hysteria2FromTag(
+      Hysteria2Profile(
+        displayName = "FI-FREE-89",
+        server = "fi-f-1.xyzdeer.space",
+        port = 8443,
+        password = "secret",
+        tlsServerName = "fi-f-1.xyzdeer.space",
+        alpn = listOf("h3"),
+      ),
+    )
+    assertEquals("FI", profile.countryCode)
+    assertEquals("Hysteria2", profile.protocolLabel)
+    assertEquals("hysteria2:FI-FREE-89", profile.id)
+
+    val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))
+      .getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("hysteria2", outbound.getString("type"))
+    assertEquals("secret", outbound.getString("password"))
+    assertFalse(outbound.has("udp_over_tcp"))
+    val alpn = outbound.getJSONObject("tls").getJSONArray("alpn")
+    assertEquals("h3", alpn.getString(0))
+    assertTrue(profile.connectPlan.tun.bootstrapDomains.contains("fi-f-1.xyzdeer.space"))
+  }
+
+  @Test
+  fun hysteria2_obfsIncludedWhenSet() {
+    val plan = ServerProfile.hysteria2(
+      Hysteria2Profile(
+        displayName = "OBFS",
+        server = "1.2.3.4",
+        port = 443,
+        password = "p",
+        tlsServerName = "example.com",
+        obfsPassword = "cry_me_a_r1ver",
+      ),
+    ).connectPlan
+    val obfs = plan.proxyOutbound["obfs"] as Map<*, *>
+    assertEquals("salamander", obfs["type"])
+    assertEquals("cry_me_a_r1ver", obfs["password"])
   }
 }

@@ -25,7 +25,7 @@ data class SingBoxConnectPlan(
 
   companion object {
     fun naive(profile: NaiveProfile): SingBoxConnectPlan {
-      val bootstrap = bootstrapDomains(profile)
+      val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
       return SingBoxConnectPlan(
         uplinkHost = profile.server,
         proxyOutbound = mapOf(
@@ -39,7 +39,7 @@ data class SingBoxConnectPlan(
           "udp_over_tcp" to mapOf("enabled" to true, "version" to 2),
           "quic" to false,
           "tls" to mapOf("enabled" to true, "server_name" to profile.tlsServerName),
-          "domain_resolver" to mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only"),
+          "domain_resolver" to DOMAIN_RESOLVER,
         ),
         directIPs = directIPs(profile.server),
         tun = SingBoxTunOptions(
@@ -50,9 +50,41 @@ data class SingBoxConnectPlan(
       )
     }
 
-    private fun bootstrapDomains(profile: NaiveProfile): List<String> {
-      val domains = linkedSetOf(profile.tlsServerName)
-      if (isHostname(profile.server)) domains.add(profile.server.trim())
+    fun hysteria2(profile: Hysteria2Profile): SingBoxConnectPlan {
+      val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
+      val tls = buildMap {
+        put("enabled", true)
+        put("server_name", profile.tlsServerName)
+        if (profile.alpn.isNotEmpty()) put("alpn", profile.alpn)
+      }
+      val outbound = buildMap {
+        put("type", "hysteria2")
+        put("tag", SingBoxTags.PROXY)
+        put("server", profile.server)
+        put("server_port", profile.port)
+        put("password", profile.password)
+        put("tls", tls)
+        put("domain_resolver", DOMAIN_RESOLVER)
+        val obfs = profile.obfsPassword?.takeIf { it.isNotEmpty() }
+        if (obfs != null) put("obfs", mapOf("type" to "salamander", "password" to obfs))
+      }
+      return SingBoxConnectPlan(
+        uplinkHost = profile.server,
+        proxyOutbound = outbound,
+        directIPs = directIPs(profile.server),
+        tun = SingBoxTunOptions(
+          dnsFinal = SingBoxTags.DNS_REMOTE,
+          bootstrapDomains = bootstrap,
+          strictRoute = true,
+        ),
+      )
+    }
+
+    private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
+
+    private fun bootstrapDomains(server: String, tlsServerName: String): List<String> {
+      val domains = linkedSetOf(tlsServerName)
+      if (isHostname(server)) domains.add(server.trim())
       return domains.toList()
     }
 

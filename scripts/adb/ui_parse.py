@@ -166,7 +166,9 @@ def cmd_server(nodes: list[ET.Element], name: str) -> None:
     target = name.lower()
     for node in nodes:
         text = (node.attrib.get("text") or "").strip()
-        if not text or target not in text.lower():
+        desc = (node.attrib.get("content-desc") or "").strip()
+        hay = f"{text} {desc}".strip()
+        if not hay or target not in hay.lower():
             continue
         bounds = parse_bounds(node.attrib.get("bounds", ""))
         if not bounds:

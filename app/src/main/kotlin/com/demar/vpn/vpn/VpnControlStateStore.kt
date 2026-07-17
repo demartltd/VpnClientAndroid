@@ -5,6 +5,7 @@ import android.content.Context
 internal object VpnControlStateStore {
   private const val PREFS_NAME = "vpn_control_state"
   private const val KEY_STATE = "state"
+  private const val KEY_PROFILE_ID = "last_profile_id"
   private const val KEY_PAYLOAD_CONFIG_JSON = "payload_config_json"
   private const val KEY_PAYLOAD_UPLINK_HOST = "payload_uplink_host"
   private const val KEY_PAYLOAD_UPLINK_PORT = "payload_uplink_port"
@@ -70,6 +71,22 @@ internal object VpnControlStateStore {
     if (!hydrated) hydrate(context)
     return memoryState
   }
+
+  fun saveLastProfileId(context: Context, profileId: String) {
+    val id = profileId.trim().takeIf { it.isNotEmpty() } ?: return
+    context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putString(KEY_PROFILE_ID, id)
+      .apply()
+  }
+
+  fun loadLastProfileId(context: Context): String? =
+    context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .getString(KEY_PROFILE_ID, null)
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() }
 
   fun saveConnectPayload(
     context: Context,

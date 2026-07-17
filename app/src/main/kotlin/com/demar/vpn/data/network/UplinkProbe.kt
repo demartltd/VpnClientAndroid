@@ -2,6 +2,7 @@ package com.demar.vpn.data.network
 
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProfileKind
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.isLiteralIpv4
@@ -23,6 +24,10 @@ object UplinkProbe {
     if (target == null) {
       AppLog.append("$TAG ${profile.displayName} $host:$port=fail (dns)")
       return@withContext ServerReachState(ServerReachStatus.Offline)
+    }
+    if (profile.kind is ServerProfileKind.Hysteria2) {
+      AppLog.append("$TAG ${profile.displayName} $target:$port=dns-ok")
+      return@withContext ServerReachState(ServerReachStatus.Online)
     }
     val t0 = System.currentTimeMillis()
     val ok = tcpReachable(target, port, TIMEOUT_MS)

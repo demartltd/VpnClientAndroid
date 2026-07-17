@@ -13,7 +13,7 @@ REMOTE_UI="/sdcard/demar_ui.xml"
 REMOTE_JOURNAL="/sdcard/Android/data/${PACKAGE}/files/demar/demar_app.log"
 
 SERVER_A="FI-DEV-99"
-SERVER_B="DE-FREE-1"
+SERVER_B="FI-FREE-89"
 
 CYCLES=10
 CONNECT_TIMEOUT=60
@@ -102,9 +102,45 @@ tap_tab() {
   tap_xy "$tx" "$ty"
 }
 
+# SERVER_A = Naive/Dev, SERVER_B = Hysteria2/Free
+server_protocol() {
+  case "$1" in
+    FI-FREE-89) echo "HYSTERIA2" ;;
+    *) echo "NAIVE" ;;
+  esac
+}
+
+server_tier() {
+  case "$1" in
+    *-FREE-*) echo "FREE" ;;
+    *-DEV-*) echo "DEV" ;;
+    *-PLUS-*) echo "PLUS" ;;
+    *-VIP-*) echo "VIP" ;;
+    *) echo "ALL" ;;
+  esac
+}
+
+tap_label() {
+  local label="$1"
+  local pos
+  pos="$(ui_query label "$label")"
+  if [[ -z "$pos" ]]; then
+    echo "Error: label '$label' not found." >&2
+    exit 1
+  fi
+  IFS=',' read -r lx ly <<<"$pos"
+  tap_xy "$lx" "$ly"
+}
+
 tap_server() {
   local name="$1"
-  local pos
+  local proto tier pos
+  proto="$(server_protocol "$name")"
+  tier="$(server_tier "$name")"
+  tap_label "server_protocol_${proto}"
+  sleep_ms 200
+  tap_label "server_tier_${tier}"
+  sleep_ms 200
   pos="$(ui_query server "$name")"
   if [[ -z "$pos" ]]; then
     echo "Error: server '$name' not found." >&2
