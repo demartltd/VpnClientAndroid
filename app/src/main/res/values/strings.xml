@@ -16,6 +16,8 @@
     <string name="settings_feedback_sub">Отправить ошибку или предложение</string>
     <string name="settings_share">Пригласите друзей по ссылке</string>
     <string name="settings_share_sub">Получите бесплатный премиум</string>
+    <string name="settings_documents">Документы</string>
+    <string name="settings_documents_sub">Условия использования и конфиденциальность</string>
     <string name="settings_terms">Условия использования</string>
     <string name="settings_terms_sub">Правила использования сервиса</string>
     <string name="settings_privacy">Конфиденциальность</string>

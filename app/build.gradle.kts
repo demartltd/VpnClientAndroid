@@ -107,6 +107,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.material.kolor)
+    implementation(libs.markdown.renderer)
+    implementation(libs.markdown.renderer.m3)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
 }

@@ -10,10 +10,13 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── core/servers/TestServer.kt
-├── domain/vpn/                  # NaiveProfile, Hysteria2Profile, SingBoxConnectPlan, …
+├── domain/
+│   ├── vpn/                     # NaiveProfile, Hysteria2Profile, SingBoxConnectPlan, …
+│   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController
-│   ├── network/UplinkIpv4.kt
+│   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
+│   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   └── device/
 ├── ui/
@@ -25,7 +28,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── components/
 │   ├── home/HomeScreen.kt
 │   ├── servers/ServersScreen.kt  # Protocol + tier chips above list
-│   ├── settings/
+│   ├── settings/                # Documents sheet + DocumentScreen (ToS/PP)
 │   ├── account/
 │   └── auth/
 └── vpn/                         # Libbox (из demar_vpn)

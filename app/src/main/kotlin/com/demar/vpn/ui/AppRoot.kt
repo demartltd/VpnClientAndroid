@@ -10,21 +10,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.demar.vpn.data.vpn.VpnController
+import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.DemarSnackbarHost
 import com.demar.vpn.ui.components.snackbarHostBottomInset
 import com.demar.vpn.ui.scaffold.AppScaffold
 import com.demar.vpn.ui.settings.AppSettingsScreen
+import com.demar.vpn.ui.settings.DocumentScreen
 import com.demar.vpn.ui.settings.ServiceMenuScreen
 
 object Routes {
   const val Main = "main"
   const val AppSettings = "app_settings"
   const val ServiceMenu = "service_menu"
+  const val Document = "document/{kind}"
+
+  fun document(kind: LegalDocument) = "document/${kind.name}"
 }
 
 @Composable
@@ -53,6 +60,7 @@ fun AppRoot(
           openHomeTick = openHomeTick,
           onAppSettings = { navController.openOverlay(Routes.AppSettings) },
           onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
+          onOpenDocument = { doc -> navController.openOverlay(Routes.document(doc)) },
         )
       }
       composable(Routes.AppSettings) {
@@ -67,6 +75,18 @@ fun AppRoot(
           onBack = { navController.popBackStack() },
           snackbarHost = snackbarHost,
         )
+      }
+      composable(
+        route = Routes.Document,
+        arguments = listOf(navArgument("kind") { type = NavType.StringType }),
+      ) { entry ->
+        val kind = entry.arguments?.getString("kind")
+          ?.let { runCatching { LegalDocument.valueOf(it) }.getOrNull() }
+        if (kind == null) {
+          LaunchedEffect(Unit) { navController.popBackStack() }
+        } else {
+          DocumentScreen(document = kind, onBack = { navController.popBackStack() })
+        }
       }
     }
     DemarSnackbarHost(

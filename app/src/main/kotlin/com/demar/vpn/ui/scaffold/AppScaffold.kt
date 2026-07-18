@@ -22,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.data.network.ThroughputRates
 import com.demar.vpn.data.network.ThroughputSampler
 import com.demar.vpn.data.vpn.VpnController
+import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.account.AccountScreen
 import com.demar.vpn.ui.auth.LoginBottomSheet
@@ -39,6 +40,7 @@ fun AppScaffold(
   vpnController: VpnController,
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
+  onOpenDocument: (LegalDocument) -> Unit,
   openHomeTick: Int = 0,
   modifier: Modifier = Modifier,
 ) {
@@ -70,6 +72,7 @@ fun AppScaffold(
           snackbarHost = snackbarHost,
           onAppSettings = onAppSettings,
           onServiceMenu = onServiceMenu,
+          onOpenDocument = onOpenDocument,
         )
         AccountScreen(
           active = tab == 3,
