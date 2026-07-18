@@ -14,6 +14,7 @@ org-json = "20240303"
 play-services-appset = "16.1.0"
 play-services-ads-identifier = "18.2.0"
 materialKolor = "4.1.1"
+markdownRenderer = "0.41.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -33,6 +34,8 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 play-services-appset = { group = "com.google.android.gms", name = "play-services-appset", version.ref = "play-services-appset" }
 play-services-ads-identifier = { group = "com.google.android.gms", name = "play-services-ads-identifier", version.ref = "play-services-ads-identifier" }
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
+markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdownRenderer" }
+markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

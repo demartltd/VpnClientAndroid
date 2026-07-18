@@ -33,7 +33,7 @@ pwsh scripts/build_android.ps1
 |-------|--------|
 | Home (VPN toggle) | Naive connect/disconnect через `VpnController` |
 | Servers | Protocol chips + All/Dev/Free/Plus/Vip; Naive + Hy2 (`TestServer.kt`); title `Country | TIER`, subtitle `City #N` |
-| Settings + social links | FA6 brand icons, реальные URL (`x.com/demargames`, …) |
+| Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | UI steps без API |
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
 | Service menu (3× tap version) | mock diagnostics |

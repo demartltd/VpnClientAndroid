@@ -12,8 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.PrivacyTip
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.SettingsApplications
 import androidx.compose.material.icons.filled.Share
@@ -27,8 +26,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SettingsActionButton
@@ -59,10 +61,12 @@ fun SettingsScreen(
   snackbarHost: SnackbarHostState,
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
+  onOpenDocument: (LegalDocument) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
   var tapCount by remember { mutableIntStateOf(0) }
+  var showDocumentsSheet by rememberSaveable { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost) } }
@@ -101,9 +105,12 @@ fun SettingsScreen(
     Spacer(Modifier.height(12.dp))
     SettingsActionButton(Icons.Filled.Share, stringResource(R.string.settings_share), stringResource(R.string.settings_share_sub), { shareAppPitch(context) })
     Spacer(Modifier.height(12.dp))
-    SettingsActionButton(Icons.Filled.Description, stringResource(R.string.settings_terms), stringResource(R.string.settings_terms_sub), soon)
-    Spacer(Modifier.height(12.dp))
-    SettingsActionButton(Icons.Filled.PrivacyTip, stringResource(R.string.settings_privacy), stringResource(R.string.settings_privacy_sub), soon)
+    SettingsActionButton(
+      Icons.Filled.FolderOpen,
+      stringResource(R.string.settings_documents),
+      stringResource(R.string.settings_documents_sub),
+      { showDocumentsSheet = true },
+    )
     Spacer(Modifier.height(36.dp))
     SettingsVersionFooter(
       versionName = BuildConfig.VERSION_NAME,
@@ -113,6 +120,15 @@ fun SettingsScreen(
           tapCount = 0
           onServiceMenu()
         }
+      },
+    )
+  }
+  if (showDocumentsSheet) {
+    DocumentsBottomSheet(
+      onDismiss = { showDocumentsSheet = false },
+      onOpenDocument = { doc ->
+        showDocumentsSheet = false
+        onOpenDocument(doc)
       },
     )
   }
