@@ -11,18 +11,28 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
+import com.demar.vpn.ui.components.StaticSheetDragHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginBottomSheet(onDismiss: () -> Unit, onSignedIn: () -> Unit) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-    Column(Modifier.padding(horizontal = 24.dp).padding(top = 4.dp, bottom = 24.dp)) {
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    sheetState = sheetState,
+    dragHandle = null,
+  ) {
+    Column(
+      Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      StaticSheetDragHandle()
       Text(
         stringResource(R.string.login_sheet_title),
         modifier = Modifier.fillMaxWidth(),
