@@ -11,7 +11,7 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarAppContextHolder.kt
 ├── core/servers/TestServer.kt
 ├── domain/
-│   ├── vpn/                     # NaiveProfile, Hysteria2Profile, SingBoxConnectPlan, …
+│   ├── vpn/                     # ShadowTlsProfile, Hysteria2Profile, SingBoxConnectPlan, …
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController

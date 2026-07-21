@@ -34,6 +34,7 @@ object SingBoxConfigBuilder {
       "route" to makeRoute(plan.directIPs, bootstrap),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
+        *plan.dialOutbounds.map { toJson(it) }.toTypedArray(),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
       ),
     )

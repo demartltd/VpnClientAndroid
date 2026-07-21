@@ -1,10 +1,11 @@
-# Ядро VPN: Sing-box (NaiveProxy + Hysteria2) — Demar VPN Android
+# Ядро VPN: Sing-box (ShadowTLS + Hysteria2) — Demar VPN Android
 
 Целевая версия core: **sing-box 1.13.14**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 
-- [Naive outbound](https://sing-box.sagernet.org/configuration/outbound/naive/) (since 1.13.0)
+- [Shadowsocks outbound](https://sing-box.sagernet.org/configuration/outbound/shadowsocks/)
+- [ShadowTLS outbound](https://sing-box.sagernet.org/configuration/outbound/shadowtls/)
 - [Hysteria2 outbound](https://sing-box.sagernet.org/configuration/outbound/hysteria2/)
 - [DNS rule action](https://sing-box.sagernet.org/configuration/dns/rule_action/) (since 1.11.0)
 - [Dial Fields](https://sing-box.sagernet.org/configuration/shared/dial/) — `domain_resolver`
@@ -24,32 +25,37 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 ### Добавление протокола
 
 1. Profile struct (`FooProfile`) в `domain/vpn/`
-2. `SingBoxConnectPlan.foo(profile)` — outbound + tun overrides
+2. `SingBoxConnectPlan.foo(profile)` — outbound + tun overrides (+ `dialOutbounds` при цепочке)
 3. `ServerProfileKind.foo` + switch в `connectPlan`
 4. Test server seed
-5. При новом outbound — обновить `TAGS` в `scripts/libbox-build-android.py`
+5. При новом outbound — обновить `TAGS` в `scripts/libbox-build-android.py` (если нужен build tag)
 
 ---
 
-## NaiveProxy
+## ShadowTLS (Shadowsocks over ShadowTLS v3)
+
+Цепочка: `shadowsocks` (`tag=proxy`, `detour=shadowtls-out`, multiplex) → `shadowtls` → `direct`.
 
 | App field | sing-box key |
 |-----------|--------------|
-| `server` | `server` |
-| `port` | `server_port` |
-| `username` | `username` |
-| `password` | `password` |
-| `tlsServerName` | `tls.server_name` |
+| `server` / `port` | ShadowTLS `server` / `server_port` |
+| `password` | ShadowTLS `password` (v2/v3) |
+| `tlsServerName` | ShadowTLS `tls.server_name` |
+| `version` | ShadowTLS `version` (default `3`) |
+| `ssMethod` | Shadowsocks `method` |
+| `ssPassword` | Shadowsocks `password` |
 | `displayName` | UI only |
 
-### Outbound defaults (`SingBoxConnectPlan.naive`)
+### Outbound defaults (`SingBoxConnectPlan.shadowTls`)
 
 | Поле | Значение |
 |------|----------|
-| `udp_over_tcp` | `enabled: true`, `version: 2` |
-| `quic` | `false` |
-| `tls` | enabled + `server_name` |
-| `domain_resolver` | `dns-direct`, `ipv4_only` |
+| SS `multiplex` | `enabled: true` |
+| SS `detour` | `shadowtls-out` |
+| ShadowTLS `tls` | enabled + `server_name` |
+| ShadowTLS `domain_resolver` | `dns-direct`, `ipv4_only` |
+
+Uplink preflight: TCP (как dial ShadowTLS).
 
 ---
 
@@ -73,7 +79,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 | `domain_resolver` | `dns-direct`, `ipv4_only` |
 | `up_mbps` / `down_mbps` | omitted → BBR |
 
-Uplink preflight: DNS-only (QUIC/UDP). Naive остаётся на TCP.
+Uplink preflight: DNS-only (QUIC/UDP). ShadowTLS остаётся на TCP.
 
 ---
 
@@ -128,11 +134,11 @@ python3 scripts/libbox-build-android.py
 ### Build tags
 
 ```
-with_gvisor,with_quic,with_naive_outbound,with_clash_api,badlinkname,tfogo_checklinkname0
+with_gvisor,with_quic,with_clash_api,badlinkname,tfogo_checklinkname0
 ```
 
 - `with_quic` — Hysteria2 / QUIC
-- `with_naive_outbound` — NaiveProxy outbound
+- Shadowsocks / ShadowTLS — без отдельного tag (в ядре по умолчанию)
 
 AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 
