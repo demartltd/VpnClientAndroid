@@ -68,7 +68,7 @@ adb shell bmgr restore com.demar.vpn
 
 ### Servers
 
-После входа `POST /auth/mobile/servers` → список по подписке. Неподдерживаемые протоколы (naive/trojan) пропускаются в клиенте. Без сессии — CTA войти. Pull-to-refresh обновляет список + reachability.
+После входа `POST /auth/mobile/servers` → список по подписке. Неподдерживаемые протоколы пропускаются в клиенте. Без сессии — CTA войти. Pull-to-refresh обновляет список + reachability.
 
 ### Журнал (AppLog)
 
