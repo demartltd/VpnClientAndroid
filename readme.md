@@ -4,7 +4,7 @@
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
 
-Ядро: **sing-box 1.13.14** (**NaiveProxy** + **Hysteria2**). Документация: https://sing-box.sagernet.org/
+Ядро: **sing-box 1.13.14** (**ShadowTLS** + **Hysteria2**). Документация: https://sing-box.sagernet.org/
 
 **UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot` (parity с Flutter `ColorScheme.fromSeed`).
 
@@ -31,14 +31,14 @@ pwsh scripts/build_android.ps1
 
 | Экран | Статус |
 |-------|--------|
-| Home (VPN toggle) | Naive connect/disconnect через `VpnController` |
-| Servers | Protocol chips + All/Dev/Free/Plus/Vip; Naive + Hy2 (`TestServer.kt`); title `Country | TIER`, subtitle `City #N` |
+| Home (VPN toggle) | ShadowTLS connect/disconnect через `VpnController` |
+| Servers | Protocol chips + All/Dev/Free/Plus/Vip; ShadowTLS + Hy2 (`TestServer.kt`); title `Country | TIER`, subtitle `City #N` |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | UI steps без API |
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
 | Service menu (3× tap version) | mock diagnostics |
 
-VPN connect (Naive + Hysteria2) — **реализовано**. Auth, share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+VPN connect (ShadowTLS + Hysteria2) — **реализовано**. Auth, share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 
@@ -80,5 +80,5 @@ UI-журнал («Настройки → Настройки приложени�
 | Compose UI (4 tabs + push + login) | реализовано |
 | Тема / snackbar / соц. иконки | parity с Flutter (`DemarSnackbarHost`, copy-on-tap) |
 | Libbox VPN layer | `vpn/*` |
-| Domain / data / Naive+Hy2 pipeline | `domain/vpn/*`, `data/vpn/*` |
+| Domain / data / ShadowTLS+Hy2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |

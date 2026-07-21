@@ -3,11 +3,11 @@ package com.demar.vpn
 import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import com.demar.vpn.domain.vpn.Hysteria2Profile
-import com.demar.vpn.domain.vpn.NaiveProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProfileKind
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerTier
+import com.demar.vpn.domain.vpn.ShadowTlsProfile
 import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
@@ -27,7 +27,8 @@ class VpnPipelineTest {
       val plan = server.connectPlan
       val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val cfg = JSONObject(json)
-      val outbound = cfg.getJSONArray("outbounds").getJSONObject(0)
+      val outbounds = cfg.getJSONArray("outbounds")
+      val outbound = outbounds.getJSONObject(0)
       val type = outbound.getString("type")
 
       assertTrue(plan.uplinkHost.isNotEmpty())
@@ -39,25 +40,30 @@ class VpnPipelineTest {
       assertTrue(json.contains("\"timestamp\": true"))
       assertTrue(json.contains("\"tag\": \"${SingBoxTags.DIAG_INBOUND}\""))
 
-      val outbounds = cfg.getJSONArray("outbounds")
       val tags = (0 until outbounds.length()).map { outbounds.getJSONObject(it).getString("tag") }
       assertTrue(tags.containsAll(listOf(SingBoxTags.PROXY, SingBoxTags.DIRECT)))
 
-      assertEquals(SingBoxTags.DNS_DIRECT, outbound.getJSONObject("domain_resolver").getString("server"))
-      assertEquals("ipv4_only", outbound.getJSONObject("domain_resolver").getString("strategy"))
-      val tls = outbound.getJSONObject("tls")
+      val tlsOutbound = when (server.kind) {
+        is ServerProfileKind.ShadowTls ->
+          (0 until outbounds.length()).map { outbounds.getJSONObject(it) }
+            .first { it.getString("type") == "shadowtls" }
+        is ServerProfileKind.Hysteria2 -> outbound
+      }
+      assertEquals(SingBoxTags.DNS_DIRECT, tlsOutbound.getJSONObject("domain_resolver").getString("server"))
+      assertEquals("ipv4_only", tlsOutbound.getJSONObject("domain_resolver").getString("strategy"))
+      val tls = tlsOutbound.getJSONObject("tls")
       assertTrue(tls.getBoolean("enabled"))
       assertTrue(tls.has("server_name"))
 
       when (server.kind) {
-        is ServerProfileKind.Naive -> {
-          assertEquals("naive", type)
-          assertFalse(outbound.getBoolean("quic"))
-          assertFalse(outbound.has("multiplex"))
-          val uot = outbound.getJSONObject("udp_over_tcp")
-          assertTrue(uot.getBoolean("enabled"))
-          assertEquals(2, uot.getInt("version"))
-          assertEquals("10s", outbound.getString("connect_timeout"))
+        is ServerProfileKind.ShadowTls -> {
+          assertEquals("shadowsocks", type)
+          assertEquals(SingBoxTags.SHADOWTLS, outbound.getString("detour"))
+          assertTrue(outbound.getJSONObject("multiplex").getBoolean("enabled"))
+          assertEquals("shadowtls", tlsOutbound.getString("type"))
+          assertEquals(3, tlsOutbound.getInt("version"))
+          assertTrue(tlsOutbound.has("password"))
+          assertTrue(tags.contains(SingBoxTags.SHADOWTLS))
         }
         is ServerProfileKind.Hysteria2 -> {
           assertEquals("hysteria2", type)
@@ -124,30 +130,32 @@ class VpnPipelineTest {
 
   @Test
   fun hostnameServer_addsBootstrapDomains() {
-    val profile = NaiveProfile(
+    val profile = ShadowTlsProfile(
       displayName = "host-test",
       server = "vpn.example.com",
       port = 443,
-      username = "u",
       password = "p",
       tlsServerName = "tls.example.com",
+      ssMethod = "2022-blake3-aes-128-gcm",
+      ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
     )
-    val plan = ServerProfile.naive(profile).connectPlan
+    val plan = ServerProfile.shadowTls(profile).connectPlan
     assertTrue(plan.tun.bootstrapDomains.containsAll(listOf("vpn.example.com", "tls.example.com")))
     assertTrue(plan.directIPs.isEmpty())
   }
 
   @Test
   fun literalIpv4Server_hasRouteExclude() {
-    val profile = NaiveProfile(
+    val profile = ShadowTlsProfile(
       displayName = "IP-TEST-1",
       server = "193.35.17.5",
       port = 443,
-      username = "u",
       password = "p",
       tlsServerName = "example.com",
+      ssMethod = "2022-blake3-aes-128-gcm",
+      ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
     )
-    val plan = ServerProfile.naive(profile).connectPlan
+    val plan = ServerProfile.shadowTls(profile).connectPlan
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
     assertTrue(json.contains("\"route_exclude_address\""))
     assertTrue(plan.directIPs.isNotEmpty())
@@ -155,58 +163,63 @@ class VpnPipelineTest {
 
   @Test
   fun withExtraDirectIps_mergesBypass() {
-    val profile = NaiveProfile(
+    val profile = ShadowTlsProfile(
       displayName = "IP-TEST-2",
       server = "193.35.17.5",
       port = 443,
-      username = "u",
       password = "p",
       tlsServerName = "example.com",
+      ssMethod = "2022-blake3-aes-128-gcm",
+      ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
     )
-    val plan = ServerProfile.naive(profile).connectPlan.withExtraDirectIps(listOf("10.0.0.1"))
+    val plan = ServerProfile.shadowTls(profile).connectPlan.withExtraDirectIps(listOf("10.0.0.1"))
     assertTrue(plan.directIPs.containsAll(listOf(plan.uplinkHost, "10.0.0.1")))
   }
 
   @Test
-  fun withResolvedUplink_patchesServer_keepsTlsServerName() {
-    val plan = testServers[1].connectPlan.withResolvedUplink("93.184.216.34")
+  fun withResolvedUplink_patchesShadowTlsServer_keepsTlsServerName() {
+    val plan = testServers[0].connectPlan.withResolvedUplink("93.184.216.34")
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
-    val naive = JSONObject(json).getJSONArray("outbounds").getJSONObject(0)
-    assertEquals("93.184.216.34", naive.getString("server"))
-    assertEquals("swe-f-1.backronym.ru", naive.getJSONObject("tls").getString("server_name"))
-    assertTrue(naive.getJSONObject("tls").getBoolean("enabled"))
+    val outbounds = JSONObject(json).getJSONArray("outbounds")
+    val st = (0 until outbounds.length()).map { outbounds.getJSONObject(it) }
+      .first { it.getString("type") == "shadowtls" }
+    assertEquals("93.184.216.34", st.getString("server"))
+    assertEquals("www.microsoft.com", st.getJSONObject("tls").getString("server_name"))
+    assertTrue(st.getJSONObject("tls").getBoolean("enabled"))
   }
 
   @Test
   fun isLiteralIpv4_matchesConnectPlan() {
-    val profile = NaiveProfile(
+    val profile = ShadowTlsProfile(
       displayName = "IP-TEST-3",
       server = "193.35.17.5",
       port = 443,
-      username = "u",
       password = "p",
       tlsServerName = "example.com",
+      ssMethod = "2022-blake3-aes-128-gcm",
+      ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
     )
-    assertEquals(listOf("193.35.17.5"), ServerProfile.naive(profile).connectPlan.directIPs)
+    assertEquals(listOf("193.35.17.5"), ServerProfile.shadowTls(profile).connectPlan.directIPs)
     assertTrue(isLiteralIpv4("193.35.17.5"))
   }
 
   @Test
-  fun naiveFromTag_derivesCountryFromDisplayName() {
-    val profile = ServerProfile.naiveFromTag(
-      NaiveProfile(
+  fun shadowTlsFromTag_derivesCountryFromDisplayName() {
+    val profile = ServerProfile.shadowTlsFromTag(
+      ShadowTlsProfile(
         displayName = "FI-DEV-99",
-        server = "backronym.ru",
+        server = "fi-f-2.xyzdeer.space",
         port = 8443,
-        username = "u",
         password = "p",
-        tlsServerName = "backronym.ru",
+        tlsServerName = "www.microsoft.com",
+        ssMethod = "2022-blake3-aes-128-gcm",
+        ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
       ),
       city = "Helsinki",
     )
     assertEquals("FI", profile.countryCode)
     assertEquals(ServerProfile.countryNameFromCode("FI"), profile.countryName)
-    assertEquals("Naive", profile.protocolLabel)
+    assertEquals("ShadowTLS", profile.protocolLabel)
     assertEquals(ServerTier.Dev, profile.tier)
     assertEquals(99, profile.tagNumber)
     assertEquals("${profile.countryName} | DEV", profile.listTitle)
@@ -225,7 +238,7 @@ class VpnPipelineTest {
   @Test
   fun byTier_sortsByDisplayName() {
     val free = testServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
-    assertEquals(listOf("DE-FREE-1", "FI-FREE-89", "GR-FREE-22", "SE-FREE-71"), free)
+    assertEquals(listOf("FI-FREE-89"), free)
   }
 
   @Test
@@ -241,8 +254,8 @@ class VpnPipelineTest {
 
   @Test
   fun filterServers_protocolAndTier() {
-    val naiveAll = testServers.filterServers(ServerProtocol.Naive, null)
-    assertEquals(listOf("DE-FREE-1", "FI-DEV-99", "GR-FREE-22", "SE-FREE-71"), naiveAll.map { it.displayName })
+    val stAll = testServers.filterServers(ServerProtocol.ShadowTls, null)
+    assertEquals(listOf("FI-DEV-99"), stAll.map { it.displayName })
     val hy2Free = testServers.filterServers(ServerProtocol.Hysteria2, ServerTier.Free)
     assertEquals(listOf("FI-FREE-89"), hy2Free.map { it.displayName })
     assertTrue(hy2Free.single().listSubtitle == "Helsinki #89")

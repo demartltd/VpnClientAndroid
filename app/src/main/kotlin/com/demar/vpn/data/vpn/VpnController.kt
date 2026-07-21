@@ -275,13 +275,14 @@ class VpnController(private val context: Context) {
         return@launch
       }
 
-      val proxyServer = plan.proxyOutbound["server"]
+      val dialServer = plan.dialOutbounds.firstOrNull { it["type"] == "shadowtls" }?.get("server")
+        ?: plan.proxyOutbound["server"]
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
       AppLog.append(
-        "connect uplinkHost=$uplinkHost proxyServer=$proxyServer uplinkPort=$uplinkPort " +
+        "connect uplinkHost=$uplinkHost dialServer=$dialServer uplinkPort=$uplinkPort " +
           "resolved=${resolved.joinToString()}",
       )
       VpnControlStateStore.saveLastProfileId(context, profile.id)

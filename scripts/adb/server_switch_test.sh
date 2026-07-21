@@ -102,11 +102,11 @@ tap_tab() {
   tap_xy "$tx" "$ty"
 }
 
-# SERVER_A = Naive/Dev, SERVER_B = Hysteria2/Free
+# SERVER_A = ShadowTLS/Dev, SERVER_B = Hysteria2/Free
 server_protocol() {
   case "$1" in
     FI-FREE-89) echo "HYSTERIA2" ;;
-    *) echo "NAIVE" ;;
+    *) echo "SHADOWTLS" ;;
   esac
 }
 

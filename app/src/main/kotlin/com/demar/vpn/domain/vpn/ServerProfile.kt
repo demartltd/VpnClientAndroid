@@ -17,7 +17,7 @@ enum class ServerTier(val label: String) {
 }
 
 enum class ServerProtocol {
-  Naive,
+  ShadowTls,
   Hysteria2,
 }
 
@@ -31,19 +31,19 @@ data class ServerProfile(
 ) {
   val connectPlan: SingBoxConnectPlan
     get() = when (val k = kind) {
-      is ServerProfileKind.Naive -> SingBoxConnectPlan.naive(k.profile)
+      is ServerProfileKind.ShadowTls -> SingBoxConnectPlan.shadowTls(k.profile)
       is ServerProfileKind.Hysteria2 -> SingBoxConnectPlan.hysteria2(k.profile)
     }
 
   val protocol: ServerProtocol
     get() = when (kind) {
-      is ServerProfileKind.Naive -> ServerProtocol.Naive
+      is ServerProfileKind.ShadowTls -> ServerProtocol.ShadowTls
       is ServerProfileKind.Hysteria2 -> ServerProtocol.Hysteria2
     }
 
   val protocolLabel: String
     get() = when (protocol) {
-      ServerProtocol.Naive -> "Naive"
+      ServerProtocol.ShadowTls -> "ShadowTLS"
       ServerProtocol.Hysteria2 -> "Hysteria2"
     }
 
@@ -69,28 +69,28 @@ data class ServerProfile(
 
   val uplinkPort: Int?
     get() = when (val k = kind) {
-      is ServerProfileKind.Naive -> k.profile.port
+      is ServerProfileKind.ShadowTls -> k.profile.port
       is ServerProfileKind.Hysteria2 -> k.profile.port
     }
 
   companion object {
-    fun naive(
-      profile: NaiveProfile,
+    fun shadowTls(
+      profile: ShadowTlsProfile,
       countryCode: String? = null,
       countryName: String? = null,
       city: String? = null,
     ) = ServerProfile(
-      id = "naive:${profile.displayName}",
+      id = "shadowtls:${profile.displayName}",
       displayName = profile.displayName,
       countryCode = countryCode,
       countryName = countryName,
       city = city,
-      kind = ServerProfileKind.Naive(profile),
+      kind = ServerProfileKind.ShadowTls(profile),
     )
 
-    fun naiveFromTag(profile: NaiveProfile, city: String? = null): ServerProfile {
+    fun shadowTlsFromTag(profile: ShadowTlsProfile, city: String? = null): ServerProfile {
       val countryCode = countryCodeFromTag(profile.displayName)
-      return naive(profile, countryCode, countryNameFromCode(countryCode), city)
+      return shadowTls(profile, countryCode, countryNameFromCode(countryCode), city)
     }
 
     fun hysteria2(
@@ -150,6 +150,6 @@ fun List<ServerProfile>.filterServers(protocol: ServerProtocol, tier: ServerTier
     .toList()
 
 sealed class ServerProfileKind {
-  data class Naive(val profile: NaiveProfile) : ServerProfileKind()
+  data class ShadowTls(val profile: ShadowTlsProfile) : ServerProfileKind()
   data class Hysteria2(val profile: Hysteria2Profile) : ServerProfileKind()
 }

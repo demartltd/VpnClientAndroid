@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build minimal Libbox AAR for Android (Naive + Hysteria2/QUIC + gVisor TUN, arm64-only).
+"""Build minimal Libbox AAR for Android (ShadowTLS + Hysteria2/QUIC + gVisor TUN, arm64-only).
 
 Sync TAGS / MAX_AAR_BYTES with demar_vpn/scripts/libbox-build-android.py.
 """
@@ -21,7 +21,7 @@ OUT_AAR = OUT_DIR / "libbox.aar"
 ASSETS_DIR = REPO_ROOT / "app" / "src" / "main" / "assets" / "singbox"
 SINGBOX_API = "https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 MAX_AAR_BYTES = 40 * 1024 * 1024
-TAGS = "with_gvisor,with_quic,with_naive_outbound,with_clash_api,badlinkname,tfogo_checklinkname0"
+TAGS = "with_gvisor,with_quic,with_clash_api,badlinkname,tfogo_checklinkname0"
 
 
 def latest_tag() -> str:
