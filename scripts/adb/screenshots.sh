@@ -194,7 +194,7 @@ mock_login() {
   sleep_ms 1000
   tap_query "$(ui_query label Email)" || tap_xy 540 1100
   sleep_ms 400
-  "${ADB[@]}" shell input text 'demodemar.test' >/dev/null
+  "${ADB[@]}" shell input text 'demo@demar.test' >/dev/null
   sleep_ms 400
   tap_query "$(ui_query label Продолжить)" || return 1
   sleep_ms 1000

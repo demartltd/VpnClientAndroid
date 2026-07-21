@@ -40,9 +40,11 @@
     <string name="login_continue">Продолжить</string>
     <string name="login_sending">Отправка…</string>
     <string name="login_more_methods">More Login Methods</string>
-    <string name="login_otp_sent">Отправлено на %1$s</string>
+    <string name="login_otp_sent">Отправлено на</string>
     <string name="login_resend">Отправить код снова</string>
     <string name="login_totp">Код из аутентификатора</string>
+    <string name="login_error_invalid_code">Неверный код</string>
+    <string name="login_error_invalid_email">Неправильный email</string>
     <string name="soon">Скоро</string>
     <string name="server_selected">Сервер выбран</string>
     <string name="server_status_online">Сервер доступен</string>

@@ -33,20 +33,28 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun OtpInput(
-  onComplete: () -> Unit,
+  onComplete: (String) -> Unit,
   modifier: Modifier = Modifier,
   length: Int = 6,
+  onCodeChange: (String) -> Unit = {},
+  clearNonce: Int = 0,
 ) {
   var code by rememberSaveable { mutableStateOf("") }
   val focusRequester = remember { FocusRequester() }
 
   LaunchedEffect(Unit) { focusRequester.requestFocus() }
+  LaunchedEffect(clearNonce) {
+    if (clearNonce == 0) return@LaunchedEffect
+    code = ""
+    focusRequester.requestFocus()
+  }
 
   BasicTextField(
     value = code,
     onValueChange = {
       code = it.filter(Char::isDigit).take(length)
-      if (code.length == length) onComplete()
+      onCodeChange(code)
+      if (code.length == length) onComplete(code)
     },
     modifier = modifier.fillMaxWidth().focusRequester(focusRequester),
     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
