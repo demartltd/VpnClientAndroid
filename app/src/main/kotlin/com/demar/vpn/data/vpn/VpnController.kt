@@ -4,10 +4,13 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import androidx.core.content.ContextCompat
-import com.demar.vpn.core.servers.testServers
+import com.demar.vpn.data.auth.AuthException
+import com.demar.vpn.data.auth.AuthRepository
+import com.demar.vpn.data.auth.AuthSessionStore
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.network.UplinkProbe
+import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
@@ -46,12 +49,19 @@ class VpnController(private val context: Context) {
   private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
   val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
-  private val _selectedProfile = MutableStateFlow(testServers.first())
-  val selectedProfile: StateFlow<ServerProfile> = _selectedProfile.asStateFlow()
+  private val _selectedProfile = MutableStateFlow<ServerProfile?>(null)
+  val selectedProfile: StateFlow<ServerProfile?> = _selectedProfile.asStateFlow()
 
-  val serverProfiles: List<ServerProfile> = testServers
+  private val _serverProfiles = MutableStateFlow<List<ServerProfile>>(emptyList())
+  val serverProfiles: StateFlow<List<ServerProfile>> = _serverProfiles.asStateFlow()
 
-  private val _serverReachability = MutableStateFlow(initialReachability())
+  private val _serversLoading = MutableStateFlow(false)
+  val serversLoading: StateFlow<Boolean> = _serversLoading.asStateFlow()
+
+  private val _serversError = MutableStateFlow<String?>(null)
+  val serversError: StateFlow<String?> = _serversError.asStateFlow()
+
+  private val _serverReachability = MutableStateFlow(emptyMap<String, ServerReachState>())
   val serverReachability: StateFlow<Map<String, ServerReachState>> = _serverReachability.asStateFlow()
   private var reachabilityJob: Job? = null
   private var initialReachabilityDone = false
@@ -76,9 +86,7 @@ class VpnController(private val context: Context) {
 
   init {
     VpnControlStateStore.hydrate(context)
-    VpnControlStateStore.loadLastProfileId(context)?.let { id ->
-      serverProfiles.firstOrNull { it.id == id }?.let { _selectedProfile.value = it }
-    }
+    scope.launch { refreshServers() }
     syncPlatformState()
   }
 
@@ -90,13 +98,67 @@ class VpnController(private val context: Context) {
     connectJob?.cancel()
   }
 
+  fun clearServers() {
+    _serverProfiles.value = emptyList()
+    _selectedProfile.value = null
+    _serverReachability.value = emptyMap()
+    _serversError.value = null
+    initialReachabilityDone = false
+  }
+
+  suspend fun refreshServers() {
+    val session = AuthSessionStore.current()
+    if (session == null) {
+      clearServers()
+      return
+    }
+    _serversLoading.value = true
+    _serversError.value = null
+    try {
+      val result = ServersApi.fetchServers(session.userId, session.loginAt)
+      applyServerList(result.servers)
+      AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
+    } catch (e: AuthException) {
+      if (e.statusCode == 401) {
+        AuthRepository.signOut(context)
+        clearServers()
+        AppLog.append("servers: session revoked")
+      } else {
+        _serversError.value = e.message ?: "Failed to load servers"
+        AppLog.append("servers: fetch failed — $e")
+      }
+    } catch (e: Exception) {
+      _serversError.value = e.message ?: "Failed to load servers"
+      AppLog.append("servers: fetch failed — $e")
+    } finally {
+      _serversLoading.value = false
+    }
+  }
+
+  private fun applyServerList(servers: List<ServerProfile>) {
+    _serverProfiles.value = servers
+    val lastId = VpnControlStateStore.loadLastProfileId(context)
+    val keep = servers.firstOrNull { it.id == _selectedProfile.value?.id }
+      ?: servers.firstOrNull { it.id == lastId }
+      ?: servers.firstOrNull()
+    _selectedProfile.value = keep
+    keep?.let { VpnControlStateStore.saveLastProfileId(context, it.id) }
+    initialReachabilityDone = false
+    if (servers.isNotEmpty()) {
+      scope.launch { probeAllServers() }
+      initialReachabilityDone = true
+    } else {
+      _serverReachability.value = emptyMap()
+    }
+  }
+
   fun setServersTabActive(active: Boolean) {
     if (!active) {
       reachabilityJob?.cancel()
       reachabilityJob = null
       return
     }
-    if (initialReachabilityDone) return
+    if (initialReachabilityDone || _serverProfiles.value.isEmpty()) return
     initialReachabilityDone = true
     reachabilityJob?.cancel()
     reachabilityJob = scope.launch { probeAllServers() }
@@ -107,9 +169,11 @@ class VpnController(private val context: Context) {
   }
 
   private suspend fun probeAllServers() {
+    val profiles = _serverProfiles.value
+    if (profiles.isEmpty()) return
     markServersChecking()
     coroutineScope {
-      serverProfiles.forEach { profile ->
+      profiles.forEach { profile ->
         launch {
           val state = UplinkProbe.probe(profile)
           _serverReachability.value = _serverReachability.value + (profile.id to state)
@@ -119,15 +183,12 @@ class VpnController(private val context: Context) {
   }
 
   private fun markServersChecking() {
-    val checking = serverProfiles.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
+    val checking = _serverProfiles.value.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
     _serverReachability.value = _serverReachability.value + checking
   }
 
-  private fun initialReachability(): Map<String, ServerReachState> =
-    serverProfiles.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
-
   fun selectProfile(profile: ServerProfile) {
-    if (profile.id == _selectedProfile.value.id) return
+    if (profile.id == _selectedProfile.value?.id) return
     _selectedProfile.value = profile
     VpnControlStateStore.saveLastProfileId(context, profile.id)
     when (_state.value) {
@@ -227,6 +288,7 @@ class VpnController(private val context: Context) {
   }
 
   private fun startConnect() {
+    val profile = _selectedProfile.value ?: return
     connectJob?.cancel()
     val generation = connectGeneration.incrementAndGet()
     activeConnectGeneration = generation
@@ -239,7 +301,6 @@ class VpnController(private val context: Context) {
       awaitPostStopSettle()
       if (generation != connectGeneration.get()) return@launch
 
-      val profile = _selectedProfile.value
       AppLog.append("[app] new connect session profile=${profile.id}")
 
       var plan = profile.connectPlan

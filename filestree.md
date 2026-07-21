@@ -9,20 +9,20 @@ app/src/main/kotlin/com/demar/vpn/
 ├── MainActivity.kt              # VPN permission + VpnController
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
-├── core/servers/TestServer.kt
 ├── domain/
 │   ├── vpn/                     # ShadowTlsProfile, Hysteria2Profile, SingBoxConnectPlan, …
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
+│   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
+│   ├── servers/                 # ServersApi (POST /auth/mobile/servers → profiles)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   └── device/
 ├── ui/
 │   ├── AppRoot.kt
 │   ├── SingBoxVersion.kt
-│   ├── mock/UiMocks.kt
 │   ├── theme/
 │   ├── scaffold/AppScaffold.kt
 │   ├── components/
@@ -30,7 +30,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── servers/ServersScreen.kt  # Protocol + tier chips above list
 │   ├── settings/                # Documents sheet + DocumentScreen (ToS/PP)
 │   ├── account/
-│   └── auth/
+│   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput
 └── vpn/                         # Libbox (из demar_vpn)
 ```
 
@@ -49,6 +49,8 @@ scripts/
 │   ├── ui_parse.py
 │   ├── debug.sh
 │   ├── journal.sh
+│   ├── auth_login_test.sh
+│   ├── servers_fetch_test.sh
 │   ├── vpn_cycle_test.sh
 │   ├── server_switch_test.sh
 │   └── test_all_devices.sh

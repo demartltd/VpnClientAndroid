@@ -1,6 +1,5 @@
 package com.demar.vpn
 
-import com.demar.vpn.core.servers.testServers
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -21,9 +20,35 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VpnPipelineTest {
+  private val fixtureServers = listOf(
+    ServerProfile.shadowTlsFromTag(
+      ShadowTlsProfile(
+        displayName = "FI-DEV-99",
+        server = "fi-f-2.example.test",
+        port = 8443,
+        password = "st-password",
+        tlsServerName = "www.microsoft.com",
+        ssMethod = "2022-blake3-aes-128-gcm",
+        ssPassword = "qgt6dEYUp+5a7oaBuXoXpA==",
+      ),
+      city = "Helsinki",
+    ),
+    ServerProfile.hysteria2FromTag(
+      Hysteria2Profile(
+        displayName = "FI-FREE-89",
+        server = "fi-f-1.example.test",
+        port = 8443,
+        password = "hy2-password",
+        tlsServerName = "fi-f-1.example.test",
+        alpn = listOf("h3"),
+      ),
+      city = "Helsinki",
+    ),
+  )
+
   @Test
   fun testServer_profileToTunConfig() {
-    for (server in testServers) {
+    for (server in fixtureServers) {
       val plan = server.connectPlan
       val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val cfg = JSONObject(json)
@@ -178,7 +203,7 @@ class VpnPipelineTest {
 
   @Test
   fun withResolvedUplink_patchesShadowTlsServer_keepsTlsServerName() {
-    val plan = testServers[0].connectPlan.withResolvedUplink("93.184.216.34")
+    val plan = fixtureServers[0].connectPlan.withResolvedUplink("93.184.216.34")
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
     val outbounds = JSONObject(json).getJSONArray("outbounds")
     val st = (0 until outbounds.length()).map { outbounds.getJSONObject(it) }
@@ -237,14 +262,14 @@ class VpnPipelineTest {
 
   @Test
   fun byTier_sortsByDisplayName() {
-    val free = testServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
+    val free = fixtureServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
     assertEquals(listOf("FI-FREE-89"), free)
   }
 
   @Test
   fun visibleTiers_includesDevOnlyWhenPresent() {
-    assertTrue(testServers.visibleTiers().contains(ServerTier.Dev))
-    val noDev = testServers.filter { it.tier != ServerTier.Dev }
+    assertTrue(fixtureServers.visibleTiers().contains(ServerTier.Dev))
+    val noDev = fixtureServers.filter { it.tier != ServerTier.Dev }
     assertFalse(noDev.visibleTiers().contains(ServerTier.Dev))
     assertEquals(
       listOf(ServerTier.Free, ServerTier.Plus, ServerTier.Vip),
@@ -254,9 +279,9 @@ class VpnPipelineTest {
 
   @Test
   fun filterServers_protocolAndTier() {
-    val stAll = testServers.filterServers(ServerProtocol.ShadowTls, null)
+    val stAll = fixtureServers.filterServers(ServerProtocol.ShadowTls, null)
     assertEquals(listOf("FI-DEV-99"), stAll.map { it.displayName })
-    val hy2Free = testServers.filterServers(ServerProtocol.Hysteria2, ServerTier.Free)
+    val hy2Free = fixtureServers.filterServers(ServerProtocol.Hysteria2, ServerTier.Free)
     assertEquals(listOf("FI-FREE-89"), hy2Free.map { it.displayName })
     assertTrue(hy2Free.single().listSubtitle == "Helsinki #89")
   }

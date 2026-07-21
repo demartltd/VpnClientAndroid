@@ -109,6 +109,7 @@ dependencies {
     implementation(libs.material.kolor)
     implementation(libs.markdown.renderer)
     implementation(libs.markdown.renderer.m3)
+    implementation(libs.androidx.browser)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
 }

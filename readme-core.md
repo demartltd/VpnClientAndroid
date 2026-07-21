@@ -27,7 +27,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 1. Profile struct (`FooProfile`) в `domain/vpn/`
 2. `SingBoxConnectPlan.foo(profile)` — outbound + tun overrides (+ `dialOutbounds` при цепочке)
 3. `ServerProfileKind.foo` + switch в `connectPlan`
-4. Test server seed
+4. Test / API seed (не hardcode в runtime)
 5. При новом outbound — обновить `TAGS` в `scripts/libbox-build-android.py` (если нужен build tag)
 
 ---

@@ -31,6 +31,19 @@ fun openSocialLink(context: android.content.Context, url: String) {
   }
 }
 
+/** OAuth / login URLs — Custom Tabs so demar:// return lands back in the app task. */
+fun openAuthUrl(context: android.content.Context, url: String) {
+  try {
+    androidx.browser.customtabs.CustomTabsIntent.Builder()
+      .setShowTitle(true)
+      .build()
+      .launchUrl(context, url.toUri())
+  } catch (e: Exception) {
+    AppLog.append("auth tab failed, fallback VIEW: $e")
+    openSocialLink(context, url)
+  }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsLinksStrip(modifier: Modifier = Modifier) {

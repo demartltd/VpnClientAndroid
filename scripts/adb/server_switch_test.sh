@@ -12,8 +12,8 @@ ACTIVITY="${PACKAGE}/.MainActivity"
 REMOTE_UI="/sdcard/demar_ui.xml"
 REMOTE_JOURNAL="/sdcard/Android/data/${PACKAGE}/files/demar/demar_app.log"
 
-SERVER_A="FI-DEV-99"
-SERVER_B="FI-FREE-89"
+SERVER_A=""
+SERVER_B=""
 
 CYCLES=10
 CONNECT_TIMEOUT=60
@@ -22,6 +22,9 @@ POLL_MS=200
 usage() {
   cat <<'EOF'
 Usage: server_switch_test.sh [-n cycles] [-s serial] [-h]
+
+  Discovers two servers from the Servers tab UI (requires signed-in session
+  with at least two API-provisioned servers), then hot-switches between them.
 
   -n  Number of server hot-switch cycles (default: 10)
   -s  ADB device serial (default: ANDROID_SERIAL or sole connected device)
@@ -102,10 +105,14 @@ tap_tab() {
   tap_xy "$tx" "$ty"
 }
 
-# SERVER_A = ShadowTLS/Dev, SERVER_B = Hysteria2/Free
+# Infer protocol chip from name mid-segment; default ShadowTLS.
 server_protocol() {
   case "$1" in
-    FI-FREE-89) echo "HYSTERIA2" ;;
+    *-FREE-*|*-PLUS-*|*-VIP-*|*-DEV-*)
+      # Prefer HYSTERIA2 chip only when name suggests free hy2 seed; otherwise ShadowTLS.
+      # App may list either protocol under any tier — try ShadowTLS first in tap_server.
+      echo "SHADOWTLS"
+      ;;
     *) echo "SHADOWTLS" ;;
   esac
 }
@@ -132,6 +139,34 @@ tap_label() {
   tap_xy "$lx" "$ly"
 }
 
+discover_servers() {
+  echo "→ discover servers from UI"
+  tap_tab 1
+  sleep_ms 800
+  # All tier to maximize visible rows
+  tap_label "server_tier_ALL" 2>/dev/null || true
+  sleep_ms 200
+  local names
+  names="$(ui_query server_names)"
+  if [[ -z "$names" ]]; then
+    # try both protocols
+    tap_label "server_protocol_HYSTERIA2" 2>/dev/null || true
+    sleep_ms 200
+    names="$(ui_query server_names)"
+  fi
+  # shellcheck disable=SC2206
+  local arr=($names)
+  if [[ "${#arr[@]}" -lt 2 ]]; then
+    echo "Error: need ≥2 servers in UI (signed in + API list). Got: '${names:-none}'" >&2
+    exit 1
+  fi
+  SERVER_A="${arr[0]}"
+  SERVER_B="${arr[1]}"
+  echo "→ SERVER_A=$SERVER_A  SERVER_B=$SERVER_B"
+  tap_tab 0
+  sleep_ms 300
+}
+
 tap_server() {
   local name="$1"
   local proto tier pos
@@ -139,9 +174,24 @@ tap_server() {
   tier="$(server_tier "$name")"
   tap_label "server_protocol_${proto}"
   sleep_ms 200
+  # also try the other protocol if not found
   tap_label "server_tier_${tier}"
   sleep_ms 200
   pos="$(ui_query server "$name")"
+  if [[ -z "$pos" ]]; then
+    tap_label "server_protocol_HYSTERIA2"
+    sleep_ms 200
+    tap_label "server_tier_${tier}"
+    sleep_ms 200
+    pos="$(ui_query server "$name")"
+  fi
+  if [[ -z "$pos" ]]; then
+    tap_label "server_protocol_SHADOWTLS"
+    sleep_ms 200
+    tap_label "server_tier_ALL"
+    sleep_ms 200
+    pos="$(ui_query server "$name")"
+  fi
   if [[ -z "$pos" ]]; then
     echo "Error: server '$name' not found." >&2
     exit 1
@@ -207,6 +257,7 @@ echo "Cycles: $CYCLES"
 echo ""
 
 ensure_connected
+discover_servers
 
 use_a=true
 for ((i = 1; i <= CYCLES; i++)); do

@@ -79,8 +79,9 @@ data class ServerProfile(
       countryCode: String? = null,
       countryName: String? = null,
       city: String? = null,
+      id: String? = null,
     ) = ServerProfile(
-      id = "shadowtls:${profile.displayName}",
+      id = id ?: "shadowtls:${profile.displayName}",
       displayName = profile.displayName,
       countryCode = countryCode,
       countryName = countryName,
@@ -88,9 +89,13 @@ data class ServerProfile(
       kind = ServerProfileKind.ShadowTls(profile),
     )
 
-    fun shadowTlsFromTag(profile: ShadowTlsProfile, city: String? = null): ServerProfile {
+    fun shadowTlsFromTag(
+      profile: ShadowTlsProfile,
+      city: String? = null,
+      id: String? = null,
+    ): ServerProfile {
       val countryCode = countryCodeFromTag(profile.displayName)
-      return shadowTls(profile, countryCode, countryNameFromCode(countryCode), city)
+      return shadowTls(profile, countryCode, countryNameFromCode(countryCode), city, id)
     }
 
     fun hysteria2(
@@ -98,8 +103,9 @@ data class ServerProfile(
       countryCode: String? = null,
       countryName: String? = null,
       city: String? = null,
+      id: String? = null,
     ) = ServerProfile(
-      id = "hysteria2:${profile.displayName}",
+      id = id ?: "hysteria2:${profile.displayName}",
       displayName = profile.displayName,
       countryCode = countryCode,
       countryName = countryName,
@@ -107,9 +113,13 @@ data class ServerProfile(
       kind = ServerProfileKind.Hysteria2(profile),
     )
 
-    fun hysteria2FromTag(profile: Hysteria2Profile, city: String? = null): ServerProfile {
+    fun hysteria2FromTag(
+      profile: Hysteria2Profile,
+      city: String? = null,
+      id: String? = null,
+    ): ServerProfile {
       val countryCode = countryCodeFromTag(profile.displayName)
-      return hysteria2(profile, countryCode, countryNameFromCode(countryCode), city)
+      return hysteria2(profile, countryCode, countryNameFromCode(countryCode), city, id)
     }
 
     fun countryCodeFromTag(tag: String): String? {

@@ -179,9 +179,31 @@ def cmd_server(nodes: list[ET.Element], name: str) -> None:
     print("")
 
 
+def cmd_server_names(nodes: list[ET.Element]) -> None:
+    """Print content-desc of rows that look like CC-TIER-N tags (from server_list)."""
+    names: list[str] = []
+    for node in nodes:
+        desc = (node.attrib.get("content-desc") or "").strip()
+        if not desc or desc == "server_list":
+            continue
+        if re.match(r"^[A-Z]{2}-[A-Z]+-\d+$", desc):
+            names.append(desc)
+    # unique preserve order
+    seen: set[str] = set()
+    out: list[str] = []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+    print(" ".join(out))
+
+
 def main() -> None:
     if len(sys.argv) < 2:
-        print("usage: ui_parse.py <connected|permission|toggle|tab|server|label> [arg]", file=sys.stderr)
+        print(
+            "usage: ui_parse.py <connected|permission|toggle|tab|server|server_names|label> [arg]",
+            file=sys.stderr,
+        )
         sys.exit(2)
     cmd = sys.argv[1]
     xml = sys.stdin.read()
@@ -207,6 +229,8 @@ def main() -> None:
             print("", file=sys.stderr)
             sys.exit(2)
         cmd_server(nodes, sys.argv[2])
+    elif cmd == "server_names":
+        cmd_server_names(nodes)
     elif cmd == "label":
         if len(sys.argv) < 3:
             print("", file=sys.stderr)
