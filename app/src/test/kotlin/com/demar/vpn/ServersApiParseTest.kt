@@ -9,7 +9,7 @@ import org.junit.Test
 
 class ServersApiParseTest {
   @Test
-  fun parseShadowTls_returnsNull() {
+  fun parseUnsupportedProtocol_returnsNull() {
     val config = """
       {
         "outbounds": [

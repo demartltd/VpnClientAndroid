@@ -9,14 +9,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ANDROID_ASSETS_DIR = REPO_ROOT / "app" / "src" / "main" / "assets" / "singbox"
 LIBBOX_AAR = REPO_ROOT / "app" / "libs" / "libbox.aar"
-
-_ARTIFACTS: tuple[str, ...] = ("bundled_version.txt",)
+_GEO = ("geoip.db", "geosite.db")
 
 
 def _artifact_paths() -> list[Path]:
-    paths = [LIBBOX_AAR]
-    for name in _ARTIFACTS:
-        paths.append(ANDROID_ASSETS_DIR / name)
+    paths = [LIBBOX_AAR, ANDROID_ASSETS_DIR / "bundled_version.txt"]
+    paths.extend(ANDROID_ASSETS_DIR / name for name in _GEO)
     return paths
 
 

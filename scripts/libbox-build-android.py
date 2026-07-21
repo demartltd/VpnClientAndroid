@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Build minimal Libbox AAR for Android (Hysteria2/QUIC + gVisor TUN, arm64-only).
-
-Sync TAGS / MAX_AAR_BYTES with demar_vpn/scripts/libbox-build-android.py.
-"""
+"""Build minimal Libbox AAR for Android (Hysteria2/QUIC + gVisor TUN, arm64-only)."""
 
 from __future__ import annotations
 
