@@ -1,5 +1,6 @@
 package com.demar.vpn.ui.auth
 
+import android.util.Patterns
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,32 +31,84 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
 import com.demar.vpn.ui.components.IconLinkChip
+import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.openSocialLink
 
 private enum class LoginStep { Email, Verify, Totp }
+
+private const val MockInvalidOtp = "000000"
+
+private fun String.isValidEmail(): Boolean =
+  isNotBlank() && Patterns.EMAIL_ADDRESS.matcher(this).matches()
 
 @Composable
 fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
   var step by rememberSaveable { mutableStateOf(LoginStep.Email) }
   var email by rememberSaveable { mutableStateOf("") }
+  var error by rememberSaveable { mutableStateOf<String?>(null) }
+  var otpClearNonce by rememberSaveable { mutableStateOf(0) }
   val context = LocalContext.current
+  val invalidEmail = stringResource(R.string.login_error_invalid_email)
+  val invalidCode = stringResource(R.string.login_error_invalid_code)
 
-  Column(modifier.fillMaxWidth()) {
+  val title = when (step) {
+    LoginStep.Email -> stringResource(R.string.login_sheet_title)
+    LoginStep.Verify -> stringResource(R.string.login_otp_sent)
+    LoginStep.Totp -> stringResource(R.string.login_totp)
+  }
+
+  Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+    StaticSheetDragHandle()
+    Text(
+      title,
+      modifier = Modifier.fillMaxWidth(),
+      textAlign = TextAlign.Center,
+      style = MaterialTheme.typography.titleLarge,
+    )
+    if (step == LoginStep.Verify) {
+      Spacer(Modifier.height(8.dp))
+      Text(
+        email,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    Spacer(Modifier.height(16.dp))
     AnimatedContent(step, label = "login_step") { s ->
       when (s) {
         LoginStep.Email -> EmailStep(
           email = email,
-          onEmailChange = { email = it },
-          onSubmit = { step = LoginStep.Verify },
+          error = error,
+          onEmailChange = {
+            email = it
+            error = null
+          },
+          onSubmit = {
+            if (!email.isValidEmail()) {
+              error = invalidEmail
+            } else {
+              error = null
+              step = LoginStep.Verify
+            }
+          },
         )
-        LoginStep.Verify -> OtpStep(
-          title = stringResource(R.string.login_otp_sent, email),
-          onComplete = { step = LoginStep.Totp },
-          onResend = {},
-        )
-        LoginStep.Totp -> OtpStep(
-          title = stringResource(R.string.login_totp),
-          onComplete = onSuccess,
+        LoginStep.Verify, LoginStep.Totp -> OtpStep(
+          stepKey = s,
+          error = error,
+          clearNonce = otpClearNonce,
+          onCodeChange = { error = null },
+          onComplete = { code ->
+            if (code == MockInvalidOtp) {
+              error = invalidCode
+              otpClearNonce++
+            } else {
+              error = null
+              if (s == LoginStep.Verify) step = LoginStep.Totp else onSuccess()
+            }
+          },
+          onResend = if (s == LoginStep.Verify) ({}) else null,
         )
       }
     }
@@ -78,7 +131,12 @@ fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EmailStep(email: String, onEmailChange: (String) -> Unit, onSubmit: () -> Unit) {
+private fun EmailStep(
+  email: String,
+  error: String?,
+  onEmailChange: (String) -> Unit,
+  onSubmit: () -> Unit,
+) {
   Column {
     OutlinedTextField(
       value = email,
@@ -87,8 +145,20 @@ private fun EmailStep(email: String, onEmailChange: (String) -> Unit, onSubmit: 
       placeholder = { Text(stringResource(R.string.login_email_hint)) },
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
       singleLine = true,
+      isError = error != null,
+      supportingText = {
+        // Reserve one line so layout/padding stay stable with or without error.
+        Text(
+          error.orEmpty(),
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = TextAlign.Center,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.error,
+          minLines = 1,
+        )
+      },
     )
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(4.dp))
     Button(onClick = onSubmit, modifier = Modifier.fillMaxWidth()) {
       Text(stringResource(R.string.login_continue))
     }
@@ -97,16 +167,32 @@ private fun EmailStep(email: String, onEmailChange: (String) -> Unit, onSubmit: 
 
 @Composable
 private fun OtpStep(
-  title: String,
-  onComplete: () -> Unit,
+  stepKey: LoginStep,
+  error: String?,
+  clearNonce: Int,
+  onCodeChange: (String) -> Unit,
+  onComplete: (String) -> Unit,
   onResend: (() -> Unit)? = null,
 ) {
   Column {
-    Text(title, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
-    Spacer(Modifier.height(16.dp))
-    key(title) { OtpInput(onComplete = onComplete) }
+    key(stepKey) {
+      OtpInput(
+        onComplete = onComplete,
+        onCodeChange = onCodeChange,
+        clearNonce = clearNonce,
+      )
+    }
+    Text(
+      error.orEmpty(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 8.dp),
+      textAlign = TextAlign.Center,
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.error,
+      minLines = 1,
+    )
     if (onResend != null) {
-      Spacer(Modifier.height(16.dp))
       TextButton(onClick = onResend, modifier = Modifier.align(Alignment.CenterHorizontally)) {
         Text(stringResource(R.string.login_resend))
       }
