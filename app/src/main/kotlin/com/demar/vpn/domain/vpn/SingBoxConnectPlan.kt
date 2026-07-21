@@ -11,7 +11,6 @@ data class SingBoxConnectPlan(
   val proxyOutbound: Map<String, Any?>,
   val directIPs: List<String>,
   val tun: SingBoxTunOptions,
-  val dialOutbounds: List<Map<String, Any?>> = emptyList(),
 ) {
   fun withExtraDirectIps(ips: List<String>): SingBoxConnectPlan {
     if (ips.isEmpty()) return this
@@ -21,49 +20,10 @@ data class SingBoxConnectPlan(
   fun withResolvedUplink(ip: String): SingBoxConnectPlan {
     val trimmed = ip.trim()
     if (trimmed.isEmpty()) return this
-    val dialIdx = dialOutbounds.indexOfFirst { it["type"] == "shadowtls" || it.containsKey("server") }
-    if (dialIdx >= 0) {
-      val updated = dialOutbounds.toMutableList()
-      updated[dialIdx] = updated[dialIdx] + ("server" to trimmed)
-      return copy(dialOutbounds = updated)
-    }
     return copy(proxyOutbound = proxyOutbound + ("server" to trimmed))
   }
 
   companion object {
-    fun shadowTls(profile: ShadowTlsProfile): SingBoxConnectPlan {
-      val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
-      return SingBoxConnectPlan(
-        uplinkHost = profile.server,
-        proxyOutbound = mapOf(
-          "type" to "shadowsocks",
-          "tag" to SingBoxTags.PROXY,
-          "method" to profile.ssMethod,
-          "password" to profile.ssPassword,
-          "detour" to SingBoxTags.SHADOWTLS,
-          "multiplex" to mapOf("enabled" to true),
-        ),
-        dialOutbounds = listOf(
-          mapOf(
-            "type" to "shadowtls",
-            "tag" to SingBoxTags.SHADOWTLS,
-            "server" to profile.server,
-            "server_port" to profile.port,
-            "version" to profile.version,
-            "password" to profile.password,
-            "tls" to mapOf("enabled" to true, "server_name" to profile.tlsServerName),
-            "domain_resolver" to DOMAIN_RESOLVER,
-          ),
-        ),
-        directIPs = directIPs(profile.server),
-        tun = SingBoxTunOptions(
-          dnsFinal = SingBoxTags.DNS_REMOTE,
-          bootstrapDomains = bootstrap,
-          strictRoute = true,
-        ),
-      )
-    }
-
     fun hysteria2(profile: Hysteria2Profile): SingBoxConnectPlan {
       val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
       val tls = buildMap {

@@ -5,7 +5,6 @@ import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProfile
-import com.demar.vpn.domain.vpn.ShadowTlsProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -55,53 +54,9 @@ object ServersApi {
     val configRaw = item.optString("clientConfigJson").takeIf { it.isNotBlank() } ?: return null
     val config = runCatching { JSONObject(configRaw) }.getOrNull() ?: return null
     return when (protocol) {
-      "shadowtls" -> parseShadowTls(id, name, city, config)
       "hysteria2" -> parseHysteria2(id, name, city, config)
       else -> null
     }
-  }
-
-  private fun parseShadowTls(
-    id: String,
-    name: String,
-    city: String?,
-    config: JSONObject,
-  ): ServerProfile? {
-    val outbounds = config.optJSONArray("outbounds") ?: return null
-    var ss: JSONObject? = null
-    var st: JSONObject? = null
-    for (i in 0 until outbounds.length()) {
-      val o = outbounds.optJSONObject(i) ?: continue
-      when (o.optString("type")) {
-        "shadowsocks" -> if (ss == null) ss = o
-        "shadowtls" -> if (st == null) st = o
-      }
-    }
-    ss ?: return null
-    st ?: return null
-    val server = st.optString("server").takeIf { it.isNotBlank() } ?: return null
-    val port = st.optInt("server_port", 0).takeIf { it > 0 } ?: return null
-    val password = st.optString("password").takeIf { it.isNotBlank() } ?: return null
-    val tlsName = st.optJSONObject("tls")?.optString("server_name")?.takeIf { it.isNotBlank() }
-      ?: return null
-    val ssMethod = ss.optString("method").takeIf { it.isNotBlank() } ?: return null
-    val ssPassword = ss.optString("password").takeIf { it.isNotBlank() } ?: return null
-    val version = st.optInt("version", 3).takeIf { it > 0 } ?: 3
-    val outboundCity = ss.optString("city").takeIf { it.isNotBlank() } ?: city
-    return ServerProfile.shadowTlsFromTag(
-      ShadowTlsProfile(
-        displayName = name,
-        server = server,
-        port = port,
-        password = password,
-        tlsServerName = tlsName,
-        ssMethod = ssMethod,
-        ssPassword = ssPassword,
-        version = version,
-      ),
-      city = outboundCity,
-      id = id,
-    )
   }
 
   private fun parseHysteria2(

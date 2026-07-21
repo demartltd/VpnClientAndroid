@@ -1,14 +1,16 @@
 package com.demar.vpn.ui.servers
 
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,8 +46,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -73,10 +78,8 @@ import java.util.Locale
 private const val REFRESH_STUB_MIN_MS = 1_500L
 private val RefreshPullDistance = 56.dp
 private val ServerRowShape = RoundedCornerShape(12.dp)
-private val ChipShape = RoundedCornerShape(8.dp)
-private val ProtocolBarShape = RoundedCornerShape(10.dp)
-private val ProtocolBarHeight = 48.dp
-private val TierBarHeight = 40.dp
+private val SegmentBarShape = RoundedCornerShape(10.dp)
+private val SegmentBarHeight = 48.dp
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -99,7 +102,7 @@ fun ServersScreen(
     val pullState = rememberPullToRefreshState()
     var refreshing by remember { mutableStateOf(false) }
     var protocol by remember(selected?.id) {
-      mutableStateOf(selected?.protocol ?: ServerProtocol.ShadowTls)
+      mutableStateOf(selected?.protocol ?: ServerProtocol.Hysteria2)
     }
     var tierFilter by remember { mutableStateOf<ServerTier?>(null) }
     val tierChips = remember(profiles) { profiles.visibleTiers() }
@@ -139,11 +142,35 @@ fun ServersScreen(
         .padding(top = 12.dp)
         .padding(bottom = toolbarBottomInset(24.dp)),
     ) {
-      ProtocolBar(selected = protocol, onSelect = { protocol = it })
-      TierBar(
-        tiers = tierChips,
-        selected = tierFilter,
-        onSelect = { tierFilter = it },
+      SegmentBar(
+        options = ServerProtocol.entries.map {
+          SegmentOption(it.name.uppercase(Locale.ROOT), it.label, "server_protocol_${it.name.uppercase(Locale.ROOT)}")
+        },
+        selectedId = protocol.name.uppercase(Locale.ROOT),
+        bold = true,
+        onSelect = { id ->
+          ServerProtocol.entries.firstOrNull { it.name.uppercase(Locale.ROOT) == id }?.let { protocol = it }
+        },
+      )
+      SegmentBar(
+        options = buildList {
+          add(SegmentOption("ALL", "All", "server_tier_ALL"))
+          tierChips.forEach { tier ->
+            add(
+              SegmentOption(
+                tier.label,
+                tier.label.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) },
+                "server_tier_${tier.label}",
+              ),
+            )
+          }
+        },
+        selectedId = tierFilter?.label ?: "ALL",
+        bold = false,
+        onSelect = { id ->
+          tierFilter = if (id == "ALL") null else ServerTier.entries.firstOrNull { it.label == id }
+        },
+        modifier = Modifier.padding(top = 12.dp),
       )
       HorizontalDivider(
         Modifier
@@ -220,6 +247,81 @@ fun ServersScreen(
   }
 }
 
+private data class SegmentOption(val id: String, val title: String, val contentDescription: String)
+
+@Composable
+private fun SegmentBar(
+  options: List<SegmentOption>,
+  selectedId: String,
+  bold: Boolean,
+  onSelect: (String) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val cs = MaterialTheme.colorScheme
+  val view = LocalView.current
+  val optionIds = remember(options) { options.map { it.id } }
+  Row(
+    modifier
+      .fillMaxWidth()
+      .padding(horizontal = 16.dp)
+      .height(SegmentBarHeight)
+      .clip(SegmentBarShape)
+      .background(cs.surfaceContainerHighest)
+      .border(1.dp, cs.outline.copy(alpha = 0.2f), SegmentBarShape)
+      .pointerInput(optionIds) {
+        // iOS SegmentBar: drag with minimumDistance 0 — pick segment under finger.
+        awaitEachGesture {
+          val down = awaitFirstDown()
+          var lastId = selectedId
+          fun pick(x: Float) {
+            val w = size.width.toFloat()
+            if (w <= 0f || optionIds.isEmpty()) return
+            val index = ((x / w) * optionIds.size).toInt().coerceIn(0, optionIds.lastIndex)
+            val id = optionIds[index]
+            if (id == lastId) return
+            lastId = id
+            onSelect(id)
+            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+          }
+          pick(down.position.x)
+          while (true) {
+            val event = awaitPointerEvent()
+            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+            if (!change.pressed) break
+            pick(change.position.x)
+            change.consume()
+          }
+        }
+      },
+  ) {
+    options.forEach { option ->
+      val isSelected = option.id == selectedId
+      Box(
+        Modifier
+          .weight(1f)
+          .fillMaxSize()
+          .background(if (isSelected) cs.primary.copy(alpha = 0.18f) else Color.Transparent)
+          .semantics {
+            contentDescription = option.contentDescription
+            onClick {
+              onSelect(option.id)
+              true
+            }
+          },
+        contentAlignment = Alignment.Center,
+      ) {
+        Text(
+          option.title,
+          style = if (bold) MaterialTheme.typography.titleSmall else MaterialTheme.typography.labelLarge,
+          fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+          color = if (isSelected) cs.onSurface else cs.onSurfaceVariant,
+          textAlign = TextAlign.Center,
+        )
+      }
+    }
+  }
+}
+
 @Composable
 private fun ServersEmptyState(
   message: String,
@@ -243,106 +345,6 @@ private fun ServersEmptyState(
       Spacer(Modifier.height(12.dp))
       TextButton(onClick = onAction) { Text(actionLabel) }
     }
-  }
-}
-
-@Composable
-private fun ProtocolBar(selected: ServerProtocol, onSelect: (ServerProtocol) -> Unit) {
-  val cs = MaterialTheme.colorScheme
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp)
-      .height(ProtocolBarHeight)
-      .clip(ProtocolBarShape)
-      .background(cs.surfaceContainerHighest)
-      .border(1.dp, cs.outline.copy(alpha = 0.2f), ProtocolBarShape),
-  ) {
-    ServerProtocol.entries.forEach { proto ->
-      val isSelected = proto == selected
-      Box(
-        Modifier
-          .weight(1f)
-          .fillMaxSize()
-          .background(if (isSelected) cs.secondaryContainer else Color.Transparent)
-          .clickable { onSelect(proto) }
-          .semantics { contentDescription = "server_protocol_${proto.name.uppercase(Locale.ROOT)}" },
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(
-          proto.name,
-          style = MaterialTheme.typography.titleSmall,
-          fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-          color = if (isSelected) cs.onSecondaryContainer else cs.onSurfaceVariant,
-          textAlign = TextAlign.Center,
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun TierBar(
-  tiers: List<ServerTier>,
-  selected: ServerTier?,
-  onSelect: (ServerTier?) -> Unit,
-) {
-  val cs = MaterialTheme.colorScheme
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp)
-      .padding(top = 12.dp)
-      .height(TierBarHeight),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    TierCell(
-      label = "All",
-      selected = selected == null,
-      onClick = { onSelect(null) },
-      contentDescription = "server_tier_ALL",
-      modifier = Modifier.weight(1f),
-      cs = cs,
-    )
-    tiers.forEach { tier ->
-      TierCell(
-        label = tier.label.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) },
-        selected = selected == tier,
-        onClick = { onSelect(tier) },
-        contentDescription = "server_tier_${tier.label}",
-        modifier = Modifier.weight(1f),
-        cs = cs,
-      )
-    }
-  }
-}
-
-@Composable
-private fun TierCell(
-  label: String,
-  selected: Boolean,
-  onClick: () -> Unit,
-  contentDescription: String,
-  modifier: Modifier = Modifier,
-  cs: ColorScheme,
-) {
-  Box(
-    modifier
-      .fillMaxHeight()
-      .clip(ChipShape)
-      .background(if (selected) cs.secondaryContainer else cs.surfaceContainerHighest)
-      .border(1.dp, cs.outline.copy(alpha = 0.2f), ChipShape)
-      .clickable(onClick = onClick)
-      .semantics { this.contentDescription = contentDescription },
-    contentAlignment = Alignment.Center,
-  ) {
-    Text(
-      label,
-      style = MaterialTheme.typography.labelLarge,
-      fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-      color = if (selected) cs.onSecondaryContainer else cs.onSurfaceVariant,
-      textAlign = TextAlign.Center,
-    )
   }
 }
 

@@ -1,28 +1,24 @@
 package com.demar.vpn
 
 import com.demar.vpn.data.servers.ServersApi
-import com.demar.vpn.domain.vpn.ServerProfileKind
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ServersApiParseTest {
   @Test
-  fun parseShadowTls_fromClientConfigJson() {
+  fun parseShadowTls_returnsNull() {
     val config = """
       {
         "outbounds": [
           {
             "type": "shadowsocks",
             "tag": "FI-DEV-1",
-            "city": "Helsinki",
             "method": "2022-blake3-aes-128-gcm",
             "password": "ss-pass",
-            "detour": "shadowtls-out",
-            "multiplex": { "enabled": true }
+            "detour": "shadowtls-out"
           },
           {
             "type": "shadowtls",
@@ -32,28 +28,16 @@ class ServersApiParseTest {
             "version": 3,
             "password": "st-pass",
             "tls": { "enabled": true, "server_name": "www.microsoft.com" }
-          },
-          { "type": "direct", "tag": "direct" }
-        ],
-        "route": { "final": "FI-DEV-1" }
+          }
+        ]
       }
     """.trimIndent()
     val item = JSONObject()
       .put("id", "abc123")
       .put("name", "FI-DEV-1")
       .put("protocol", "shadowtls")
-      .put("city", "Helsinki")
       .put("clientConfigJson", config)
-    val profile = ServersApi.parseServerItem(item)
-    assertNotNull(profile)
-    assertEquals("abc123", profile!!.id)
-    assertEquals("FI-DEV-1", profile.displayName)
-    assertTrue(profile.kind is ServerProfileKind.ShadowTls)
-    val st = (profile.kind as ServerProfileKind.ShadowTls).profile
-    assertEquals("fi.example.com", st.server)
-    assertEquals(8443, st.port)
-    assertEquals("st-pass", st.password)
-    assertEquals("ss-pass", st.ssPassword)
+    assertNull(ServersApi.parseServerItem(item))
   }
 
   @Test
@@ -83,7 +67,9 @@ class ServersApiParseTest {
     val profile = ServersApi.parseServerItem(item)
     assertNotNull(profile)
     assertEquals("def456", profile!!.id)
-    assertTrue(profile.kind is ServerProfileKind.Hysteria2)
+    assertEquals("hy2.example.com", profile.profile.server)
+    assertEquals(443, profile.profile.port)
+    assertEquals("hy2-pass", profile.profile.password)
   }
 
   @Test

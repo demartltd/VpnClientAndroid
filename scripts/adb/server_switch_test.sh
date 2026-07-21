@@ -105,16 +105,9 @@ tap_tab() {
   tap_xy "$tx" "$ty"
 }
 
-# Infer protocol chip from name mid-segment; default ShadowTLS.
+# Hysteria2-only protocol bar.
 server_protocol() {
-  case "$1" in
-    *-FREE-*|*-PLUS-*|*-VIP-*|*-DEV-*)
-      # Prefer HYSTERIA2 chip only when name suggests free hy2 seed; otherwise ShadowTLS.
-      # App may list either protocol under any tier — try ShadowTLS first in tap_server.
-      echo "SHADOWTLS"
-      ;;
-    *) echo "SHADOWTLS" ;;
-  esac
+  echo "HYSTERIA2"
 }
 
 server_tier() {
@@ -143,17 +136,12 @@ discover_servers() {
   echo "→ discover servers from UI"
   tap_tab 1
   sleep_ms 800
-  # All tier to maximize visible rows
+  tap_label "server_protocol_HYSTERIA2" 2>/dev/null || true
+  sleep_ms 200
   tap_label "server_tier_ALL" 2>/dev/null || true
   sleep_ms 200
   local names
   names="$(ui_query server_names)"
-  if [[ -z "$names" ]]; then
-    # try both protocols
-    tap_label "server_protocol_HYSTERIA2" 2>/dev/null || true
-    sleep_ms 200
-    names="$(ui_query server_names)"
-  fi
   # shellcheck disable=SC2206
   local arr=($names)
   if [[ "${#arr[@]}" -lt 2 ]]; then
@@ -169,25 +157,14 @@ discover_servers() {
 
 tap_server() {
   local name="$1"
-  local proto tier pos
-  proto="$(server_protocol "$name")"
+  local tier pos
   tier="$(server_tier "$name")"
-  tap_label "server_protocol_${proto}"
+  tap_label "server_protocol_HYSTERIA2"
   sleep_ms 200
-  # also try the other protocol if not found
   tap_label "server_tier_${tier}"
   sleep_ms 200
   pos="$(ui_query server "$name")"
   if [[ -z "$pos" ]]; then
-    tap_label "server_protocol_HYSTERIA2"
-    sleep_ms 200
-    tap_label "server_tier_${tier}"
-    sleep_ms 200
-    pos="$(ui_query server "$name")"
-  fi
-  if [[ -z "$pos" ]]; then
-    tap_label "server_protocol_SHADOWTLS"
-    sleep_ms 200
     tap_label "server_tier_ALL"
     sleep_ms 200
     pos="$(ui_query server "$name")"
