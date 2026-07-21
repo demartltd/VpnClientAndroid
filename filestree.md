@@ -10,7 +10,7 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── domain/
-│   ├── vpn/                     # ShadowTlsProfile, Hysteria2Profile, SingBoxConnectPlan, …
+│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, …
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController
@@ -27,7 +27,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── scaffold/AppScaffold.kt
 │   ├── components/
 │   ├── home/HomeScreen.kt
-│   ├── servers/ServersScreen.kt  # Protocol + tier chips above list
+│   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
 │   ├── settings/                # Documents sheet + DocumentScreen (ToS/PP)
 │   ├── account/
 │   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput

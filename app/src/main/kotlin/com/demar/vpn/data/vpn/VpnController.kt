@@ -16,7 +16,6 @@ import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.ServerProfile
-import com.demar.vpn.domain.vpn.ServerProfileKind
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VpnState
@@ -327,17 +326,8 @@ class VpnController(private val context: Context) {
         failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
         return@launch
       }
-      if (profile.kind !is ServerProfileKind.Hysteria2 &&
-        !UplinkProbe.tcpReachable(connectTarget, profile.uplinkPort ?: 443)
-      ) {
-        AppLog.append("[app] uplink preflight failed for $connectTarget:${profile.uplinkPort ?: 443}")
-        if (generation != connectGeneration.get()) return@launch
-        failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
-        return@launch
-      }
 
-      val dialServer = plan.dialOutbounds.firstOrNull { it["type"] == "shadowtls" }?.get("server")
-        ?: plan.proxyOutbound["server"]
+      val dialServer = plan.proxyOutbound["server"]
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan)
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort

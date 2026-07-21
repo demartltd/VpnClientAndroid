@@ -33,7 +33,7 @@
     <string name="journal_share_empty">Журнал пуст — нечего отправить.</string>
     <string name="journal_share_failed">Не удалось поделиться журналом: %s</string>
     <string name="share_app_subject">Demar VPN</string>
-    <string name="share_app_pitch">Demar VPN — клиент ShadowTLS / sing-box.\n\nПодробности в репозитории проекта.</string>
+    <string name="share_app_pitch">Demar VPN — клиент Hysteria2 / sing-box.\n\nПодробности в репозитории проекта.</string>
     <string name="service_menu_title">Service menu</string>
     <string name="login_sheet_title">Вход/Регистрация</string>
     <string name="login_email_hint">Email</string>

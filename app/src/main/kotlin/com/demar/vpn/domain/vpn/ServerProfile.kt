@@ -16,9 +16,8 @@ enum class ServerTier(val label: String) {
   }
 }
 
-enum class ServerProtocol {
-  ShadowTls,
-  Hysteria2,
+enum class ServerProtocol(val label: String) {
+  Hysteria2("Hysteria2"),
 }
 
 data class ServerProfile(
@@ -27,25 +26,13 @@ data class ServerProfile(
   val countryCode: String? = null,
   val countryName: String? = null,
   val city: String? = null,
-  val kind: ServerProfileKind,
+  val profile: Hysteria2Profile,
 ) {
-  val connectPlan: SingBoxConnectPlan
-    get() = when (val k = kind) {
-      is ServerProfileKind.ShadowTls -> SingBoxConnectPlan.shadowTls(k.profile)
-      is ServerProfileKind.Hysteria2 -> SingBoxConnectPlan.hysteria2(k.profile)
-    }
+  val connectPlan: SingBoxConnectPlan get() = SingBoxConnectPlan.hysteria2(profile)
 
-  val protocol: ServerProtocol
-    get() = when (kind) {
-      is ServerProfileKind.ShadowTls -> ServerProtocol.ShadowTls
-      is ServerProfileKind.Hysteria2 -> ServerProtocol.Hysteria2
-    }
+  val protocol: ServerProtocol get() = ServerProtocol.Hysteria2
 
-  val protocolLabel: String
-    get() = when (protocol) {
-      ServerProtocol.ShadowTls -> "ShadowTLS"
-      ServerProtocol.Hysteria2 -> "Hysteria2"
-    }
+  val protocolLabel: String get() = protocol.label
 
   val tier: ServerTier get() = ServerTier.fromTag(displayName)
 
@@ -67,37 +54,9 @@ data class ServerProfile(
       return "$c #$n"
     }
 
-  val uplinkPort: Int?
-    get() = when (val k = kind) {
-      is ServerProfileKind.ShadowTls -> k.profile.port
-      is ServerProfileKind.Hysteria2 -> k.profile.port
-    }
+  val uplinkPort: Int get() = profile.port
 
   companion object {
-    fun shadowTls(
-      profile: ShadowTlsProfile,
-      countryCode: String? = null,
-      countryName: String? = null,
-      city: String? = null,
-      id: String? = null,
-    ) = ServerProfile(
-      id = id ?: "shadowtls:${profile.displayName}",
-      displayName = profile.displayName,
-      countryCode = countryCode,
-      countryName = countryName,
-      city = city,
-      kind = ServerProfileKind.ShadowTls(profile),
-    )
-
-    fun shadowTlsFromTag(
-      profile: ShadowTlsProfile,
-      city: String? = null,
-      id: String? = null,
-    ): ServerProfile {
-      val countryCode = countryCodeFromTag(profile.displayName)
-      return shadowTls(profile, countryCode, countryNameFromCode(countryCode), city, id)
-    }
-
     fun hysteria2(
       profile: Hysteria2Profile,
       countryCode: String? = null,
@@ -110,7 +69,7 @@ data class ServerProfile(
       countryCode = countryCode,
       countryName = countryName,
       city = city,
-      kind = ServerProfileKind.Hysteria2(profile),
+      profile = profile,
     )
 
     fun hysteria2FromTag(
@@ -158,8 +117,3 @@ fun List<ServerProfile>.filterServers(protocol: ServerProtocol, tier: ServerTier
     .filter { tier == null || it.tier == tier }
     .sortedBy { it.displayName }
     .toList()
-
-sealed class ServerProfileKind {
-  data class ShadowTls(val profile: ShadowTlsProfile) : ServerProfileKind()
-  data class Hysteria2(val profile: Hysteria2Profile) : ServerProfileKind()
-}
