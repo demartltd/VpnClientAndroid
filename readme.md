@@ -32,13 +32,13 @@ pwsh scripts/build_android.ps1
 | Экран | Статус |
 |-------|--------|
 | Home (VPN toggle) | ShadowTLS connect/disconnect через `VpnController` |
-| Servers | Protocol chips + All/Dev/Free/Plus/Vip; ShadowTLS + Hy2 (`TestServer.kt`); title `Country | TIER`, subtitle `City #N` |
+| Servers | Protocol chips + All/Dev/Free/Plus/Vip; список с `auth.example.invalid` по подписке; ShadowTLS + Hy2 |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
-| Account + login sheet | UI steps без API |
+| Account + login sheet | Email OTP + Telegram OAuth → `auth.example.invalid` |
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
 | Service menu (3× tap version) | mock diagnostics |
 
-VPN connect (ShadowTLS + Hysteria2) — **реализовано**. Auth, share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+VPN connect (ShadowTLS + Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://auth.example.invalid`). Servers list по подписке — **реализовано** (`POST /auth/mobile/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 
@@ -47,10 +47,28 @@ VPN connect (ShadowTLS + Hysteria2) — **реализовано**. Auth, share,
 ```bash
 ./gradlew :app:installDebug && adb shell am start -n com.demar.vpn/.MainActivity
 ./scripts/adb/debug.sh
+./scripts/adb/auth_login_test.sh
+./scripts/adb/servers_fetch_test.sh
 ./scripts/adb/vpn_cycle_test.sh -n 5
 ./scripts/adb/server_switch_test.sh -n 10
 ./scripts/adb/test_all_devices.sh -n 5
 ```
+
+### Auth
+
+Email OTP + TOTP (если включён) и Telegram OIDC через Custom Tabs → `demar://auth/callback`. Сессия в SharedPreferences (`AuthSessionStore`); при старте — `session/check`, при отзыве — local sign-out. Новый email: confirm «Создать новый?» → `purpose: register`. API: `POST /auth/mobile/*` + `X-Demar-Client` / UA `DemarVPN/…`.
+
+Сессия переживает переустановку через **Android Auto Backup** (whitelist `demar_auth_session`; нужен системный Backup). Тест:
+
+```bash
+adb shell bmgr backupnow com.demar.vpn
+# uninstall + reinstall same package/signing
+adb shell bmgr restore com.demar.vpn
+```
+
+### Servers
+
+После входа `POST /auth/mobile/servers` → список по подписке. Неподдерживаемые протоколы (naive/trojan) пропускаются в клиенте. Без сессии — CTA войти. Pull-to-refresh обновляет список + reachability.
 
 ### Журнал (AppLog)
 

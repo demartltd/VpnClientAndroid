@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -27,11 +28,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
+import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
@@ -80,17 +84,23 @@ fun ServersScreen(
   active: Boolean,
   snackbarHost: SnackbarHostState,
   vpnController: VpnController,
+  onNeedSignIn: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
     val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
+    val profiles by vpnController.serverProfiles.collectAsStateWithLifecycle()
+    val loading by vpnController.serversLoading.collectAsStateWithLifecycle()
+    val error by vpnController.serversError.collectAsStateWithLifecycle()
+    val session by AuthRepository.session.collectAsStateWithLifecycle()
     val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
     val selectedMsg = stringResource(R.string.server_selected)
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     var refreshing by remember { mutableStateOf(false) }
-    val profiles = vpnController.serverProfiles
-    var protocol by remember(selected.id) { mutableStateOf(selected.protocol) }
+    var protocol by remember(selected?.id) {
+      mutableStateOf(selected?.protocol ?: ServerProtocol.ShadowTls)
+    }
     var tierFilter by remember { mutableStateOf<ServerTier?>(null) }
     val tierChips = remember(profiles) { profiles.visibleTiers() }
     val list = remember(profiles, protocol, tierFilter) {
@@ -102,11 +112,18 @@ fun ServersScreen(
       onDispose { vpnController.setServersTabActive(false) }
     }
 
+    LaunchedEffect(active, session?.userId) {
+      if (active && session != null && profiles.isEmpty() && !loading) {
+        vpnController.refreshServers()
+      }
+    }
+
     val onRefresh: () -> Unit = {
       scope.launch {
-        if (refreshing) return@launch
+        if (refreshing || session == null) return@launch
         refreshing = true
         val t0 = System.currentTimeMillis()
+        vpnController.refreshServers()
         vpnController.refreshServerReachability()
         val remain = REFRESH_STUB_MIN_MS - (System.currentTimeMillis() - t0)
         if (remain > 0) delay(remain)
@@ -145,25 +162,51 @@ fun ServersScreen(
             threshold = RefreshPullDistance,
           ),
       ) {
-        Column(
-          Modifier
-            .fillMaxSize()
-            .offset(y = pullOffset)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(top = 12.dp, bottom = 12.dp)
-            .semantics { contentDescription = "server_list" },
-        ) {
-          list.forEach { profile ->
-            ServerRow(
-              profile = profile,
-              selected = profile.id == selected.id,
-              reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
-              onSelect = {
-                vpnController.selectProfile(profile)
-                scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
-              },
+        when {
+          session == null -> {
+            ServersEmptyState(
+              message = stringResource(R.string.servers_sign_in_hint),
+              actionLabel = stringResource(R.string.sign_in),
+              onAction = onNeedSignIn,
             )
+          }
+          loading && profiles.isEmpty() -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+              CircularProgressIndicator()
+            }
+          }
+          error != null && profiles.isEmpty() -> {
+            ServersEmptyState(
+              message = error ?: stringResource(R.string.servers_load_failed),
+              actionLabel = stringResource(R.string.servers_retry),
+              onAction = { scope.launch { vpnController.refreshServers() } },
+            )
+          }
+          list.isEmpty() -> {
+            ServersEmptyState(message = stringResource(R.string.servers_empty))
+          }
+          else -> {
+            Column(
+              Modifier
+                .fillMaxSize()
+                .offset(y = pullOffset)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(top = 12.dp, bottom = 12.dp)
+                .semantics { contentDescription = "server_list" },
+            ) {
+              list.forEach { profile ->
+                ServerRow(
+                  profile = profile,
+                  selected = profile.id == selected?.id,
+                  reachState = reachability[profile.id] ?: ServerReachState(ServerReachStatus.Checking),
+                  onSelect = {
+                    vpnController.selectProfile(profile)
+                    scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
+                  },
+                )
+              }
+            }
           }
         }
         PullToRefreshDefaults.LoadingIndicator(
@@ -173,6 +216,32 @@ fun ServersScreen(
           maxDistance = RefreshPullDistance,
         )
       }
+    }
+  }
+}
+
+@Composable
+private fun ServersEmptyState(
+  message: String,
+  actionLabel: String? = null,
+  onAction: (() -> Unit)? = null,
+) {
+  Column(
+    Modifier
+      .fillMaxSize()
+      .padding(32.dp),
+    verticalArrangement = Arrangement.Center,
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Text(
+      message,
+      textAlign = TextAlign.Center,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+    )
+    if (actionLabel != null && onAction != null) {
+      Spacer(Modifier.height(12.dp))
+      TextButton(onClick = onAction) { Text(actionLabel) }
     }
   }
 }

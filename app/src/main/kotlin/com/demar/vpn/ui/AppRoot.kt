@@ -39,6 +39,7 @@ fun AppRoot(
   singBoxLabel: String,
   vpnController: VpnController,
   openHomeTick: Int = 0,
+  authCallbackTick: Int = 0,
 ) {
   val navController = rememberNavController()
   val snackbarHost = remember { SnackbarHostState() }
@@ -58,6 +59,7 @@ fun AppRoot(
           snackbarHost = snackbarHost,
           vpnController = vpnController,
           openHomeTick = openHomeTick,
+          authCallbackTick = authCallbackTick,
           onAppSettings = { navController.openOverlay(Routes.AppSettings) },
           onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
           onOpenDocument = { doc -> navController.openOverlay(Routes.document(doc)) },

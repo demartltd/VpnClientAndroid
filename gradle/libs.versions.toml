@@ -15,6 +15,7 @@ play-services-appset = "16.1.0"
 play-services-ads-identifier = "18.2.0"
 materialKolor = "4.1.1"
 markdownRenderer = "0.41.0"
+browser = "1.8.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core-ktx" }
@@ -36,6 +37,7 @@ play-services-ads-identifier = { group = "com.google.android.gms", name = "play-
 material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdownRenderer" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdownRenderer" }
+androidx-browser = { group = "androidx.browser", name = "browser", version.ref = "browser" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

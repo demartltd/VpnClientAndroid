@@ -42,12 +42,14 @@ fun HomeScreen(
   vpnController: VpnController,
   snackbarHost: SnackbarHostState,
   throughput: ThroughputRates,
+  onToggle: () -> Unit = { vpnController.toggle() },
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
-  val serverName = selected.listTitle.ifEmpty { stringResource(R.string.server_not_selected) }
+  val serverName = selected?.listTitle?.takeIf { it.isNotEmpty() }
+    ?: stringResource(R.string.server_not_selected)
 
   LaunchedEffect(Unit) {
     vpnController.errorEvents.collect { msg -> DemarSnackbar.showError(snackbarHost, msg) }
@@ -67,7 +69,7 @@ fun HomeScreen(
     Spacer(Modifier.weight(1f))
     VpnMainToggle(
       state = vpnState,
-      onClick = { vpnController.toggle() },
+      onClick = onToggle,
     )
     Spacer(Modifier.height(20.dp))
     Text(

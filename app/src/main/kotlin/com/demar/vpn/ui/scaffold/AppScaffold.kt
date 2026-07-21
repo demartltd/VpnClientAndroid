@@ -17,8 +17,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.network.ThroughputRates
 import com.demar.vpn.data.network.ThroughputSampler
 import com.demar.vpn.data.vpn.VpnController
@@ -42,18 +44,43 @@ fun AppScaffold(
   onServiceMenu: () -> Unit,
   onOpenDocument: (LegalDocument) -> Unit,
   openHomeTick: Int = 0,
+  authCallbackTick: Int = 0,
   modifier: Modifier = Modifier,
 ) {
   var tab by rememberSaveable { mutableIntStateOf(0) }
-  var signedIn by rememberSaveable { mutableStateOf(false) }
   var showLoginSheet by rememberSaveable { mutableStateOf(false) }
+  var loginReturnTab by rememberSaveable { mutableIntStateOf(3) }
+  val context = LocalContext.current
+  val session by AuthRepository.session.collectAsStateWithLifecycle()
+  val signedIn = session != null
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
+  val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val throughput = rememberHomeThroughput(tab, vpnState)
+
+  fun openLogin(returnTab: Int) {
+    loginReturnTab = returnTab
+    showLoginSheet = true
+  }
 
   LaunchedEffect(openHomeTick) {
     if (openHomeTick == 0) return@LaunchedEffect
     tab = 0
     showLoginSheet = false
+  }
+
+  LaunchedEffect(signedIn) {
+    if (signedIn) {
+      showLoginSheet = false
+      vpnController.refreshServers()
+    } else {
+      vpnController.clearServers()
+      if (tab == 1) tab = 0
+    }
+  }
+
+  LaunchedEffect(authCallbackTick, signedIn) {
+    if (authCallbackTick == 0) return@LaunchedEffect
+    if (signedIn) tab = loginReturnTab
   }
 
   Box(modifier.fillMaxSize()) {
@@ -64,8 +91,23 @@ fun AppScaffold(
           vpnController = vpnController,
           snackbarHost = snackbarHost,
           throughput = throughput,
+          onToggle = {
+            when {
+              vpnState is VpnState.Connected ||
+                vpnState is VpnState.Connecting ||
+                vpnState is VpnState.Disconnecting -> vpnController.toggle()
+              selected == null && !signedIn -> openLogin(1)
+              selected == null -> tab = 1
+              else -> vpnController.toggle()
+            }
+          },
         )
-        ServersScreen(active = tab == 1, snackbarHost = snackbarHost, vpnController = vpnController)
+        ServersScreen(
+          active = tab == 1,
+          snackbarHost = snackbarHost,
+          vpnController = vpnController,
+          onNeedSignIn = { openLogin(1) },
+        )
         SettingsScreen(
           active = tab == 2,
           singBoxLabel = singBoxLabel,
@@ -76,8 +118,10 @@ fun AppScaffold(
         )
         AccountScreen(
           active = tab == 3,
+          session = session,
           onSignOut = {
-            signedIn = false
+            AuthRepository.signOut(context)
+            vpnController.clearServers()
             tab = 0
           },
         )
@@ -86,8 +130,11 @@ fun AppScaffold(
     AppFloatingToolbar(
       selectedIndex = tab,
       onDestinationSelected = { index ->
-        if (index == 3 && !signedIn) showLoginSheet = true
-        else tab = index
+        when {
+          index == 1 && !signedIn -> openLogin(1)
+          index == 3 && !signedIn -> openLogin(3)
+          else -> tab = index
+        }
       },
       modifier = Modifier
         .align(Alignment.BottomCenter)
@@ -99,9 +146,8 @@ fun AppScaffold(
       LoginBottomSheet(
         onDismiss = { showLoginSheet = false },
         onSignedIn = {
-          signedIn = true
           showLoginSheet = false
-          tab = 3
+          tab = loginReturnTab
         },
       )
     }
