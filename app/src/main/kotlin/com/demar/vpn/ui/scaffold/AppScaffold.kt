@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ import com.demar.vpn.ui.servers.ServersScreen
 import com.demar.vpn.ui.settings.SettingsScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppScaffold(
@@ -51,6 +53,7 @@ fun AppScaffold(
   var showLoginSheet by rememberSaveable { mutableStateOf(false) }
   var loginReturnTab by rememberSaveable { mutableIntStateOf(3) }
   val context = LocalContext.current
+  val scope = rememberCoroutineScope()
   val session by AuthRepository.session.collectAsStateWithLifecycle()
   val signedIn = session != null
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
@@ -73,8 +76,7 @@ fun AppScaffold(
       showLoginSheet = false
       vpnController.refreshServers()
     } else {
-      vpnController.clearServers()
-      if (tab == 1) tab = 0
+      tab = 0
     }
   }
 
@@ -120,9 +122,10 @@ fun AppScaffold(
           active = tab == 3,
           session = session,
           onSignOut = {
-            AuthRepository.signOut(context)
-            vpnController.clearServers()
-            tab = 0
+            scope.launch {
+              AuthRepository.signOut(context)
+              tab = 0
+            }
           },
         )
       }

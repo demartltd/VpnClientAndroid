@@ -121,6 +121,21 @@ internal object VpnControlStateStore {
     )
   }
 
+  /** Drop Hy2 secrets + last profile after logout so QS tile cannot reconnect. */
+  fun clearSessionArtifacts(context: Context) {
+    memoryState = State.Disconnected
+    hydrated = true
+    context
+      .getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      .edit()
+      .putString(KEY_STATE, State.Disconnected.raw)
+      .remove(KEY_PROFILE_ID)
+      .remove(KEY_PAYLOAD_CONFIG_JSON)
+      .remove(KEY_PAYLOAD_UPLINK_HOST)
+      .remove(KEY_PAYLOAD_UPLINK_PORT)
+      .apply()
+  }
+
   private fun recoverStale(context: Context, stored: State): State {
     if (stored.isTerminalInactive) return stored
     if (VpnActiveProbe.isActive(context)) return stored

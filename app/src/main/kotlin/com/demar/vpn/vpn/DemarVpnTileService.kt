@@ -10,6 +10,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
 import com.demar.vpn.MainActivity
+import com.demar.vpn.data.auth.AuthRepository
 
 internal object DemarVpnTileSync {
   fun requestRefresh(context: Context) {
@@ -37,12 +38,13 @@ class DemarVpnTileService : TileService() {
       return
     }
 
+    AuthRepository.init(this)
     val payload = VpnControlStateStore.loadConnectPayload(this)
-    if (payload == null || VpnService.prepare(this) != null) {
+    if (!AuthRepository.isSignedIn() || payload == null || VpnService.prepare(this) != null) {
       VpnEventStream.emit(
         mapOf(
           "type" to "log",
-          "line" to "[ui] android quick_settings_tile: open_app (no_payload_or_vpn_permission)",
+          "line" to "[ui] android quick_settings_tile: open_app (no_session_payload_or_vpn_permission)",
         ),
       )
       openAppHome()
