@@ -32,7 +32,7 @@ pwsh scripts/build_android.ps1
 | Экран | Статус |
 |-------|--------|
 | Home (VPN toggle) | Hysteria2 connect/disconnect через `VpnController` |
-| Servers | SegmentBar: Hysteria2 + All/Dev/Free/Plus/Vip; список с `auth.example.invalid` по подписке |
+| Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `auth.example.invalid` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | Email OTP + Telegram OAuth → `auth.example.invalid` |
 | App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
