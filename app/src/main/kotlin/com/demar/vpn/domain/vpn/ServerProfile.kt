@@ -5,6 +5,7 @@ import java.util.Locale
 enum class ServerTier(val label: String) {
   Free("FREE"),
   Dev("DEV"),
+  Tester("TESTER"),
   Plus("PLUS"),
   Vip("VIP");
 
@@ -106,9 +107,11 @@ fun List<ServerProfile>.byTier(): Map<ServerTier, List<ServerProfile>> =
     filter { it.tier == tier }.sortedBy { it.displayName }
   }
 
-/** Product tiers always; Dev only when at least one Dev server exists. */
+/** Product tiers always; Dev/Tester only when at least one matching server exists. */
 fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
-  ServerTier.entries.filter { it != ServerTier.Dev || any { p -> p.tier == ServerTier.Dev } }
+  ServerTier.entries.filter { t ->
+    (t != ServerTier.Dev && t != ServerTier.Tester) || any { p -> p.tier == t }
+  }
 
 /** [tier] null = All. */
 fun List<ServerProfile>.filterServers(protocol: ServerProtocol, tier: ServerTier?): List<ServerProfile> =
