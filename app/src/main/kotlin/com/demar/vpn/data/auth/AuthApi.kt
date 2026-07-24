@@ -1,5 +1,6 @@
 package com.demar.vpn.data.auth
 
+import android.os.Build
 import com.demar.vpn.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,13 +35,28 @@ object AuthApi {
   const val CLIENT_ID = "demar-vpn"
   /** HTTPS handoff page (Chrome cannot reliably open demar:// after Telegram). */
   const val APP_OAUTH_RETURN = "$ACCOUNT_BASE_URL/auth/app/complete"
-  const val UserAgent = "DemarVPN/${BuildConfig.VERSION_NAME} (android)"
+
+  /** e.g. Pixel 7 (14) — DemarVPN (1.0.7) (Android) */
+  val UserAgent: String
+    get() {
+      val phone = sanitizeToken(Build.MODEL, allowSpace = true, fallback = "Phone")
+      val os = sanitizeToken(Build.VERSION.RELEASE, allowSpace = false, fallback = "?")
+      return "$phone ($os) — DemarVPN (${BuildConfig.VERSION_NAME}) (Android)".take(120)
+    }
 
   val telegramOAuthStartUrl: String
     get() {
       val returnTo = java.net.URLEncoder.encode(APP_OAUTH_RETURN, Charsets.UTF_8.name())
-      return "$BASE_URL/auth/oauth/telegram/start?return_to=$returnTo&client=$CLIENT_ID"
+      val ua = java.net.URLEncoder.encode(UserAgent, Charsets.UTF_8.name())
+      return "$BASE_URL/auth/oauth/telegram/start?return_to=$returnTo&client=$CLIENT_ID&ua=$ua"
     }
+
+  private fun sanitizeToken(raw: String?, allowSpace: Boolean, fallback: String): String {
+    val filtered = raw.orEmpty().filter {
+      it.isLetterOrDigit() || it == '.' || it == '_' || it == '-' || (allowSpace && it == ' ')
+    }.trim()
+    return filtered.ifBlank { fallback }
+  }
 
   private const val ConnectTimeoutMs = 15_000
   private const val ReadTimeoutMs = 20_000
