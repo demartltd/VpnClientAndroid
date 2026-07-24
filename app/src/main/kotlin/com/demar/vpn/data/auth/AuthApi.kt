@@ -36,12 +36,12 @@ object AuthApi {
   /** HTTPS handoff page (Chrome cannot reliably open demar:// after Telegram). */
   const val APP_OAUTH_RETURN = "$ACCOUNT_BASE_URL/auth/app/complete"
 
-  /** e.g. Pixel 7 (14) — DemarVPN (1.0.7) (Android) */
+  /** e.g. Pixel 7 (14) - DemarVPN (1.0.7) (Android). ASCII hyphen — HTTP headers must be ASCII. */
   val UserAgent: String
     get() {
       val phone = sanitizeToken(Build.MODEL, allowSpace = true, fallback = "Phone")
       val os = sanitizeToken(Build.VERSION.RELEASE, allowSpace = false, fallback = "?")
-      return "$phone ($os) — DemarVPN (${BuildConfig.VERSION_NAME}) (Android)".take(120)
+      return "$phone ($os) - DemarVPN (${BuildConfig.VERSION_NAME}) (Android)".take(120)
     }
 
   val telegramOAuthStartUrl: String
