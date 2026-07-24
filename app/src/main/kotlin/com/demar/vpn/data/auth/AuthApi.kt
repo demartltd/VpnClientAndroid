@@ -85,6 +85,13 @@ object AuthApi {
     return parseSession(json)
   }
 
+  suspend fun logoutSession(userId: String, loginAt: String) {
+    post(
+      "$BASE_URL/auth/mobile/session/logout",
+      JSONObject().put("userId", userId).put("loginAt", loginAt),
+    )
+  }
+
   /** After Telegram OAuth handoff: demar://auth/callback?token=… */
   suspend fun sessionFromClientToken(token: String): SessionExchange =
     withContext(Dispatchers.IO) {

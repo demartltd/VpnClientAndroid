@@ -86,6 +86,13 @@ class VpnController(private val context: Context) {
   init {
     VpnControlStateStore.hydrate(context)
     scope.launch { refreshServers() }
+    scope.launch {
+      var hadSession = AuthSessionStore.current() != null
+      AuthSessionStore.session.collect { session ->
+        if (hadSession && session == null) onSignedOut()
+        hadSession = session != null
+      }
+    }
     syncPlatformState()
   }
 
@@ -105,6 +112,13 @@ class VpnController(private val context: Context) {
     initialReachabilityDone = false
   }
 
+  /** Stop VPN and wipe connect secrets when auth session ends. */
+  fun onSignedOut() {
+    disconnect()
+    VpnControlStateStore.clearSessionArtifacts(context)
+    clearServers()
+  }
+
   suspend fun refreshServers() {
     val session = AuthSessionStore.current()
     if (session == null) {
@@ -119,8 +133,7 @@ class VpnController(private val context: Context) {
       AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
     } catch (e: AuthException) {
       if (e.statusCode == 401) {
-        AuthRepository.signOut(context)
-        clearServers()
+        AuthRepository.clearLocal(context)
         AppLog.append("servers: session revoked")
       } else {
         _serversError.value = e.message ?: "Failed to load servers"
