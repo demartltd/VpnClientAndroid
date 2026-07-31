@@ -12,7 +12,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -22,8 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.data.auth.AuthRepository
-import com.demar.vpn.data.network.ThroughputRates
-import com.demar.vpn.data.network.ThroughputSampler
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.domain.vpn.VpnState
@@ -33,8 +30,6 @@ import com.demar.vpn.ui.components.AppFloatingToolbar
 import com.demar.vpn.ui.home.HomeScreen
 import com.demar.vpn.ui.servers.ServersScreen
 import com.demar.vpn.ui.settings.SettingsScreen
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 @Composable
@@ -58,7 +53,7 @@ fun AppScaffold(
   val signedIn = session != null
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
-  val throughput = rememberHomeThroughput(tab, vpnState)
+  val throughput by vpnController.throughput.collectAsStateWithLifecycle()
 
   fun openLogin(returnTab: Int) {
     loginReturnTab = returnTab
@@ -155,33 +150,4 @@ fun AppScaffold(
       )
     }
   }
-}
-
-@Composable
-private fun rememberHomeThroughput(tab: Int, vpnState: VpnState): ThroughputRates {
-  val sampler = remember { ThroughputSampler() }
-  var rates by remember { mutableStateOf(ThroughputRates.ZERO) }
-
-  LaunchedEffect(tab, vpnState) {
-    when (vpnState) {
-      VpnState.Disconnected, VpnState.Disconnecting, is VpnState.Error -> {
-        sampler.reset()
-        rates = ThroughputRates.ZERO
-        return@LaunchedEffect
-      }
-      else -> Unit
-    }
-    if (tab != 0) {
-      sampler.reset()
-      return@LaunchedEffect
-    }
-    sampler.reset()
-    rates = ThroughputRates.ZERO
-    while (isActive) {
-      delay(1_000)
-      if (vpnState is VpnState.Connected) rates = sampler.sample()
-      else sampler.sample()
-    }
-  }
-  return rates
 }

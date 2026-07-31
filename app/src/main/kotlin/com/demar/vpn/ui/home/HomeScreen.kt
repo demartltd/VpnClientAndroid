@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
-import com.demar.vpn.data.network.ThroughputRates
+import com.demar.vpn.data.vpn.ThroughputRates
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.components.ActiveTabContent

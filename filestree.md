@@ -13,7 +13,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, …
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, ClashTrafficMonitor
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── servers/                 # ServersApi (POST /auth/mobile/servers → profiles)

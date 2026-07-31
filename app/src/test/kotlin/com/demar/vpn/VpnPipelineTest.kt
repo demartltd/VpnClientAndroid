@@ -126,6 +126,12 @@ class VpnPipelineTest {
         .map { inbounds.getJSONObject(it) }
         .first { it.getString("type") == "mixed" }
       assertEquals(SingBoxTags.DIAG_LISTEN_PORT, diag.getInt("listen_port"))
+
+      val clash = cfg.getJSONObject("experimental").getJSONObject("clash_api")
+      assertEquals(
+        "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
+        clash.getString("external_controller"),
+      )
     }
   }
 

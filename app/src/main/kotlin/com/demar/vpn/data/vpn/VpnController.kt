@@ -65,6 +65,10 @@ class VpnController(private val context: Context) {
   private var reachabilityJob: Job? = null
   private var initialReachabilityDone = false
 
+  private val _throughput = MutableStateFlow(ThroughputRates.ZERO)
+  val throughput: StateFlow<ThroughputRates> = _throughput.asStateFlow()
+  private var trafficJob: Job? = null
+
   private var watchdogJob: Job? = null
   private var disconnectWatchdogJob: Job? = null
   private var connectJob: Job? = null
@@ -98,6 +102,7 @@ class VpnController(private val context: Context) {
 
   fun dispose() {
     removeListener()
+    stopTraffic()
     reachabilityJob?.cancel()
     watchdogJob?.cancel()
     disconnectWatchdogJob?.cancel()
@@ -446,11 +451,33 @@ class VpnController(private val context: Context) {
       _errorEvents.tryEmit(mapped.message)
     }
     _state.value = mapped
+    if (mapped is VpnState.Connected) {
+      startTraffic()
+    } else {
+      stopTraffic()
+    }
     if (mapped is VpnState.Disconnected) {
       val shouldConnect = reconnectAfterDisconnect || pendingConnect
       reconnectAfterDisconnect = false
       pendingConnect = false
       if (shouldConnect) startConnect()
+    }
+  }
+
+  private fun startTraffic() {
+    stopTraffic()
+    trafficJob = scope.launch(Dispatchers.IO) {
+      ClashTrafficMonitor.run { up, down ->
+        _throughput.value = ThroughputRates(down.toDouble(), up.toDouble())
+      }
+    }
+  }
+
+  private fun stopTraffic() {
+    trafficJob?.cancel()
+    trafficJob = null
+    if (_throughput.value != ThroughputRates.ZERO) {
+      _throughput.value = ThroughputRates.ZERO
     }
   }
 

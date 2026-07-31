@@ -91,6 +91,8 @@ Mixed `127.0.0.1:10808` (`SingBoxTags.diagInbound`):
 - Egress: `NetworkDiagnostics` (roadmap)
 - Native snapshot: `getEgressRouteSnapshot` (`osVpnActive`, `demarConnected`, `diagProxyReady`)
 
+Clash API `127.0.0.1:19090` (`experimental.clash_api`) — Home throughput via `GET /traffic`.
+
 ---
 
 ## Сборка Libbox

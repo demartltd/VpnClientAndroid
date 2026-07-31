@@ -36,6 +36,11 @@ object SingBoxConfigBuilder {
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
       ),
+      "experimental" to jObj(
+        "clash_api" to jObj(
+          "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
+        ),
+      ),
     )
   }
 
