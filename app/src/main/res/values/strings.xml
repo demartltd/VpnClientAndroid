@@ -8,6 +8,7 @@
     <string name="account_sign_in_hint">Войдите, чтобы управлять подпиской и профилем</string>
     <string name="sign_in">Войти</string>
     <string name="sign_out">Выйти</string>
+    <string name="sign_out_failed">Не удалось выйти. Проверьте сеть и попробуйте снова</string>
     <string name="loading">Загрузка…</string>
     <string name="settings_header_subtitle">Настройки подключения и приложения</string>
     <string name="settings_app">Настройки приложения</string>

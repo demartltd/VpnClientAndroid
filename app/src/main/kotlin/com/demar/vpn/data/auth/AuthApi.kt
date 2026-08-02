@@ -103,10 +103,11 @@ object AuthApi {
   }
 
   suspend fun logoutSession(userId: String, loginAt: String) {
-    post(
+    val json = post(
       "$BASE_URL/auth/mobile/session/logout",
       JSONObject().put("userId", userId).put("loginAt", loginAt),
     )
+    if (!json.optBoolean("ok")) throw AuthException("Logout rejected")
   }
 
   /** After Telegram OAuth handoff: demar://auth/callback?token=… */
