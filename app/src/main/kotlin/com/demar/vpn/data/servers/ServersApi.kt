@@ -25,7 +25,7 @@ object ServersApi {
   suspend fun fetchServers(userId: String, loginAt: String): ServersListResult =
     withContext(Dispatchers.IO) {
       val body = JSONObject().put("userId", userId).put("loginAt", loginAt)
-      val json = post("${AuthApi.BASE_URL}/auth/mobile/servers", body)
+      val json = post("${AuthApi.VPN_API_BASE_URL}/vpn/servers", body)
       val arr = json.optJSONArray("servers") ?: JSONArray()
       val profiles = buildList {
         for (i in 0 until arr.length()) {
