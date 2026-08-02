@@ -56,7 +56,7 @@ VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegr
 
 ### Auth
 
-Email OTP + TOTP (если включён) и Telegram OIDC через Custom Tabs → `demar://auth/callback`. Сессия в SharedPreferences (`AuthSessionStore`); при старте — `session/check`, при отзыве — local sign-out. Выход: `POST /auth/mobile/session/logout` + stop VPN + очистка `vpn_control_state` (секреты Hy2). Новый email: confirm «Создать новый?» → `purpose: register`. API: `POST /auth/mobile/*` + `X-Demar-Client` / UA `DemarVPN/…`.
+Email OTP + TOTP (если включён) и Telegram OIDC через Custom Tabs → `demar://auth/callback`. Сессия в SharedPreferences (`AuthSessionStore`); при старте — `session/check`, при отзыве — local sign-out. Выход: `POST /auth/mobile/session/logout` + stop VPN + очистка `vpn_control_state` (секреты Hy2). Новый email: confirm «Создать новый?» → `purpose: register`. API: `POST /auth/mobile/*` + `X-Demar-Client` / UA `DemarVPN/…`. Store review: `test@test.com` → локальная сессия без OTP; список серверов с API (без паролей); connect блокируется snackbar’ом.
 
 Сессия переживает переустановку через **Android Auto Backup** (whitelist `demar_auth_session`; нужен системный Backup). Тест:
 

@@ -306,6 +306,10 @@ class VpnController(private val context: Context) {
 
   private fun startConnect() {
     val profile = _selectedProfile.value ?: return
+    if (profile.profile.password.isBlank()) {
+      failConnect(VpnConnectMessages.NO_CREDENTIALS)
+      return
+    }
     connectJob?.cancel()
     val generation = connectGeneration.incrementAndGet()
     activeConnectGeneration = generation
