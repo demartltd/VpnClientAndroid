@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter
 fun AccountScreen(
   active: Boolean,
   session: AuthSession?,
+  signingOut: Boolean,
   onSignOut: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -63,8 +64,14 @@ fun AccountScreen(
         }
       }
       Spacer(Modifier.height(12.dp))
-      OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.sign_out))
+      OutlinedButton(
+        onClick = onSignOut,
+        enabled = !signingOut,
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        Text(
+          stringResource(if (signingOut) R.string.loading else R.string.sign_out),
+        )
       }
     }
   }

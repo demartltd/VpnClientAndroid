@@ -18,15 +18,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthRepository
+import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.account.AccountScreen
 import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.AppFloatingToolbar
+import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.home.HomeScreen
 import com.demar.vpn.ui.servers.ServersScreen
 import com.demar.vpn.ui.settings.SettingsScreen
@@ -47,6 +51,7 @@ fun AppScaffold(
   var tab by rememberSaveable { mutableIntStateOf(0) }
   var showLoginSheet by rememberSaveable { mutableStateOf(false) }
   var loginReturnTab by rememberSaveable { mutableIntStateOf(3) }
+  var signingOut by rememberSaveable { mutableStateOf(false) }
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val session by AuthRepository.session.collectAsStateWithLifecycle()
@@ -54,6 +59,7 @@ fun AppScaffold(
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val throughput by vpnController.throughput.collectAsStateWithLifecycle()
+  val signOutFailed = stringResource(R.string.sign_out_failed)
 
   fun openLogin(returnTab: Int) {
     loginReturnTab = returnTab
@@ -116,10 +122,18 @@ fun AppScaffold(
         AccountScreen(
           active = tab == 3,
           session = session,
+          signingOut = signingOut,
           onSignOut = {
-            scope.launch {
-              AuthRepository.signOut(context)
-              tab = 0
+            if (!signingOut) {
+              scope.launch {
+                signingOut = true
+                runCatching { AuthRepository.signOut(context) }
+                  .onFailure {
+                    AppLog.append("auth: logout failed — $it")
+                    DemarSnackbar.showError(snackbarHost, signOutFailed)
+                  }
+                signingOut = false
+              }
             }
           },
         )

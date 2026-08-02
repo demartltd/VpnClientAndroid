@@ -63,12 +63,13 @@ object AuthRepository {
     AppLog.append("auth: signed in as ${exchange.userId} (oauth token)")
   }
 
-  /** Best-effort server revoke, then always clear local session. */
+  /** Clear local only after server confirms revoke (or session already gone). */
   suspend fun signOut(context: Context) {
-    val current = AuthSessionStore.current()
-    if (current != null) {
-      runCatching { AuthApi.logoutSession(current.userId, current.loginAt) }
-        .onFailure { AppLog.append("auth: logout API failed — $it") }
+    val current = AuthSessionStore.current() ?: return
+    try {
+      AuthApi.logoutSession(current.userId, current.loginAt)
+    } catch (e: AuthException) {
+      if (e.statusCode != 404) throw e
     }
     clearLocal(context)
   }
