@@ -69,7 +69,7 @@ fun SettingsScreen(
   var showDocumentsSheet by rememberSaveable { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
-  val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost) } }
+  val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
 
   LaunchedEffect(tapCount) {
     if (tapCount in 1..<ServiceMenuTapCount) {

@@ -35,7 +35,7 @@ pwsh scripts/build_android.ps1
 | Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `fastapi.demar.cc` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | Email OTP + Telegram OAuth → `api.demar.cc` |
-| App settings (журнал) | `AppLog` — до 512 строк, tail-trim |
+| App settings (журнал + язык) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона) |
 | Service menu (3× tap version) | mock diagnostics |
 
 VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
@@ -96,7 +96,7 @@ UI-журнал («Настройки → Настройки приложени�
 | Область | Статус |
 |---------|--------|
 | Compose UI (4 tabs + push + login) | реализовано |
-| Тема / snackbar / соц. иконки | parity с Flutter (`DemarSnackbarHost`, copy-on-tap) |
+| Тема / snackbar / соц. иконки / i18n EN+RU | parity с Flutter; per-app language через `localeConfig` |
 | Libbox VPN layer | `vpn/*` |
 | Domain / data / Hysteria2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |

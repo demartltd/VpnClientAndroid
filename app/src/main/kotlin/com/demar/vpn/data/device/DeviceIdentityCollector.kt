@@ -3,6 +3,7 @@ package com.demar.vpn.data.device
 import android.content.Context
 import android.os.Build
 import android.provider.Settings
+import com.demar.vpn.R
 import com.google.android.gms.ads.identifier.AdvertisingIdClient
 import com.google.android.gms.appset.AppSet
 import com.google.android.gms.tasks.Tasks
@@ -66,21 +67,21 @@ private val RowOrder = listOf(
   "fingerprint_sha256",
 )
 
-fun deviceFieldLabel(key: String): String = when (key) {
-  "android_id" -> "Android ID"
-  "google_ad_id" -> "AD ID"
-  "google_ad_limited" -> "Is AD"
-  "app_set_id" -> "App Set ID"
-  "app_set_scope" -> "App Set Scope"
-  "manufacturer" -> "Brand"
-  "model" -> "Model"
-  "sdk_int" -> "SDK"
-  "windows_computer_name" -> "PC Name"
-  "windows_machine_guid" -> "MachineGuid"
-  "android_identity_error" -> "Error Android"
-  "native_channel_error" -> "channel_error"
-  "fingerprint_sha256" -> "Fingerprint"
-  else -> key
+fun deviceFieldLabelRes(key: String): Int? = when (key) {
+  "android_id" -> R.string.device_android_id
+  "google_ad_id" -> R.string.device_ad_id
+  "google_ad_limited" -> R.string.device_is_ad
+  "app_set_id" -> R.string.device_app_set_id
+  "app_set_scope" -> R.string.device_app_set_scope
+  "manufacturer" -> R.string.device_brand
+  "model" -> R.string.device_model
+  "sdk_int" -> R.string.device_sdk
+  "windows_computer_name" -> R.string.device_pc_name
+  "windows_machine_guid" -> R.string.device_machine_guid
+  "android_identity_error" -> R.string.device_error_android
+  "native_channel_error" -> R.string.device_channel_error
+  "fingerprint_sha256" -> R.string.device_fingerprint
+  else -> null
 }
 
 fun orderedDeviceKeys(fields: Map<String, String>): List<String> {

@@ -19,6 +19,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
+│   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel
 │   └── device/
 ├── ui/
 │   ├── AppRoot.kt
@@ -72,7 +73,11 @@ app/src/main/res/
 ├── mipmap-*/ic_launcher.png
 ├── drawable-*/ic_launcher_*.png
 ├── drawable/ic_brand_*.xml
-└── values/strings.xml
+├── xml/locales_config.xml       # per-app language (en, ru) для системных настроек
+├── values/strings.xml           # EN (default)
+└── values-ru/strings.xml        # RU
 ```
+
+Локализация: default = язык телефона; override — Настройки → Настройки приложения → Язык (системный экран) или Настройки Android → Приложения → Demar VPN → Язык.
 
 Синхронизация Libbox TAGS с `demar_vpn/scripts`.

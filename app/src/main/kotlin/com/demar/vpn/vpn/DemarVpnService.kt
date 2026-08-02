@@ -14,6 +14,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.demar.vpn.DemarAppContextHolder
 import com.demar.vpn.MainActivity
+import com.demar.vpn.R
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import io.nekohasekai.libbox.CommandServerHandler
@@ -207,8 +208,8 @@ class DemarVpnService :
         appendStderrTail()
         emitLogLine("probe failed: uplink=${request.uplinkHost} stderr appended if present")
         val message =
-          if (reason == "uplink_unreachable") VpnConnectMessages.SERVER_UNREACHABLE
-          else VpnConnectMessages.FAILED
+          if (reason == "uplink_unreachable") getString(VpnConnectMessages.SERVER_UNREACHABLE)
+          else getString(VpnConnectMessages.FAILED)
         emitState("error", message)
         shutdownSingBox()
         stopForegroundCompat()
@@ -225,7 +226,7 @@ class DemarVpnService :
       pendingStart = null
       Log.e(TAG, "connectVpn timed out", t)
       emitLogLine("connect timeout")
-      emitState("error", VpnConnectMessages.FAILED)
+      emitState("error", getString(VpnConnectMessages.FAILED))
       shutdownSingBox()
       stopForegroundCompat()
     } catch (t: Throwable) {
@@ -234,8 +235,8 @@ class DemarVpnService :
       appendStderrTail()
       emitLogLine("connectVpn error: ${t.message ?: t.javaClass.simpleName}")
       val message = when {
-        t.message?.contains("establish() returned null") == true -> VpnConnectMessages.OTHER_VPN
-        else -> t.message ?: "Unknown error"
+        t.message?.contains("establish() returned null") == true -> getString(VpnConnectMessages.OTHER_VPN)
+        else -> t.message ?: getString(VpnConnectMessages.FAILED)
       }
       emitState("error", message)
       shutdownSingBox()
@@ -395,8 +396,8 @@ class DemarVpnService :
         PendingIntent.FLAG_IMMUTABLE,
       )
     return NotificationCompat.Builder(this, channelId)
-      .setContentTitle("Demar VPN")
-      .setContentText("VPN is running")
+      .setContentTitle(getString(R.string.vpn_notification_title))
+      .setContentText(getString(R.string.vpn_notification_running))
       .setSmallIcon(android.R.drawable.ic_dialog_info)
       .setContentIntent(pending)
       .setOngoing(true)

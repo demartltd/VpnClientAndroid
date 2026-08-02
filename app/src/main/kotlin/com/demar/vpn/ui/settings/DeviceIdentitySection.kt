@@ -10,8 +10,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.demar.vpn.R
 import com.demar.vpn.data.device.DeviceIdentityCollector
-import com.demar.vpn.data.device.deviceFieldLabel
+import com.demar.vpn.data.device.deviceFieldLabelRes
 import com.demar.vpn.data.device.orderedDeviceKeys
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
@@ -27,14 +29,15 @@ fun DeviceIdentitySection(modifier: Modifier = Modifier) {
 
   SectionCard(
     modifier = modifier,
-    title = "Device",
+    title = stringResource(R.string.service_device),
     icon = Icons.Filled.FolderOpen,
   ) {
     val busy = fields == null
     val data = fields.orEmpty()
     for (key in orderedDeviceKeys(data)) {
+      val labelRes = deviceFieldLabelRes(key)
       KvRow(
-        label = deviceFieldLabel(key),
+        label = if (labelRes != null) stringResource(labelRes) else key,
         value = if (busy) "…" else (data[key] ?: "—"),
         labelWidth = 108,
       )

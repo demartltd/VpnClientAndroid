@@ -11,6 +11,7 @@ import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.data.servers.ServersApi
+import com.demar.vpn.R
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.isHostname
@@ -141,11 +142,11 @@ class VpnController(private val context: Context) {
         AuthRepository.clearLocal(context)
         AppLog.append("servers: session revoked")
       } else {
-        _serversError.value = e.message ?: "Failed to load servers"
+        _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
         AppLog.append("servers: fetch failed — $e")
       }
     } catch (e: Exception) {
-      _serversError.value = e.message ?: "Failed to load servers"
+      _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
       AppLog.append("servers: fetch failed — $e")
     } finally {
       _serversLoading.value = false
@@ -260,7 +261,7 @@ class VpnController(private val context: Context) {
     if (granted) {
       startVpnService()
     } else {
-      failConnect(VpnConnectMessages.PERMISSION_DENIED)
+      failConnect(context.getString(VpnConnectMessages.PERMISSION_DENIED))
     }
   }
 
@@ -307,7 +308,7 @@ class VpnController(private val context: Context) {
   private fun startConnect() {
     val profile = _selectedProfile.value ?: return
     if (profile.profile.password.isBlank()) {
-      failConnect(VpnConnectMessages.NO_CREDENTIALS)
+      failConnect(context.getString(VpnConnectMessages.NO_CREDENTIALS))
       return
     }
     connectJob?.cancel()
@@ -345,7 +346,7 @@ class VpnController(private val context: Context) {
       if (connectTarget == null) {
         AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
         if (generation != connectGeneration.get()) return@launch
-        failConnect(VpnConnectMessages.SERVER_UNREACHABLE)
+        failConnect(context.getString(VpnConnectMessages.SERVER_UNREACHABLE))
         return@launch
       }
 
@@ -365,7 +366,7 @@ class VpnController(private val context: Context) {
       watchdogJob = scope.launch {
         delay(ConnectTimeouts.WATCHDOG_MS)
         if (_state.value is VpnState.Connecting) {
-          failConnect(VpnConnectMessages.FAILED)
+          failConnect(context.getString(VpnConnectMessages.FAILED))
         }
       }
 
@@ -434,7 +435,7 @@ class VpnController(private val context: Context) {
       )
       _state.value = VpnState.Connecting
     } catch (t: Throwable) {
-      failConnect(t.message ?: "Failed to start VPN service")
+      failConnect(t.message ?: context.getString(R.string.vpn_start_failed))
     }
   }
 

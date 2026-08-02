@@ -154,7 +154,7 @@ fun ServersScreen(
       )
       SegmentBar(
         options = buildList {
-          add(SegmentOption("ALL", "All", "server_tier_ALL"))
+          add(SegmentOption("ALL", stringResource(R.string.servers_filter_all), "server_tier_ALL"))
           tierChips.forEach { tier ->
             add(
               SegmentOption(

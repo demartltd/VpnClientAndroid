@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.demar.vpn.R
 import com.demar.vpn.data.network.EgressConstants
 import com.demar.vpn.data.network.InternetProbe
 import com.demar.vpn.data.network.egressHostProbeLabel
@@ -69,7 +71,7 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
 
   SectionCard(
     modifier = modifier,
-    title = "Internet",
+    title = stringResource(R.string.service_internet),
     icon = Icons.Filled.Cloud,
     trailing = {
       Box(
@@ -86,7 +88,7 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
       ) {
         Icon(
           imageVector = Icons.Outlined.Refresh,
-          contentDescription = "Refresh",
+          contentDescription = stringResource(R.string.service_refresh),
           tint = MaterialTheme.colorScheme.primary,
           modifier = Modifier
             .size(20.dp)
