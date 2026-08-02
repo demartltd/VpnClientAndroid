@@ -81,4 +81,47 @@ class ServersApiParseTest {
       .put("clientConfigJson", "{}")
     assertNull(ServersApi.parseServerItem(item))
   }
+
+  @Test
+  fun parseHysteria2_missingPassword_keepsEmpty() {
+    val config = """
+      {
+        "outbounds": [
+          {
+            "type": "hysteria2",
+            "tag": "FI-FREE-1",
+            "city": "Helsinki",
+            "server": "hy2.example.com",
+            "server_port": 443,
+            "tls": { "enabled": true, "server_name": "hy2.example.com", "alpn": ["h3"] }
+          }
+        ]
+      }
+    """.trimIndent()
+    val item = JSONObject()
+      .put("id", "rev1")
+      .put("name", "FI-FREE-1")
+      .put("protocol", "hysteria2")
+      .put("clientConfigJson", config)
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals("", profile!!.profile.password)
+  }
+
+  @Test
+  fun parseHysteria2_previewWithoutConfig_buildsStub() {
+    val item = JSONObject()
+      .put("id", "6a3eeae01afeb82f6b1cddb7")
+      .put("name", "DE-FREE-93")
+      .put("status", "free")
+      .put("protocol", "hysteria2")
+      .put("city", "Frankfurt am Main")
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals("6a3eeae01afeb82f6b1cddb7", profile!!.id)
+    assertEquals("DE-FREE-93", profile.displayName)
+    assertEquals("Frankfurt am Main", profile.city)
+    assertEquals("", profile.profile.password)
+    assertEquals("", profile.profile.server)
+  }
 }

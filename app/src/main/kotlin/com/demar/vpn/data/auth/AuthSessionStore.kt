@@ -11,6 +11,7 @@ data class AuthSession(
   val username: String,
   val vpnSubscription: String? = null,
   val vpnExpiresAt: String? = null,
+  val isLocal: Boolean = false,
 )
 
 object AuthSessionStore {
@@ -20,6 +21,7 @@ object AuthSessionStore {
   private const val KeyUsername = "username"
   private const val KeyVpnSub = "vpn_subscription"
   private const val KeyVpnExpires = "vpn_expires_at"
+  private const val KeyIsLocal = "is_local"
 
   private val _session = MutableStateFlow<AuthSession?>(null)
   val session: StateFlow<AuthSession?> = _session.asStateFlow()
@@ -37,13 +39,14 @@ object AuthSessionStore {
 
   fun current(): AuthSession? = _session.value
 
-  fun save(context: Context, exchange: SessionExchange) {
+  fun save(context: Context, exchange: SessionExchange, isLocal: Boolean = false) {
     val session = AuthSession(
       userId = exchange.userId,
       loginAt = exchange.loginAt,
       username = exchange.username?.takeIf { it.isNotBlank() } ?: exchange.userId,
       vpnSubscription = exchange.vpnSubscription,
       vpnExpiresAt = exchange.vpnExpiresAt,
+      isLocal = isLocal,
     )
     context.applicationContext.getSharedPreferences(Prefs, Context.MODE_PRIVATE)
       .edit()
@@ -52,6 +55,7 @@ object AuthSessionStore {
       .putString(KeyUsername, session.username)
       .putString(KeyVpnSub, session.vpnSubscription)
       .putString(KeyVpnExpires, session.vpnExpiresAt)
+      .putBoolean(KeyIsLocal, session.isLocal)
       .apply()
     _session.value = session
   }
@@ -76,6 +80,7 @@ object AuthSessionStore {
       username = username,
       vpnSubscription = prefs.getString(KeyVpnSub, null)?.trim()?.takeIf { it.isNotEmpty() },
       vpnExpiresAt = prefs.getString(KeyVpnExpires, null)?.trim()?.takeIf { it.isNotEmpty() },
+      isLocal = prefs.getBoolean(KeyIsLocal, false),
     )
   }
 }

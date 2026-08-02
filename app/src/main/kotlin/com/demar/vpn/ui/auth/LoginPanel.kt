@@ -44,6 +44,7 @@ import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.EmailConfirmResult
+import com.demar.vpn.data.auth.ReviewAuth
 import com.demar.vpn.ui.components.IconLinkChip
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.openAuthUrl
@@ -169,6 +170,13 @@ fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
           onSubmit = {
             if (!email.isValidEmail()) {
               error = invalidEmail
+              return@EmailStep
+            }
+            if (ReviewAuth.matches(email)) {
+              runAuth {
+                AuthRepository.signInLocal(context)
+                onSuccess()
+              }
               return@EmailStep
             }
             sendOtp()

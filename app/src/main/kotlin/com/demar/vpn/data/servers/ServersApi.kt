@@ -51,13 +51,26 @@ object ServersApi {
     val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
     val city = item.optString("city").takeIf { it.isNotBlank() }
     val protocol = item.optString("protocol").lowercase()
-    val configRaw = item.optString("clientConfigJson").takeIf { it.isNotBlank() } ?: return null
+    if (protocol != "hysteria2") return null
+    val configRaw = item.optString("clientConfigJson").takeIf { it.isNotBlank() }
+      ?: return previewHysteria2(id, name, city)
     val config = runCatching { JSONObject(configRaw) }.getOrNull() ?: return null
-    return when (protocol) {
-      "hysteria2" -> parseHysteria2(id, name, city, config)
-      else -> null
-    }
+    return parseHysteria2(id, name, city, config)
   }
+
+  /** Preview / store-review: metadata only, no connect credentials. */
+  private fun previewHysteria2(id: String, name: String, city: String?): ServerProfile =
+    ServerProfile.hysteria2FromTag(
+      Hysteria2Profile(
+        displayName = name,
+        server = "",
+        port = 443,
+        password = "",
+        tlsServerName = "",
+      ),
+      city = city,
+      id = id,
+    )
 
   private fun parseHysteria2(
     id: String,
@@ -77,7 +90,7 @@ object ServersApi {
     hy2 ?: return null
     val server = hy2.optString("server").takeIf { it.isNotBlank() } ?: return null
     val port = hy2.optInt("server_port", 0).takeIf { it > 0 } ?: return null
-    val password = hy2.optString("password").takeIf { it.isNotBlank() } ?: return null
+    val password = hy2.optString("password")
     val tls = hy2.optJSONObject("tls")
     val tlsName = tls?.optString("server_name")?.takeIf { it.isNotBlank() } ?: server
     val alpnArr = tls?.optJSONArray("alpn")

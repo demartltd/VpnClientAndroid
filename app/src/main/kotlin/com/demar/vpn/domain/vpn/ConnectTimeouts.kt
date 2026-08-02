@@ -12,4 +12,5 @@ object VpnConnectMessages {
   const val SERVER_UNREACHABLE = "Сервер недоступен"
   const val OTHER_VPN = "Отключите VPN другого приложения"
   const val PERMISSION_DENIED = "Нет разрешения VPN"
+  const val NO_CREDENTIALS = "Подключение недоступно для Review аккаунта"
 }

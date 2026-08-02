@@ -11,9 +11,15 @@ object AuthRepository {
 
   fun isSignedIn(): Boolean = AuthSessionStore.current() != null
 
+  fun signInLocal(context: Context) {
+    AuthSessionStore.save(context, ReviewAuth.exchange(), isLocal = true)
+    AppLog.append("auth: signed in locally as store-review")
+  }
+
   /** Returns false and clears local session when server says revoked / unreachable auth. */
   suspend fun refreshSession(context: Context): Boolean {
     val current = AuthSessionStore.current() ?: return false
+    if (current.isLocal) return true
     return try {
       val checked = AuthApi.checkSession(current.userId, current.loginAt)
       AuthSessionStore.save(context, checked)
@@ -66,10 +72,12 @@ object AuthRepository {
   /** Clear local only after server confirms revoke (or session already gone). */
   suspend fun signOut(context: Context) {
     val current = AuthSessionStore.current() ?: return
-    try {
-      AuthApi.logoutSession(current.userId, current.loginAt)
-    } catch (e: AuthException) {
-      if (e.statusCode != 404) throw e
+    if (!current.isLocal) {
+      try {
+        AuthApi.logoutSession(current.userId, current.loginAt)
+      } catch (e: AuthException) {
+        if (e.statusCode != 404) throw e
+      }
     }
     clearLocal(context)
   }
