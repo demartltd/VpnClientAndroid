@@ -16,7 +16,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController, ClashTrafficMonitor
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
-│   ├── servers/                 # ServersApi (POST /auth/mobile/servers → profiles)
+│   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   └── device/

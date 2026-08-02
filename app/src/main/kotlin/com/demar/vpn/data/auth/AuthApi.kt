@@ -31,6 +31,7 @@ data class SessionExchange(
 
 object AuthApi {
   const val BASE_URL = "https://api.demar.cc"
+  const val VPN_API_BASE_URL = "https://fastapi.demar.cc"
   const val ACCOUNT_BASE_URL = "https://account.demar.cc"
   const val CLIENT_ID = "demar-vpn"
   /** HTTPS handoff page (Chrome cannot reliably open demar:// after Telegram). */
