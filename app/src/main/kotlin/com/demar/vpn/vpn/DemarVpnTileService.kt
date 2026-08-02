@@ -10,6 +10,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import androidx.core.content.ContextCompat
 import com.demar.vpn.MainActivity
+import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthRepository
 
 internal object DemarVpnTileSync {
@@ -106,15 +107,15 @@ class DemarVpnTileService : TileService() {
   private fun refreshTile() {
     val tile = qsTile ?: return
     val state = VpnControlStateStore.loadState(this)
-    tile.label = "Demar VPN"
+    tile.label = getString(R.string.app_name)
     tile.state = if (state.isActive) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
     tile.subtitle =
       when (state) {
-        VpnControlStateStore.State.Connected -> "Connected"
-        VpnControlStateStore.State.Connecting -> "Connecting"
-        VpnControlStateStore.State.Disconnecting -> "Disconnecting"
-        VpnControlStateStore.State.Error -> "Error"
-        else -> "Disconnected"
+        VpnControlStateStore.State.Connected -> getString(R.string.tile_connected)
+        VpnControlStateStore.State.Connecting -> getString(R.string.tile_connecting)
+        VpnControlStateStore.State.Disconnecting -> getString(R.string.tile_disconnecting)
+        VpnControlStateStore.State.Error -> getString(R.string.tile_error)
+        else -> getString(R.string.tile_disconnected)
       }
     tile.updateTile()
   }

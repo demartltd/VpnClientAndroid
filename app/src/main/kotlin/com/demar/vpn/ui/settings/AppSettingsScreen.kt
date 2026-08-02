@@ -2,8 +2,6 @@ package com.demar.vpn.ui.settings
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +18,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -45,9 +44,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
+import com.demar.vpn.data.locale.currentLanguageLabel
+import com.demar.vpn.data.locale.openAppLocaleSettings
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.ui.components.DemarSnackbar
-import com.demar.vpn.ui.components.SectionCard
+import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
 import com.demar.vpn.ui.util.shareJournal
 import kotlinx.coroutines.launch
@@ -60,6 +61,10 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
   val context = LocalContext.current
   val lines by AppLog.lines.collectAsState()
   var expanded by remember { mutableStateOf(false) }
+  val languageLabel = remember(context) { currentLanguageLabel(context) }
+  val journalSubtitle = stringResource(R.string.journal_subtitle).let { base ->
+    if (lines.isEmpty()) base else "$base (${lines.size})"
+  }
 
   LaunchedEffect(expanded) {
     if (expanded) AppLog.importPendingNativeDiag(context)
@@ -75,32 +80,31 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
         .verticalScroll(rememberScrollState())
         .padding(16.dp),
     ) {
-      SectionCard(
+      SettingsActionButton(
+        icon = Icons.Filled.Language,
+        title = stringResource(R.string.settings_language),
+        subtitle = languageLabel,
+        onClick = { openAppLocaleSettings(context) },
+      )
+      Spacer(Modifier.height(12.dp))
+      SettingsActionButton(
+        icon = Icons.AutoMirrored.Filled.Article,
         title = stringResource(R.string.journal_title),
-        subtitle = stringResource(R.string.journal_subtitle),
-        icon = Icons.Filled.Article,
-      ) {
-        val expandInteraction = remember { MutableInteractionSource() }
-        val expandLabel = stringResource(R.string.journal_expand) +
-          if (lines.isEmpty()) "" else " (${lines.size})"
-
-        Row(
+        subtitle = journalSubtitle,
+        onClick = { expanded = !expanded },
+        trailingIcon = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+      )
+      AnimatedVisibility(expanded) {
+        val outline = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+        Column(
           Modifier
+            .padding(top = 12.dp)
             .fillMaxWidth()
-            .clickable(expandInteraction, indication = null) { expanded = !expanded },
-          verticalAlignment = Alignment.CenterVertically,
+            .border(1.dp, outline, RoundedCornerShape(12.dp))
+            .padding(12.dp),
         ) {
-          Text(expandLabel, Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
-          Icon(
-            if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-        AnimatedVisibility(expanded) {
           Box(
             Modifier
-              .padding(top = 12.dp)
               .fillMaxWidth()
               .height(JournalHeight.dp)
               .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
@@ -119,36 +123,35 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
               }
             }
           }
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-          TextButton(onClick = {
-            AppLog.clear()
-            scope.launch { DemarSnackbar.showSuccess(snackbarHost, context.getString(R.string.journal_cleared)) }
-          }) {
-            Icon(Icons.Filled.DeleteOutline, null, Modifier.padding(end = 4.dp))
-            Text(stringResource(R.string.journal_clear))
-          }
-          TextButton(onClick = {
-            scope.launch {
-              try {
-                AppLog.importPendingNativeDiag(context)
-                val body = AppLog.readPersistedUtf8().trim()
-                when {
-                  body.isEmpty() || !shareJournal(context, body) ->
-                    DemarSnackbar.showInfo(snackbarHost, context.getString(R.string.journal_share_empty))
-                }
-              } catch (e: Exception) {
-                AppLog.append("share diagnostics journal failed: $e")
-                DemarSnackbar.showError(
-                  snackbarHost,
-                  context.getString(R.string.journal_share_failed, e.message ?: e.toString()),
-                )
-              }
+          Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = {
+              AppLog.clear()
+              scope.launch { DemarSnackbar.showSuccess(snackbarHost, context.getString(R.string.journal_cleared)) }
+            }) {
+              Icon(Icons.Filled.DeleteOutline, null, Modifier.padding(end = 4.dp))
+              Text(stringResource(R.string.journal_clear))
             }
-          }) {
-            Icon(Icons.Filled.Share, null, Modifier.padding(end = 4.dp))
-            Text(stringResource(R.string.journal_share))
+            TextButton(onClick = {
+              scope.launch {
+                try {
+                  AppLog.importPendingNativeDiag(context)
+                  val body = AppLog.readPersistedUtf8().trim()
+                  when {
+                    body.isEmpty() || !shareJournal(context, body) ->
+                      DemarSnackbar.showInfo(snackbarHost, context.getString(R.string.journal_share_empty))
+                  }
+                } catch (e: Exception) {
+                  AppLog.append("share diagnostics journal failed: $e")
+                  DemarSnackbar.showError(
+                    snackbarHost,
+                    context.getString(R.string.journal_share_failed, e.message ?: e.toString()),
+                  )
+                }
+              }
+            }) {
+              Icon(Icons.Filled.Share, null, Modifier.padding(end = 4.dp))
+              Text(stringResource(R.string.journal_share))
+            }
           }
         }
       }

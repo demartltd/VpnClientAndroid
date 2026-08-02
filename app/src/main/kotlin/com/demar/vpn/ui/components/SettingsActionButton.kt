@@ -30,6 +30,7 @@ fun SettingsActionButton(
   subtitle: String,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  trailingIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
 ) {
   val cs = MaterialTheme.colorScheme
   Row(
@@ -54,6 +55,6 @@ fun SettingsActionButton(
       Text(title, style = MaterialTheme.typography.titleMedium)
       Text(subtitle, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
     }
-    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = cs.onSurfaceVariant)
+    Icon(trailingIcon, contentDescription = null, tint = cs.onSurfaceVariant)
   }
 }

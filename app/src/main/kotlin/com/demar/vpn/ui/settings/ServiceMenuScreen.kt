@@ -47,19 +47,19 @@ fun ServiceMenuScreen(
         .verticalScroll(rememberScrollState())
         .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
     ) {
-      SectionCard(title = "About", icon = Icons.Filled.Info) {
-        KvRow("Name", appName)
-        KvRow("Package", BuildConfig.APPLICATION_ID)
-        KvRow("Version", BuildConfig.VERSION_NAME)
-        KvRow("Platform", stringResource(R.string.platform_android))
-        KvRow("Sing-box", singBoxLabel.ifEmpty { "…" })
+      SectionCard(title = stringResource(R.string.service_about), icon = Icons.Filled.Info) {
+        KvRow(stringResource(R.string.service_name), appName)
+        KvRow(stringResource(R.string.service_package), BuildConfig.APPLICATION_ID)
+        KvRow(stringResource(R.string.service_version), BuildConfig.VERSION_NAME)
+        KvRow(stringResource(R.string.service_platform), stringResource(R.string.platform_android))
+        KvRow(stringResource(R.string.service_singbox), singBoxLabel.ifEmpty { "…" })
       }
       Spacer(Modifier.height(12.dp))
       ServiceEgressCard()
       Spacer(Modifier.height(12.dp))
       DeviceIdentitySection()
       Spacer(Modifier.height(12.dp))
-      SectionCard(title = "Snack bar", icon = Icons.Filled.NotificationsActive) {
+      SectionCard(title = stringResource(R.string.service_snack_bar), icon = Icons.Filled.NotificationsActive) {
         ServiceMenuSnackChips(snackbarHost)
       }
     }

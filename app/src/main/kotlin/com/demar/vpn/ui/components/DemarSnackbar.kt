@@ -35,6 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.Context
+import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
 import kotlin.math.abs
 
@@ -62,7 +64,8 @@ object DemarSnackbar {
   suspend fun showSuccess(host: SnackbarHostState, message: String) = show(host, message, SnackKind.Success)
   suspend fun showError(host: SnackbarHostState, message: String) = show(host, message, SnackKind.Error, SnackbarDuration.Long)
   suspend fun showWarning(host: SnackbarHostState, message: String) = show(host, message, SnackKind.Warning)
-  suspend fun showSoon(host: SnackbarHostState) = showInfo(host, "Скоро")
+  suspend fun showSoon(host: SnackbarHostState, context: Context) =
+    showInfo(host, context.getString(R.string.soon))
 
   suspend fun show(host: SnackbarHostState, kind: SnackKind, message: String) = when (kind) {
     SnackKind.Info -> showInfo(host, message)

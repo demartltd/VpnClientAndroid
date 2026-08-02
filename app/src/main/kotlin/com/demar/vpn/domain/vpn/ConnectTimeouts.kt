@@ -1,5 +1,8 @@
 package com.demar.vpn.domain.vpn
 
+import androidx.annotation.StringRes
+import com.demar.vpn.R
+
 object ConnectTimeouts {
   const val CONNECT_MS = 30_000L
   const val PROBE_MS = 20_000L
@@ -8,9 +11,9 @@ object ConnectTimeouts {
 }
 
 object VpnConnectMessages {
-  const val FAILED = "Не удалось подключиться"
-  const val SERVER_UNREACHABLE = "Сервер недоступен"
-  const val OTHER_VPN = "Отключите VPN другого приложения"
-  const val PERMISSION_DENIED = "Нет разрешения VPN"
-  const val NO_CREDENTIALS = "Подключение недоступно для Review аккаунта"
+  @StringRes val FAILED = R.string.vpn_connect_failed
+  @StringRes val SERVER_UNREACHABLE = R.string.vpn_server_unreachable
+  @StringRes val OTHER_VPN = R.string.vpn_other_vpn
+  @StringRes val PERMISSION_DENIED = R.string.vpn_permission_denied
+  @StringRes val NO_CREDENTIALS = R.string.vpn_no_credentials
 }
