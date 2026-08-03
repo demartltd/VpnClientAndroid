@@ -85,4 +85,20 @@ class AppLogTest {
     assertTrue(mirrorText.contains("mirror-line-2"))
     assertEquals(AppLog.readPersistedUtf8().trim(), mirrorText.trim())
   }
+
+  @Test
+  fun concurrentAppend_neverExceedsMaxLines() {
+    val dir = Files.createTempDirectory("applog-concurrent").toFile()
+    AppLog.bindForTest(dir)
+    val threads = 8
+    val perThread = AppLogLimits.maxLines
+    (1..threads).map { t ->
+      Thread {
+        repeat(perThread) { i -> AppLog.append("t$t-$i") }
+      }.also { it.start() }
+    }.forEach { it.join() }
+    assertEquals(AppLogLimits.maxLines, AppLog.lines.value.size)
+    val persisted = AppLog.readPersistedUtf8().trim().lines().filter { it.isNotEmpty() }
+    assertEquals(AppLogLimits.maxLines, persisted.size)
+  }
 }

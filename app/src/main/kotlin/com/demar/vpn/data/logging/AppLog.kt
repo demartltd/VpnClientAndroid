@@ -28,49 +28,39 @@ object AppLogLimits {
 }
 
 object AppLog {
+  private val lock = Any()
   private val memory = ArrayDeque<String>(AppLogLimits.maxLines)
   private val _lines = MutableStateFlow<List<String>>(emptyList())
   val lines: StateFlow<List<String>> = _lines.asStateFlow()
   private var file: File? = null
   private var exportMirror: File? = null
-  private var appContext: Context? = null
 
   fun init(context: Context) {
     val app = context.applicationContext
-    if (file == null) {
-      bind(File(app.filesDir, "demar").apply { mkdirs() }.resolve("demar_app.log"))
-      importPendingNativeDiag(app)
+    synchronized(lock) {
+      if (file == null) {
+        bindUnlocked(File(app.filesDir, "demar").apply { mkdirs() }.resolve("demar_app.log"))
+      }
+      exportMirror = app.getExternalFilesDir("demar")?.apply { mkdirs() }?.resolve("demar_app.log")
+      writeMirrorUnlocked()
     }
-    exportMirror = app.getExternalFilesDir("demar")?.apply { mkdirs() }?.resolve("demar_app.log")
-    appContext = app
-    syncExportMirror(app)
+    importPendingNativeDiag(app)
   }
 
   fun exportMirrorPath(context: Context): String? =
     context.getExternalFilesDir("demar")?.resolve("demar_app.log")?.absolutePath
 
-  fun syncExportMirror(context: Context) {
-    val mirror = exportMirror ?: context.applicationContext.getExternalFilesDir("demar")
+  fun syncExportMirror(context: Context) = synchronized(lock) {
+    exportMirror = exportMirror ?: context.applicationContext.getExternalFilesDir("demar")
       ?.apply { mkdirs() }
       ?.resolve("demar_app.log")
-      ?.also { exportMirror = it }
-      ?: return
-    importPendingNativeDiag(context.applicationContext)
-    val body = readPersistedUtf8()
-    runCatching {
-      mirror.parentFile?.mkdirs()
-      if (body.isEmpty()) {
-        mirror.writeText("")
-      } else {
-        mirror.writeText(body)
-      }
-    }
+    writeMirrorUnlocked()
   }
 
   fun append(line: String) {
     val t = line.trim()
     if (t.isEmpty() || isVpnTrafficAccessNoise(t)) return
-    pushRows(listOf("${journalStampUtc()} $t"))
+    synchronized(lock) { pushRowsUnlocked(listOf("${journalStampUtc()} $t")) }
   }
 
   fun appendMany(raw: List<String>, prependStamp: Boolean = true) {
@@ -82,97 +72,90 @@ object AppLog {
         else -> t
       }
     }
-    if (rows.isNotEmpty()) pushRows(rows)
+    if (rows.isEmpty()) return
+    synchronized(lock) { pushRowsUnlocked(rows) }
   }
 
-  fun clear() {
+  fun clear() = synchronized(lock) {
     val f = file ?: return
     runCatching {
       if (f.exists()) f.delete()
       f.createNewFile()
     }
     memory.clear()
-    publish()
-    appContext?.let { syncExportMirror(it) }
+    publishUnlocked()
+    writeMirrorUnlocked()
   }
 
-  fun readPersistedUtf8(): String {
-    val f = file ?: return ""
-    return if (f.isFile) runCatching { f.readText() }.getOrDefault("") else ""
-  }
+  fun readPersistedUtf8(): String = synchronized(lock) { joinedUnlocked() }
 
   fun importPendingNativeDiag(context: Context) {
     val drained = PendingNativeDiag.drainAndClear(context)
     if (drained.isNotEmpty()) appendMany(drained)
   }
 
-  internal fun bindForTest(dir: File) = bind(File(dir, "demar_app.log"))
+  internal fun bindForTest(dir: File) = synchronized(lock) {
+    bindUnlocked(File(dir, "demar_app.log"))
+  }
 
-  internal fun bindMirrorForTest(dir: File) {
+  internal fun bindMirrorForTest(dir: File) = synchronized(lock) {
     exportMirror = File(dir, "export_mirror.log")
   }
 
-  internal fun syncExportMirrorForTest() {
-    val mirror = exportMirror ?: return
-    mirror.parentFile?.mkdirs()
-    mirror.writeText(readPersistedUtf8())
-  }
+  internal fun syncExportMirrorForTest() = synchronized(lock) { writeMirrorUnlocked() }
 
-  internal fun resetForTest() {
+  internal fun resetForTest() = synchronized(lock) {
     file = null
     exportMirror = null
-    appContext = null
     memory.clear()
-    publish()
+    publishUnlocked()
   }
 
-  private fun bind(f: File) {
+  private fun bindUnlocked(f: File) {
     file = f.also { it.parentFile?.mkdirs() }
-    syncMemoryFromDisk()
-    trimDisk()
-    publish()
-  }
-
-  private fun pushRows(rows: List<String>) {
-    val f = file ?: return
-    runCatching {
-      f.appendText(rows.joinToString("\n", postfix = "\n"))
-      rows.forEach { memory.addLast(it) }
-      trimMemory()
-      trimDisk()
-      publish()
-      appContext?.let { syncExportMirror(it) }
-    }
-  }
-
-  private fun fileLines(f: File) =
-    runCatching { f.readLines().map { it.trim() }.filter { it.isNotEmpty() } }.getOrDefault(emptyList())
-
-  private fun List<String>.capped() =
-    if (size > AppLogLimits.maxLines) takeLast(AppLogLimits.maxLines) else this
-
-  private fun syncMemoryFromDisk() {
     memory.clear()
-    val f = file ?: return
-    if (f.isFile) memory.addAll(fileLines(f).capped())
+    if (f.isFile) {
+      val loaded = runCatching {
+        f.readLines().map { it.trim() }.filter { it.isNotEmpty() }
+      }.getOrDefault(emptyList())
+      val keep = if (loaded.size > AppLogLimits.maxLines) loaded.takeLast(AppLogLimits.maxLines) else loaded
+      memory.addAll(keep)
+      if (loaded.size > AppLogLimits.maxLines) persistUnlocked()
+    }
+    publishUnlocked()
   }
 
-  private fun trimDisk() {
+  private fun pushRowsUnlocked(rows: List<String>) {
+    if (file == null) return
+    for (row in rows) {
+      if (memory.size >= AppLogLimits.maxLines) memory.removeFirst()
+      memory.addLast(row)
+    }
+    persistUnlocked()
+    publishUnlocked()
+    writeMirrorUnlocked()
+  }
+
+  private fun persistUnlocked() {
     val f = file ?: return
-    if (!f.isFile) return
     runCatching {
-      val all = fileLines(f)
-      if (all.size <= AppLogLimits.maxLines) return
-      f.writeText(all.capped().joinToString("\n", postfix = "\n"))
-      syncMemoryFromDisk()
+      f.parentFile?.mkdirs()
+      f.writeText(joinedUnlocked())
     }
   }
 
-  private fun trimMemory() {
-    while (memory.size > AppLogLimits.maxLines) memory.removeFirst()
+  private fun writeMirrorUnlocked() {
+    val mirror = exportMirror ?: return
+    runCatching {
+      mirror.parentFile?.mkdirs()
+      mirror.writeText(joinedUnlocked())
+    }
   }
 
-  private fun publish() {
+  private fun joinedUnlocked(): String =
+    if (memory.isEmpty()) "" else memory.joinToString("\n", postfix = "\n")
+
+  private fun publishUnlocked() {
     _lines.value = memory.toList()
   }
 }
