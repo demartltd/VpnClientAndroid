@@ -3,6 +3,7 @@ package com.demar.vpn.data.servers
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.logging.AppLog
+import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProfile
 import kotlinx.coroutines.Dispatchers
@@ -113,7 +114,24 @@ object ServersApi {
       ),
       city = outboundCity,
       id = id,
+      bypassRuleSets = parseBypassRuleSets(config),
     )
+  }
+
+  /** Remote rule-sets from API; ignores TUN `route_exclude_address_set` (unsupported on VpnService). */
+  fun parseBypassRuleSets(config: JSONObject): List<ApiBypassRuleSet> {
+    val arr = config.optJSONObject("route")?.optJSONArray("rule_set") ?: return emptyList()
+    val out = linkedMapOf<String, ApiBypassRuleSet>()
+    for (i in 0 until arr.length()) {
+      val item = arr.optJSONObject(i) ?: continue
+      val tag = item.optString("tag").trim().takeIf { it.isNotEmpty() } ?: continue
+      val url = item.optString("url").trim().takeIf { it.isNotEmpty() } ?: continue
+      val type = item.optString("type").ifBlank { "remote" }
+      val format = item.optString("format").ifBlank { "binary" }
+      if (type != "remote" || format != "binary") continue
+      out.putIfAbsent(tag, ApiBypassRuleSet(tag, url))
+    }
+    return out.values.toList()
   }
 
   private fun post(url: String, body: JSONObject): JSONObject {

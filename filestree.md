@@ -10,24 +10,24 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── domain/
-│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, VpnEntitlements
-│   │   └── tun/                 # TunSettings, TunRegions, TemporaryOffPolicy
+│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, ApiBypassRuleSet
+│   │   └── tun/                 # TunSettings (bypassPackages)
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore/Scheduler
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── servers/                 # ServersApi (POST vpn.example.invalid/vpn/servers → profiles)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel
-│   └── device/
+│   └── device/                  # InstalledAppsQuery (TUN exclude picker)
 ├── ui/
 │   ├── AppRoot.kt
 │   ├── SingBoxVersion.kt
 │   ├── theme/
 │   ├── scaffold/AppScaffold.kt
-│   ├── components/              # SettingsActionButton, SettingsSwitchRow, …
+│   ├── components/              # SettingsActionButton, DemarSnackbar, …
 │   ├── home/HomeScreen.kt
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
 │   ├── settings/                # App settings, TunSettingsScreen, Documents, Service menu
@@ -40,7 +40,7 @@ app/src/main/kotlin/com/demar/vpn/
 
 ```
 app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
-app/src/test/kotlin/com/demar/vpn/TunSettingsPolicyTest.kt
+app/src/test/kotlin/com/demar/vpn/ServersApiParseTest.kt
 ```
 
 ## Scripts
@@ -56,7 +56,7 @@ scripts/
 │   ├── servers_fetch_test.sh
 │   ├── vpn_cycle_test.sh
 │   ├── server_switch_test.sh
-│   ├── bypass_ru_test.sh
+│   ├── tun_apps_test.sh
 │   └── test_all_devices.sh
 ├── libbox-build-android.py
 ├── generate_icons.py

@@ -83,6 +83,13 @@ class DemarLibboxPlatform(
         .setMtu(options.mtu)
         .addDisallowedApplication(service.packageName)
 
+    val excludeIt = options.excludePackage
+    while (excludeIt.hasNext()) {
+      val pkg = excludeIt.next()
+      if (pkg == service.packageName) continue
+      runCatching { builder.addDisallowedApplication(pkg) }
+    }
+
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
       builder.setMetered(false)
     }

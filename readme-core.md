@@ -68,23 +68,26 @@ Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `
 ## Route и TUN
 
 - TUN: `gvisor`, `strict_route`, `172.19.0.1/30`, split `0.0.0.0/1` + `128.0.0.0/1`
-- Route: sniff → hijack-dns → QUIC reject → private direct → IPv6 reject → proxy
+- Route: sniff → hijack-dns → QUIC reject → private direct → **API rule-sets** → IPv6 reject → proxy
 - `override_android_vpn: true`
 - `default_domain_resolver`: `dns-direct`, `ipv4_only`
 
-### TunSettings (расширяемый bypass)
+### API geo-bypass (из `clientConfigJson`)
 
-Модель: `domain/vpn/tun/TunSettings` — `bypassRegions` / `bypassDomains` / `bypassPackages`.
+Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJson`. Клиент парсит tags/URLs в `ApiBypassRuleSet` и собирает Android-конфиг:
 
-- Регионы: каталог `TunRegions.catalog` (`ru`, `cn`, `ir`). Добавить регион = одна запись + URLs rule-set.
-- Домены → DNS/route `domain` → direct; пакеты → TUN `exclude_package` (UI позже).
-- Builder: `SingBoxConfigBuilder.buildTunConfigJson(plan, tun)`.
-- **Free**: `VpnEntitlements.effective` всегда включает все регионы каталога.
-- **Plus/VIP/Dev/Tester**: toggle региона; confirm OFF; авто-вкл через 10 мин (`TemporaryOffPolicy` + WorkManager).
-- UI: флаги стран (Twemoji) в TUN settings.
-- Не использовать TUN `route_exclude_address_set` на Android VpnService.
+- geosite → DNS `dns-direct` + route `direct`
+- geoip → route `direct`
+- **не** эмитить TUN `route_exclude_address_set` (VpnService / DeadSystemException)
+- `download_detour` → `proxy`
 
-UI: App settings → TUN settings → список из `TunRegions.catalog`.
+### TunSettings (локально)
+
+Модель: `domain/vpn/tun/TunSettings` — только `bypassPackages`.
+
+- Пакеты → TUN `exclude_package` + `VpnService.addDisallowedApplication` в `DemarLibboxPlatform`
+- UI: App settings → TUN settings → список исключений + picker launchable apps
+- Persist: SharedPreferences `bypass_packages`
 
 ---
 
@@ -134,7 +137,7 @@ AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 
 | Путь | Роль |
 |------|------|
-| `domain/vpn/*` | `Hysteria2Profile`, `SingBoxConnectPlan` |
+| `domain/vpn/*` | `Hysteria2Profile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
 | `data/vpn/SingBoxConfigBuilder.kt` | TUN + DNS + route JSON |
 | `data/vpn/VpnController.kt` | Connect pipeline, UI bridge |
 | `data/network/UplinkIpv4.kt` | uplink resolve |

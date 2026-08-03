@@ -11,6 +11,7 @@ data class SingBoxConnectPlan(
   val proxyOutbound: Map<String, Any?>,
   val directIPs: List<String>,
   val tun: SingBoxTunOptions,
+  val bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
 ) {
   fun withExtraDirectIps(ips: List<String>): SingBoxConnectPlan {
     if (ips.isEmpty()) return this
@@ -23,8 +24,14 @@ data class SingBoxConnectPlan(
     return copy(proxyOutbound = proxyOutbound + ("server" to trimmed))
   }
 
+  fun bypassFingerprint(): String =
+    "rs=${bypassRuleSets.joinToString { "${it.tag}|${it.url}" }}"
+
   companion object {
-    fun hysteria2(profile: Hysteria2Profile): SingBoxConnectPlan {
+    fun hysteria2(
+      profile: Hysteria2Profile,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
+    ): SingBoxConnectPlan {
       val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
       val tls = buildMap {
         put("enabled", true)
@@ -51,6 +58,7 @@ data class SingBoxConnectPlan(
           bootstrapDomains = bootstrap,
           strictRoute = true,
         ),
+        bypassRuleSets = bypassRuleSets,
       )
     }
 
