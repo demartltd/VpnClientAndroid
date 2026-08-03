@@ -8,4 +8,6 @@ data class Hysteria2Profile(
   val tlsServerName: String,
   val alpn: List<String> = listOf("h3"),
   val obfsPassword: String? = null,
+  val upMbps: Int? = null,
+  val downMbps: Int? = null,
 )

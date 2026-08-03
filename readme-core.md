@@ -40,6 +40,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 | `tlsServerName` | `tls.server_name` |
 | `alpn` | `tls.alpn` (default `["h3"]`) |
 | `obfsPassword` | `obfs.type=salamander` + `obfs.password` (если задан) |
+| `upMbps` / `downMbps` | `up_mbps` / `down_mbps` | no (empty → BBR) |
 | `displayName` | UI only |
 
 ### Outbound defaults (`SingBoxConnectPlan.hysteria2`)

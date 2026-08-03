@@ -111,11 +111,19 @@ object ServersApi {
         tlsServerName = tlsName,
         alpn = alpn,
         obfsPassword = obfs,
+        upMbps = positiveMbps(hy2, "up_mbps"),
+        downMbps = positiveMbps(hy2, "down_mbps"),
       ),
       city = outboundCity,
       id = id,
       bypassRuleSets = parseBypassRuleSets(config),
     )
+  }
+
+  private fun positiveMbps(obj: JSONObject, key: String): Int? {
+    if (!obj.has(key) || obj.isNull(key)) return null
+    val value = obj.optInt(key, 0)
+    return value.takeIf { it > 0 }
   }
 
   /** Remote rule-sets from API; ignores TUN `route_exclude_address_set` (unsupported on VpnService). */

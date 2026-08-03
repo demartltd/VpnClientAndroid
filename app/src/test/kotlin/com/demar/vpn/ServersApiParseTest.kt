@@ -55,6 +55,8 @@ class ServersApiParseTest {
             "server": "hy2.example.com",
             "server_port": 443,
             "password": "hy2-pass",
+            "up_mbps": 10,
+            "down_mbps": 10,
             "tls": { "enabled": true, "server_name": "hy2.example.com", "alpn": ["h3"] }
           },
           { "type": "direct", "tag": "direct" }
@@ -119,12 +121,16 @@ class ServersApiParseTest {
     assertEquals("hy2.example.com", profile.profile.server)
     assertEquals(443, profile.profile.port)
     assertEquals("hy2-pass", profile.profile.password)
+    assertEquals(10, profile.profile.upMbps)
+    assertEquals(10, profile.profile.downMbps)
     assertEquals(6, profile.bypassRuleSets.size)
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" && it.url.contains("Chocolate4U") })
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-cn" })
     val built = SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan)
     assertFalse(built.contains("route_exclude_address_set"))
     assertTrue(built.contains("geosite-ir"))
+    assertTrue(built.contains("\"up_mbps\": 10"))
+    assertTrue(built.contains("\"down_mbps\": 10"))
   }
 
   @Test
@@ -161,6 +167,8 @@ class ServersApiParseTest {
     val profile = ServersApi.parseServerItem(item)
     assertNotNull(profile)
     assertEquals("", profile!!.profile.password)
+    assertNull(profile.profile.upMbps)
+    assertNull(profile.profile.downMbps)
   }
 
   @Test
@@ -178,5 +186,7 @@ class ServersApiParseTest {
     assertEquals("Frankfurt am Main", profile.city)
     assertEquals("", profile.profile.password)
     assertEquals("", profile.profile.server)
+    assertNull(profile.profile.upMbps)
+    assertNull(profile.profile.downMbps)
   }
 }
