@@ -72,6 +72,20 @@ Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `
 - `override_android_vpn: true`
 - `default_domain_resolver`: `dns-direct`, `ipv4_only`
 
+### TunSettings (расширяемый bypass)
+
+Модель: `domain/vpn/tun/TunSettings` — `bypassRegions` / `bypassDomains` / `bypassPackages`.
+
+- Регионы: каталог `TunRegions.catalog` (`ru`, `cn`, `ir`). Добавить регион = одна запись + URLs rule-set.
+- Домены → DNS/route `domain` → direct; пакеты → TUN `exclude_package` (UI позже).
+- Builder: `SingBoxConfigBuilder.buildTunConfigJson(plan, tun)`.
+- **Free**: `VpnEntitlements.effective` всегда включает все регионы каталога.
+- **Plus/VIP/Dev/Tester**: toggle региона; confirm OFF; авто-вкл через 10 мин (`TemporaryOffPolicy` + WorkManager).
+- UI: флаги стран (Twemoji) в TUN settings.
+- Не использовать TUN `route_exclude_address_set` на Android VpnService.
+
+UI: App settings → TUN settings → список из `TunRegions.catalog`.
+
 ---
 
 ## Uplink bypass

@@ -4,23 +4,25 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import androidx.core.content.ContextCompat
+import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSessionStore
 import com.demar.vpn.data.logging.AppLog
-import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.network.UplinkProbe
+import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.servers.ServersApi
-import com.demar.vpn.R
 import com.demar.vpn.domain.vpn.ConnectTimeouts
-import com.demar.vpn.domain.vpn.VpnConnectMessages
-import com.demar.vpn.domain.vpn.isHostname
-import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
+import com.demar.vpn.domain.vpn.VpnConnectMessages
+import com.demar.vpn.domain.vpn.VpnEntitlements
 import com.demar.vpn.domain.vpn.VpnState
+import com.demar.vpn.domain.vpn.isHostname
+import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
+import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
@@ -30,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,7 +41,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
 
 class VpnController(private val context: Context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -81,7 +83,6 @@ class VpnController(private val context: Context) {
   private var pendingConnect = false
   private var reconnectAfterDisconnect = false
   private var lastStopAt = 0L
-
   var onNeedVpnPermission: ((Intent) -> Unit)? = null
 
   private val removeListener = VpnEventStream.addListener { event ->
@@ -90,6 +91,9 @@ class VpnController(private val context: Context) {
 
   init {
     VpnControlStateStore.hydrate(context)
+    TunSettingsStore.init(context)
+    TunSettingsScheduler.bind(this)
+    TunSettingsScheduler.scheduleFromStore(context)
     scope.launch { refreshServers() }
     scope.launch {
       var hadSession = AuthSessionStore.current() != null
@@ -102,12 +106,67 @@ class VpnController(private val context: Context) {
   }
 
   fun dispose() {
+    TunSettingsScheduler.unbind(this)
     removeListener()
     stopTraffic()
     reachabilityJob?.cancel()
     watchdogJob?.cancel()
     disconnectWatchdogJob?.cancel()
     connectJob?.cancel()
+  }
+
+  val tunSettings: StateFlow<TunSettings> get() = TunSettingsStore.settings
+
+  fun canToggleRegion(regionId: String): Boolean =
+    VpnEntitlements.canToggleRegion(regionId, AuthSessionStore.current()?.vpnSubscription)
+
+  fun setRegionBypass(regionId: String, enabled: Boolean) {
+    if (!canToggleRegion(regionId)) {
+      AppLog.append("tun_bypass=$regionId gated")
+      return
+    }
+    TunSettingsStore.setRegionEnabled(context, regionId, enabled)
+    if (enabled) TunSettingsScheduler.cancel(context, regionId)
+    else TunSettingsScheduler.scheduleFromStore(context)
+    AppLog.append("tun_bypass=$regionId ${if (enabled) "on" else "off"}")
+    reconnectForTunChange()
+  }
+
+  fun onTunSettingsChanged() {
+    reconnectForTunChange()
+  }
+
+  /** Cold start / resume: apply temporary-off expiry and reconnect if tunnel fingerprint stale. */
+  fun syncTunSettings() {
+    val before = TunSettingsStore.settings.value
+    val after = effectiveTunSettings()
+    TunSettingsScheduler.scheduleFromStore(context)
+    val pending = TunSettingsStore.consumePendingTunnelRefresh(context)
+    val tunnelFp = TunSettingsStore.tunnelFingerprint(context)
+    val wantFp = after.fingerprint()
+    when {
+      before.fingerprint() != after.fingerprint() -> {
+        AppLog.append("tun_settings sync fingerprint changed")
+        reconnectForTunChange()
+      }
+      pending || (tunnelFp != null && tunnelFp != wantFp) -> reconnectForTunChange()
+    }
+  }
+
+  private fun effectiveTunSettings(): TunSettings =
+    VpnEntitlements.effective(
+      TunSettingsStore.load(context),
+      AuthSessionStore.current()?.vpnSubscription,
+    )
+
+  private fun reconnectForTunChange() {
+    when (_state.value) {
+      VpnState.Connected, VpnState.Connecting -> {
+        reconnectAfterDisconnect = true
+        stopVpn(clearReconnect = false)
+      }
+      else -> Unit
+    }
   }
 
   fun clearServers() {
@@ -219,13 +278,22 @@ class VpnController(private val context: Context) {
   }
 
   fun syncPlatformState() {
-    if (connectJob?.isActive == true) return
+    if (connectJob?.isActive == true) {
+      syncTunSettings()
+      return
+    }
     when (_state.value) {
-      VpnState.Connecting, VpnState.Disconnecting -> return
+      VpnState.Connecting, VpnState.Disconnecting -> {
+        syncTunSettings()
+        return
+      }
       else -> Unit
     }
-    val snap = VpnEventStream.vpnStateSnapshot(context) ?: return
-    applyStateEvent(parseVpnStateEvent(snap) ?: return)
+    val snap = VpnEventStream.vpnStateSnapshot(context)
+    if (snap != null) {
+      parseVpnStateEvent(snap)?.let { applyStateEvent(it) }
+    }
+    syncTunSettings()
   }
 
   /** Home toggle: tap while connecting cancels; tap while connected disconnects. */
@@ -351,13 +419,15 @@ class VpnController(private val context: Context) {
       }
 
       val dialServer = plan.proxyOutbound["server"]
-      val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan)
+      val tun = effectiveTunSettings()
+      val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
+      TunSettingsStore.setTunnelFingerprint(context, tun.fingerprint())
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
       AppLog.append(
         "connect uplinkHost=$uplinkHost dialServer=$dialServer uplinkPort=$uplinkPort " +
-          "resolved=${resolved.joinToString()}",
+          "resolved=${resolved.joinToString()} tun=${tun.fingerprint()}",
       )
       VpnControlStateStore.saveLastProfileId(context, profile.id)
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)

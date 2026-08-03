@@ -52,11 +52,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthRepository
@@ -390,37 +388,6 @@ private fun ServerRow(
     }
     Spacer(Modifier.width(8.dp))
     StatusDot(reachState)
-  }
-}
-
-@Composable
-private fun CountryFlag(countryCode: String?) {
-  val cs = MaterialTheme.colorScheme
-  val flagEmoji = countryCodeToFlagEmoji(countryCode)
-  Box(
-    Modifier
-      .size(36.dp)
-      .clip(RoundedCornerShape(8.dp))
-      .background(cs.primary.copy(alpha = 0.1f)),
-    contentAlignment = Alignment.Center,
-  ) {
-    if (flagEmoji.isNotEmpty()) {
-      Text(
-        text = flagEmoji,
-        fontFamily = TwemojiCountryFlagFont,
-        fontSize = 22.sp,
-        style = MaterialTheme.typography.bodyMedium.copy(
-          platformStyle = PlatformTextStyle(includeFontPadding = false),
-        ),
-      )
-    } else {
-      Text(
-        countryCode?.uppercase().orEmpty().ifEmpty { "?" },
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
-        color = cs.primary,
-      )
-    }
   }
 }
 

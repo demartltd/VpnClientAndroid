@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -56,7 +57,11 @@ import kotlinx.coroutines.launch
 private const val JournalHeight = 260
 
 @Composable
-fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
+fun AppSettingsScreen(
+  onBack: () -> Unit,
+  onTunSettings: () -> Unit,
+  snackbarHost: SnackbarHostState,
+) {
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val lines by AppLog.lines.collectAsState()
@@ -85,6 +90,13 @@ fun AppSettingsScreen(onBack: () -> Unit, snackbarHost: SnackbarHostState) {
         title = stringResource(R.string.settings_language),
         subtitle = languageLabel,
         onClick = { openAppLocaleSettings(context) },
+      )
+      Spacer(Modifier.height(12.dp))
+      SettingsActionButton(
+        icon = Icons.Outlined.VpnLock,
+        title = stringResource(R.string.settings_tun),
+        subtitle = stringResource(R.string.settings_tun_sub),
+        onClick = onTunSettings,
       )
       Spacer(Modifier.height(12.dp))
       SettingsActionButton(

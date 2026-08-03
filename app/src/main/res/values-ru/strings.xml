@@ -25,6 +25,16 @@
     <string name="settings_privacy_sub">Как обрабатываются данные</string>
     <string name="settings_language">Язык</string>
     <string name="settings_language_system">Как в системе</string>
+    <string name="settings_bypass_region">Обход трафика (%1$s)</string>
+    <string name="settings_bypass_region_sub">Трафик %1$s идёт мимо VPN-туннеля</string>
+    <string name="settings_bypass_region_gated">Недоступно на вашей подписке</string>
+    <string name="settings_bypass_region_disable_title">Отключить обход?</string>
+    <string name="settings_bypass_region_disable_message">Трафик %1$s пойдёт через VPN. Через 10 минут настройка снова включится автоматически.</string>
+    <string name="settings_bypass_region_disable_confirm">Отключить</string>
+    <string name="settings_bypass_region_disable_cancel">Отмена</string>
+    <string name="settings_tun">Настройки TUN</string>
+    <string name="settings_tun_sub">Обход и маршрутизация туннеля</string>
+    <string name="settings_tun_title">Настройки TUN</string>
     <string name="app_settings_title">Настройки приложения</string>
     <string name="journal_title">Журнал</string>
     <string name="journal_subtitle">Сообщения приложения и ядра VPN</string>
