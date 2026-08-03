@@ -354,5 +354,27 @@ class VpnPipelineTest {
     val obfs = plan.proxyOutbound["obfs"] as Map<*, *>
     assertEquals("salamander", obfs["type"])
     assertEquals("cry_me_a_r1ver", obfs["password"])
+    assertFalse(plan.proxyOutbound.containsKey("up_mbps"))
+    assertFalse(plan.proxyOutbound.containsKey("down_mbps"))
+  }
+
+  @Test
+  fun hysteria2_bandwidthMbpsIncludedWhenSet() {
+    val plan = ServerProfile.hysteria2(
+      Hysteria2Profile(
+        displayName = "FI-FREE-1",
+        server = "fi.example.com",
+        port = 8443,
+        password = "secret",
+        tlsServerName = "sni.example.com",
+        upMbps = 10,
+        downMbps = 10,
+      ),
+    ).connectPlan
+    assertEquals(10, plan.proxyOutbound["up_mbps"])
+    assertEquals(10, plan.proxyOutbound["down_mbps"])
+    val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
+    assertTrue(json.contains("\"up_mbps\": 10"))
+    assertTrue(json.contains("\"down_mbps\": 10"))
   }
 }

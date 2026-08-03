@@ -48,6 +48,8 @@ data class SingBoxConnectPlan(
         put("domain_resolver", DOMAIN_RESOLVER)
         val obfs = profile.obfsPassword?.takeIf { it.isNotEmpty() }
         if (obfs != null) put("obfs", mapOf("type" to "salamander", "password" to obfs))
+        profile.upMbps?.takeIf { it > 0 }?.let { put("up_mbps", it) }
+        profile.downMbps?.takeIf { it > 0 }?.let { put("down_mbps", it) }
       }
       return SingBoxConnectPlan(
         uplinkHost = profile.server,
