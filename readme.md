@@ -51,7 +51,7 @@ VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegr
 ./scripts/adb/servers_fetch_test.sh
 ./scripts/adb/vpn_cycle_test.sh -n 5
 ./scripts/adb/server_switch_test.sh -n 10
-./scripts/adb/bypass_ru_test.sh
+./scripts/adb/tun_apps_test.sh
 ./scripts/adb/test_all_devices.sh -n 5
 ```
 

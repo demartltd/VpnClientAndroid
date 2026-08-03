@@ -1,15 +1,16 @@
 package com.demar.vpn
 
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
+import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerTier
+import com.demar.vpn.domain.vpn.SingBoxConnectPlan
 import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
-import com.demar.vpn.domain.vpn.tun.TunRegions
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.vpn.VpnTunnelProbe
@@ -297,14 +298,23 @@ class VpnPipelineTest {
   }
 
   @Test
-  fun tunSettings_regionsAddRuleSetsDnsAndCache() {
-    val plan = fixtureServers[0].connectPlan
-    val tun = TunSettings(bypassRegions = setOf(TunRegions.RU, TunRegions.CN, TunRegions.IR))
-    val json = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
-    for (ru in TunRegions.byIds(tun.bypassRegions)) {
-      assertTrue(ru.geoipTag, json.contains(ru.geoipTag))
-      assertTrue(ru.geositeTag, json.contains(ru.geositeTag))
-      assertTrue(ru.geoipUrl, json.contains(ru.geoipUrl))
+  fun tunSettings_apiRuleSetsAddDnsRouteAndCache() {
+    val ruleSets = listOf(
+      ApiBypassRuleSet("geoip-ru", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs"),
+      ApiBypassRuleSet("geosite-category-ru", "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs"),
+      ApiBypassRuleSet("geoip-ir", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ir.srs"),
+      ApiBypassRuleSet("geosite-ir", "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-ir.srs"),
+      ApiBypassRuleSet("geoip-cn", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"),
+      ApiBypassRuleSet("geosite-cn", "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"),
+    )
+    val plan = SingBoxConnectPlan.hysteria2(
+      fixtureServers[0].profile,
+      bypassRuleSets = ruleSets,
+    )
+    val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
+    for (rs in ruleSets) {
+      assertTrue(rs.tag, json.contains(rs.tag))
+      assertTrue(rs.url, json.contains(rs.url))
     }
     assertTrue(json.contains("\"cache_file\""))
     assertFalse(json.contains("route_exclude_address_set"))
@@ -312,27 +322,19 @@ class VpnPipelineTest {
   }
 
   @Test
-  fun tunSettings_emptyRegions_hasNoRuleSets() {
-    val json = SingBoxConfigBuilder.buildTunConfigJson(
-      fixtureServers[0].connectPlan,
-      TunSettings(bypassRegions = emptySet()),
-    )
+  fun tunSettings_emptyRuleSets_hasNoRuleSets() {
+    val json = SingBoxConfigBuilder.buildTunConfigJson(fixtureServers[0].connectPlan)
     assertFalse(json.contains("geoip-ru"))
     assertFalse(json.contains("\"cache_file\""))
     assertFalse(JSONObject(json).getJSONObject("route").has("rule_set"))
   }
 
   @Test
-  fun tunSettings_domainsAndPackages() {
+  fun tunSettings_packages() {
     val json = SingBoxConfigBuilder.buildTunConfigJson(
       fixtureServers[0].connectPlan,
-      TunSettings(
-        bypassRegions = emptySet(),
-        bypassDomains = listOf("example.ru"),
-        bypassPackages = listOf("com.example.bank"),
-      ),
+      TunSettings(bypassPackages = listOf("com.example.bank")),
     )
-    assertTrue(json.contains("example.ru"))
     assertTrue(json.contains("exclude_package"))
     assertTrue(json.contains("com.example.bank"))
   }

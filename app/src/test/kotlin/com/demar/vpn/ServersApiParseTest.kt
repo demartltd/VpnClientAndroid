@@ -1,10 +1,13 @@
 package com.demar.vpn
 
 import com.demar.vpn.data.servers.ServersApi
+import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ServersApiParseTest {
@@ -56,7 +59,53 @@ class ServersApiParseTest {
           },
           { "type": "direct", "tag": "direct" }
         ],
-        "route": { "final": "FI-FREE-2" }
+        "route": {
+          "final": "FI-FREE-2",
+          "rule_set": [
+            {
+              "tag": "geoip-ru",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs"
+            },
+            {
+              "tag": "geosite-category-ru",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs"
+            },
+            {
+              "tag": "geoip-ir",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ir.srs"
+            },
+            {
+              "tag": "geosite-ir",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-ir.srs"
+            },
+            {
+              "tag": "geoip-cn",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"
+            },
+            {
+              "tag": "geosite-cn",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"
+            }
+          ]
+        },
+        "inbounds": [
+          {
+            "type": "tun",
+            "route_exclude_address_set": ["geoip-ru", "geoip-ir", "geoip-cn"]
+          }
+        ]
       }
     """.trimIndent()
     val item = JSONObject()
@@ -70,6 +119,12 @@ class ServersApiParseTest {
     assertEquals("hy2.example.com", profile.profile.server)
     assertEquals(443, profile.profile.port)
     assertEquals("hy2-pass", profile.profile.password)
+    assertEquals(6, profile.bypassRuleSets.size)
+    assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" && it.url.contains("Chocolate4U") })
+    assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-cn" })
+    val built = SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan)
+    assertFalse(built.contains("route_exclude_address_set"))
+    assertTrue(built.contains("geosite-ir"))
   }
 
   @Test

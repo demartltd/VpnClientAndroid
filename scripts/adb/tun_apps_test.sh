@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Demar VPN Android — smoke-check tun_bypass journal lines via ADB.
+# Demar VPN Android — smoke-check tun_apps journal lines via ADB.
 #
 # Usage:
-#   ./scripts/adb/bypass_ru_test.sh
-#   ./scripts/adb/bypass_ru_test.sh -s SERIAL
+#   ./scripts/adb/tun_apps_test.sh
+#   ./scripts/adb/tun_apps_test.sh -s SERIAL
 
 set -euo pipefail
 
@@ -12,9 +12,9 @@ REMOTE_JOURNAL="/sdcard/Android/data/${PACKAGE}/files/demar/demar_app.log"
 
 usage() {
   cat <<'EOF'
-Usage: bypass_ru_test.sh [-s serial] [-h]
+Usage: tun_apps_test.sh [-s serial] [-h]
 
-  Greps demar_app.log for tun_bypass=… on|off|gated|auto_on lines.
+  Greps demar_app.log for tun_apps=… lines (exclude-package settings).
 EOF
   exit "${1:-0}"
 }
@@ -46,9 +46,9 @@ if ! "${ADB[@]}" pull "$REMOTE_JOURNAL" "$TMP" 2>/dev/null; then
   exit 1
 fi
 
-echo "--- tun_bypass journal ---"
-if grep -E 'tun_bypass=' "$TMP"; then
-  echo "OK: found tun_bypass log lines"
+echo "--- tun_apps journal ---"
+if grep -E 'tun_apps=' "$TMP"; then
+  echo "OK: found tun_apps log lines"
 else
-  echo "No tun_bypass lines yet (TUN settings → bypass after Plus/VIP/Dev/Tester login)."
+  echo "No tun_apps lines yet (App settings → TUN settings → Add app)."
 fi

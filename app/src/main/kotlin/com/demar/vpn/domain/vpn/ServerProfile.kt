@@ -28,8 +28,10 @@ data class ServerProfile(
   val countryName: String? = null,
   val city: String? = null,
   val profile: Hysteria2Profile,
+  val bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
 ) {
-  val connectPlan: SingBoxConnectPlan get() = SingBoxConnectPlan.hysteria2(profile)
+  val connectPlan: SingBoxConnectPlan
+    get() = SingBoxConnectPlan.hysteria2(profile, bypassRuleSets)
 
   val protocol: ServerProtocol get() = ServerProtocol.Hysteria2
 
@@ -64,6 +66,7 @@ data class ServerProfile(
       countryName: String? = null,
       city: String? = null,
       id: String? = null,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
     ) = ServerProfile(
       id = id ?: "hysteria2:${profile.displayName}",
       displayName = profile.displayName,
@@ -71,15 +74,17 @@ data class ServerProfile(
       countryName = countryName,
       city = city,
       profile = profile,
+      bypassRuleSets = bypassRuleSets,
     )
 
     fun hysteria2FromTag(
       profile: Hysteria2Profile,
       city: String? = null,
       id: String? = null,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
     ): ServerProfile {
       val countryCode = countryCodeFromTag(profile.displayName)
-      return hysteria2(profile, countryCode, countryNameFromCode(countryCode), city, id)
+      return hysteria2(profile, countryCode, countryNameFromCode(countryCode), city, id, bypassRuleSets)
     }
 
     fun countryCodeFromTag(tag: String): String? {

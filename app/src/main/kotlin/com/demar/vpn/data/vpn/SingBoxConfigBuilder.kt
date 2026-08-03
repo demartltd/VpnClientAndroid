@@ -1,9 +1,8 @@
 package com.demar.vpn.data.vpn
 
+import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.SingBoxConnectPlan
 import com.demar.vpn.domain.vpn.SingBoxTags
-import com.demar.vpn.domain.vpn.tun.TunRegionDef
-import com.demar.vpn.domain.vpn.tun.TunRegions
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
@@ -29,17 +28,16 @@ object SingBoxConfigBuilder {
     logLevel: String,
   ): JSONObject {
     val bootstrap = (plan.tun.bootstrapDomains + VpnTunnelProbe.probeBootstrapDomains).distinct()
-    val regions = TunRegions.byIds(tun.bypassRegions)
-    val domains = cleanDomains(tun.bypassDomains)
+    val ruleSets = plan.bypassRuleSets.distinctBy { it.tag }
     val packages = tun.bypassPackages.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
     val experimental = jObj(
       "clash_api" to jObj(
         "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
       ),
-    ).also { if (regions.isNotEmpty()) it.put("cache_file", jObj("enabled" to true)) }
+    ).also { if (ruleSets.isNotEmpty()) it.put("cache_file", jObj("enabled" to true)) }
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
-      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, regions, domains),
+      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets),
       "inbounds" to jArr(
         makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute, packages),
         jObj(
@@ -49,7 +47,7 @@ object SingBoxConfigBuilder {
           "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
         ),
       ),
-      "route" to makeRoute(plan.directIPs, bootstrap, regions, domains),
+      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
@@ -61,8 +59,7 @@ object SingBoxConfigBuilder {
   private fun makeDns(
     dnsFinal: String,
     bootstrapDomains: List<String>,
-    regions: List<TunRegionDef>,
-    domains: List<String>,
+    ruleSets: List<ApiBypassRuleSet>,
   ) = jObj(
     "servers" to jArr(
       jObj("type" to "local", "tag" to SingBoxTags.DNS_DIRECT),
@@ -76,10 +73,9 @@ object SingBoxConfigBuilder {
     "rules" to jArr(
       jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
       *domainDnsRules(bootstrapDomains, "route", "server" to SingBoxTags.DNS_DIRECT),
-      *regions.map { r ->
-        jObj("rule_set" to jArr(r.geositeTag), "action" to "route", "server" to SingBoxTags.DNS_DIRECT)
+      *ruleSets.filter { it.isGeosite }.map { rs ->
+        jObj("rule_set" to jArr(rs.tag), "action" to "route", "server" to SingBoxTags.DNS_DIRECT)
       }.toTypedArray(),
-      *domainDnsRules(domains, "route", "server" to SingBoxTags.DNS_DIRECT),
     ),
     "final" to dnsFinal,
     "strategy" to "ipv4_only",
@@ -88,8 +84,7 @@ object SingBoxConfigBuilder {
   private fun makeRoute(
     directIPs: List<String>,
     bootstrapDomains: List<String>,
-    regions: List<TunRegionDef>,
-    domains: List<String>,
+    ruleSets: List<ApiBypassRuleSet>,
   ) = jObj(
     "auto_detect_interface" to true,
     "override_android_vpn" to true,
@@ -100,13 +95,9 @@ object SingBoxConfigBuilder {
       jObj("protocol" to "dns", "action" to "hijack-dns"),
       jObj("network" to jArr("udp"), "port" to jArr(443), "action" to "reject"),
       jObj("ip_is_private" to true, "action" to "route", "outbound" to SingBoxTags.DIRECT),
-      *regions.flatMap { r ->
-        listOf(
-          jObj("rule_set" to jArr(r.geositeTag), "action" to "route", "outbound" to SingBoxTags.DIRECT),
-          jObj("rule_set" to jArr(r.geoipTag), "action" to "route", "outbound" to SingBoxTags.DIRECT),
-        )
+      *ruleSets.map { rs ->
+        jObj("rule_set" to jArr(rs.tag), "action" to "route", "outbound" to SingBoxTags.DIRECT)
       }.toTypedArray(),
-      *domainRouteRules(domains, SingBoxTags.DIRECT),
       *directIpRules(directIPs),
       *domainRouteRules(bootstrapDomains, SingBoxTags.DIRECT),
       jObj("ip_version" to 6, "action" to "reject"),
@@ -114,14 +105,10 @@ object SingBoxConfigBuilder {
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
     ),
   ).also { route ->
-    if (regions.isEmpty()) return@also
+    if (ruleSets.isEmpty()) return@also
     route.put(
       "rule_set",
-      jArr(
-        *regions.flatMap { r ->
-          listOf(remoteRuleSet(r.geoipTag, r.geoipUrl), remoteRuleSet(r.geositeTag, r.geositeUrl))
-        }.toTypedArray(),
-      ),
+      jArr(*ruleSets.map { remoteRuleSet(it.tag, it.url) }.toTypedArray()),
     )
   }
 
