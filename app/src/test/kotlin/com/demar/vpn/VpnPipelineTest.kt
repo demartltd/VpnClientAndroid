@@ -9,6 +9,8 @@ import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
+import com.demar.vpn.domain.vpn.tun.TunRegions
+import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONObject
@@ -292,6 +294,47 @@ class VpnPipelineTest {
     val alpn = outbound.getJSONObject("tls").getJSONArray("alpn")
     assertEquals("h3", alpn.getString(0))
     assertTrue(profile.connectPlan.tun.bootstrapDomains.contains("fi-f-1.xyzdeer.space"))
+  }
+
+  @Test
+  fun tunSettings_regionsAddRuleSetsDnsAndCache() {
+    val plan = fixtureServers[0].connectPlan
+    val tun = TunSettings(bypassRegions = setOf(TunRegions.RU, TunRegions.CN, TunRegions.IR))
+    val json = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
+    for (ru in TunRegions.byIds(tun.bypassRegions)) {
+      assertTrue(ru.geoipTag, json.contains(ru.geoipTag))
+      assertTrue(ru.geositeTag, json.contains(ru.geositeTag))
+      assertTrue(ru.geoipUrl, json.contains(ru.geoipUrl))
+    }
+    assertTrue(json.contains("\"cache_file\""))
+    assertFalse(json.contains("route_exclude_address_set"))
+    assertTrue(JSONObject(json).getJSONObject("route").has("rule_set"))
+  }
+
+  @Test
+  fun tunSettings_emptyRegions_hasNoRuleSets() {
+    val json = SingBoxConfigBuilder.buildTunConfigJson(
+      fixtureServers[0].connectPlan,
+      TunSettings(bypassRegions = emptySet()),
+    )
+    assertFalse(json.contains("geoip-ru"))
+    assertFalse(json.contains("\"cache_file\""))
+    assertFalse(JSONObject(json).getJSONObject("route").has("rule_set"))
+  }
+
+  @Test
+  fun tunSettings_domainsAndPackages() {
+    val json = SingBoxConfigBuilder.buildTunConfigJson(
+      fixtureServers[0].connectPlan,
+      TunSettings(
+        bypassRegions = emptySet(),
+        bypassDomains = listOf("example.ru"),
+        bypassPackages = listOf("com.example.bank"),
+      ),
+    )
+    assertTrue(json.contains("example.ru"))
+    assertTrue(json.contains("exclude_package"))
+    assertTrue(json.contains("com.example.bank"))
   }
 
   @Test

@@ -24,10 +24,12 @@ import com.demar.vpn.ui.scaffold.AppScaffold
 import com.demar.vpn.ui.settings.AppSettingsScreen
 import com.demar.vpn.ui.settings.DocumentScreen
 import com.demar.vpn.ui.settings.ServiceMenuScreen
+import com.demar.vpn.ui.settings.TunSettingsScreen
 
 object Routes {
   const val Main = "main"
   const val AppSettings = "app_settings"
+  const val TunSettings = "tun_settings"
   const val ServiceMenu = "service_menu"
   const val Document = "document/{kind}"
 
@@ -67,6 +69,14 @@ fun AppRoot(
       }
       composable(Routes.AppSettings) {
         AppSettingsScreen(
+          onBack = { navController.popBackStack() },
+          onTunSettings = { navController.openOverlay(Routes.TunSettings) },
+          snackbarHost = snackbarHost,
+        )
+      }
+      composable(Routes.TunSettings) {
+        TunSettingsScreen(
+          vpnController = vpnController,
           onBack = { navController.popBackStack() },
           snackbarHost = snackbarHost,
         )

@@ -10,10 +10,11 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── domain/
-│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, …
+│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, VpnEntitlements
+│   │   └── tun/                 # TunSettings, TunRegions, TemporaryOffPolicy
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, ClashTrafficMonitor
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore/Scheduler
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── servers/                 # ServersApi (POST vpn.example.invalid/vpn/servers → profiles)
@@ -26,10 +27,10 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── SingBoxVersion.kt
 │   ├── theme/
 │   ├── scaffold/AppScaffold.kt
-│   ├── components/
+│   ├── components/              # SettingsActionButton, SettingsSwitchRow, …
 │   ├── home/HomeScreen.kt
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
-│   ├── settings/                # Documents sheet + DocumentScreen (ToS/PP)
+│   ├── settings/                # App settings, TunSettingsScreen, Documents, Service menu
 │   ├── account/
 │   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput
 └── vpn/                         # Libbox (из demar_vpn)
@@ -39,6 +40,7 @@ app/src/main/kotlin/com/demar/vpn/
 
 ```
 app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
+app/src/test/kotlin/com/demar/vpn/TunSettingsPolicyTest.kt
 ```
 
 ## Scripts
@@ -54,6 +56,7 @@ scripts/
 │   ├── servers_fetch_test.sh
 │   ├── vpn_cycle_test.sh
 │   ├── server_switch_test.sh
+│   ├── bypass_ru_test.sh
 │   └── test_all_devices.sh
 ├── libbox-build-android.py
 ├── generate_icons.py
@@ -63,21 +66,14 @@ scripts/
 ├── increment_version*.ps1
 ├── backup-android-signing.ps1
 ├── open_output_folders.ps1
-├── push-github.ps1
+└── logo_clear.png
 ```
 
-## Res
+## Assets / native
 
 ```
-app/src/main/res/
-├── mipmap-*/ic_launcher.png
-├── drawable-*/ic_launcher_*.png
-├── drawable/ic_brand_*.xml
-├── xml/locales_config.xml       # per-app language (en, ru) для системных настроек
-├── values/strings.xml           # EN (default)
-└── values-ru/strings.xml        # RU
+app/src/main/assets/singbox/bundled_version.txt
+app/libs/libbox.aar
 ```
 
-Локализация: default = язык телефона; override — Настройки → Настройки приложения → Язык (системный экран) или Настройки Android → Приложения → Demar VPN → Язык.
-
-Синхронизация Libbox TAGS с `demar_vpn/scripts`.
+См. также `readme.md`, `readme-core.md`, `readme-signing.md`.

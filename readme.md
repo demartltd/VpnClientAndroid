@@ -1,12 +1,12 @@
 **Demar VPN Android** — нативный VPN-клиент на Kotlin + Jetpack Compose
 
-Платформа: **Android only** (Windows/Linux/macOS не в scope).
+Платформа: **Android only**.
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
 
 Ядро: **sing-box 1.13.14** (**Hysteria2**). Документация: https://sing-box.sagernet.org/
 
-**UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot` (parity с Flutter `ColorScheme.fromSeed`).
+**UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot`.
 
 Структура: `filestree.md` · ядро: `readme-core.md` · signing: `readme-signing.md`
 
@@ -27,7 +27,7 @@ pwsh scripts/build_android.ps1
 
 ---
 
-## UI (parity с demar_vpn Flutter)
+## UI
 
 | Экран | Статус |
 |-------|--------|
@@ -51,6 +51,7 @@ VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegr
 ./scripts/adb/servers_fetch_test.sh
 ./scripts/adb/vpn_cycle_test.sh -n 5
 ./scripts/adb/server_switch_test.sh -n 10
+./scripts/adb/bypass_ru_test.sh
 ./scripts/adb/test_all_devices.sh -n 5
 ```
 
@@ -96,7 +97,7 @@ UI-журнал («Настройки → Настройки приложени�
 | Область | Статус |
 |---------|--------|
 | Compose UI (4 tabs + push + login) | реализовано |
-| Тема / snackbar / соц. иконки / i18n EN+RU | parity с Flutter; per-app language через `localeConfig` |
+| Тема / snackbar / соц. иконки / i18n EN+RU | per-app language через `localeConfig` |
 | Libbox VPN layer | `vpn/*` |
 | Domain / data / Hysteria2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |
