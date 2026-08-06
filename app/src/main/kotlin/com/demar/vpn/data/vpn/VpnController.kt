@@ -192,9 +192,14 @@ class VpnController(private val context: Context) {
       applyServerList(result.servers)
       AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
     } catch (e: AuthException) {
-      if (e.statusCode == 401) {
-        AuthRepository.clearLocal(context)
-        AppLog.append("servers: session revoked")
+      if (e.isSessionInvalid) {
+        if (session.isLocal) {
+          _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
+          AppLog.append("servers: local demo fetch unauthorized — keeping session")
+        } else {
+          AuthRepository.clearLocal(context)
+          AppLog.append("servers: session revoked")
+        }
       } else {
         _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
         AppLog.append("servers: fetch failed — $e")

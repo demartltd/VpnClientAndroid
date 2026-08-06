@@ -25,7 +25,7 @@ object AuthRepository {
       AuthSessionStore.save(context, checked)
       true
     } catch (e: AuthException) {
-      if (e.statusCode == 401 || e.message == "session_revoked") {
+      if (e.isSessionInvalid) {
         clearLocal(context)
         AppLog.append("auth: session inactive — signed out")
         false
@@ -69,14 +69,14 @@ object AuthRepository {
     AppLog.append("auth: signed in as ${exchange.userId} (oauth token)")
   }
 
-  /** Clear local only after server confirms revoke (or session already gone). */
+  /** Clear local after 2xx, 404, or 401 (already revoked). */
   suspend fun signOut(context: Context) {
     val current = AuthSessionStore.current() ?: return
     if (!current.isLocal) {
       try {
         AuthApi.logoutSession(current.userId, current.loginAt)
       } catch (e: AuthException) {
-        if (e.statusCode != 404) throw e
+        if (!e.isSessionInvalid && e.statusCode != 404) throw e
       }
     }
     clearLocal(context)

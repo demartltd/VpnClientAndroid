@@ -14,7 +14,9 @@ class AuthException(
   val statusCode: Int = 0,
   val retryAfterSeconds: Int? = null,
   val hint: String? = null,
-) : IOException(message)
+) : IOException(message) {
+  val isSessionInvalid: Boolean get() = statusCode == 401
+}
 
 sealed class EmailConfirmResult {
   data class NeedsTotp(val challengeToken: String) : EmailConfirmResult()
