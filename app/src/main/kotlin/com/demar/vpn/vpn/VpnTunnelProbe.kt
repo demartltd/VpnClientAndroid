@@ -19,12 +19,11 @@ internal object VpnTunnelProbe {
 
   private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE)
 
-  private const val RETRY_DELAY_MS = 200L
   private const val READY_POLL_MS = 100L
   private const val TCP_PROBE_MS = 500
   const val MAX_CONSECUTIVE_HTTP_FAILS = 15
-  private const val FIRST_HTTP_SETTLE_MS = 2_500L
-  private const val HTTP_WARMUP_MS = 4_000L
+  private const val HTTP_WARMUP_MS = 1_200L
+  private val HTTP_BACKOFF_MS = longArrayOf(0L, 50L, 100L, 200L, 300L)
 
   const val TIMEOUT_MS = 5_000
 
@@ -49,7 +48,6 @@ internal object VpnTunnelProbe {
     var diagOpenAt = 0L
     var attempts = 0
     var consecutiveHttpFails = 0
-    var httpSettled = false
     while (System.currentTimeMillis() < deadline) {
       if (shouldAbort()) return ProbeOutcome(ReadyResult.HttpFail, attempts, consecutiveHttpFails)
       if (!diagOpen) {
@@ -62,11 +60,6 @@ internal object VpnTunnelProbe {
           Thread.sleep(minOf(READY_POLL_MS, left))
           continue
         }
-      }
-      if (!httpSettled) {
-        val left = deadline - System.currentTimeMillis()
-        if (left > 0) Thread.sleep(minOf(FIRST_HTTP_SETTLE_MS, left))
-        httpSettled = true
       }
       attempts++
       if (httpOk(attempts, protectFd)) return ProbeOutcome(ReadyResult.Ok, attempts, consecutiveHttpFails)
@@ -81,8 +74,10 @@ internal object VpnTunnelProbe {
       }
       val left = deadline - System.currentTimeMillis()
       if (left <= 0) break
-      val backoff = if (pastWarmup) minOf(RETRY_DELAY_MS * consecutiveHttpFails.coerceAtLeast(1), 1_000L) else RETRY_DELAY_MS
-      Thread.sleep(minOf(backoff, left))
+      val backoff =
+        if (pastWarmup) minOf(200L * consecutiveHttpFails.coerceAtLeast(1), 1_000L)
+        else HTTP_BACKOFF_MS[minOf(attempts, HTTP_BACKOFF_MS.lastIndex)]
+      if (backoff > 0) Thread.sleep(minOf(backoff, left))
     }
     val result = if (diagOpen) ReadyResult.HttpFail else ReadyResult.TcpFail
     return ProbeOutcome(result, attempts, consecutiveHttpFails)

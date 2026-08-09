@@ -18,7 +18,6 @@ import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
-import com.demar.vpn.domain.vpn.isHostname
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.domain.vpn.tun.TunSettings
@@ -394,13 +393,8 @@ class VpnController(private val context: Context) {
       AppLog.append("[app] new connect session profile=${profile.id}")
 
       var plan = profile.connectPlan
-      var resolved = resolveUplinkIpv4s(plan.uplinkHost)
+      val resolved = resolveUplinkIpv4s(plan.uplinkHost)
       if (generation != connectGeneration.get()) return@launch
-
-      if (resolved.isEmpty() && isHostname(plan.uplinkHost)) {
-        delay(200)
-        resolved = resolveUplinkIpv4s(plan.uplinkHost)
-      }
 
       if (resolved.isNotEmpty()) {
         plan = plan.withExtraDirectIps(resolved)
@@ -467,7 +461,7 @@ class VpnController(private val context: Context) {
     applyStateEvent(VpnState.Error(message))
   }
 
-  private suspend fun awaitPostStopSettle(minGapMs: Long = 600L) {
+  private suspend fun awaitPostStopSettle(minGapMs: Long = 200L) {
     val elapsed = System.currentTimeMillis() - lastStopAt
     val wait = minGapMs - elapsed
     if (wait > 0) delay(wait)
