@@ -18,6 +18,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
+│   ├── update/                  # AndroidReleaseApi + AppUpdate (APK + SHA-256)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel
@@ -28,7 +29,8 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── theme/
 │   ├── scaffold/AppScaffold.kt
 │   ├── components/              # SettingsActionButton, DemarSnackbar, …
-│   ├── home/HomeScreen.kt
+│   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
+│   ├── update/                  # UpdateBottomSheet, UpdateFab
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
 │   ├── settings/                # App settings, TunSettingsScreen, Documents, Service menu
 │   ├── account/
@@ -41,6 +43,7 @@ app/src/main/kotlin/com/demar/vpn/
 ```
 app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
 app/src/test/kotlin/com/demar/vpn/ServersApiParseTest.kt
+app/src/test/kotlin/com/demar/vpn/AppUpdateTest.kt
 ```
 
 ## Scripts
