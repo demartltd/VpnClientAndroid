@@ -33,6 +33,22 @@ class VpnTunnelProbeTest {
   }
 
   @Test
+  fun waitForTunnelReady_shortBudget_noFixedSettle() {
+    val started = System.currentTimeMillis()
+    val outcome = VpnTunnelProbe.waitForTunnelReady(250)
+    val elapsed = System.currentTimeMillis() - started
+    when (outcome.result) {
+      // Normal unit-test path: diag closed → poll until budget, no 2500ms settle.
+      VpnTunnelProbe.ReadyResult.TcpFail ->
+        assert(elapsed < 800) { "TcpFail path took ${elapsed}ms (fixed settle?)" }
+      // Diag port occupied (e.g. leftover VPN): one HTTP attempt may use TIMEOUT_MS,
+      // but must not prepend the old 2500ms FIRST_HTTP_SETTLE.
+      else ->
+        assert(elapsed < 6_500) { "probe took ${elapsed}ms with settle still present?" }
+    }
+  }
+
+  @Test
   fun probeBootstrapDomains_coversAllProbeHosts() {
     val hosts = VpnTunnelProbe.probeBootstrapDomains.toSet()
     assert(hosts.contains(VpnTunnelProbe.PROBE_HOST))

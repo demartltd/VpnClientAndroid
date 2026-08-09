@@ -124,8 +124,9 @@ class DemarVpnService :
     val deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ConnectTimeouts.CONNECT_MS)
     try {
       emitState("connecting", "")
+      val needTunSettle = SingBoxCore.isRunning(ownerId) || lastDisconnectAt > 0L
       shutdownSingBox()
-      Thread.sleep(tunSettleMs())
+      if (needTunSettle) Thread.sleep(tunSettleMs())
       if (abortConnectIfStale(epochAtStart)) return
       checkConnectDeadline(deadlineNanos)
 

@@ -40,7 +40,7 @@ def screen_height(xml: str) -> int:
 
 def cmd_connected(nodes: list[ET.Element]) -> None:
     texts = [n.attrib.get("text", "") for n in nodes]
-    print("1" if "Подключено" in texts else "0")
+    print("1" if ("Подключено" in texts or "Connected" in texts) else "0")
 
 
 def cmd_permission(nodes: list[ET.Element]) -> None:
