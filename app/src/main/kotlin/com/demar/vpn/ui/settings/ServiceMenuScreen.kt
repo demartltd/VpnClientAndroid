@@ -11,13 +11,18 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.data.update.AndroidReleaseApi
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
@@ -36,6 +41,10 @@ fun ServiceMenuScreen(
       ).toString()
     }.getOrElse { context.getString(R.string.app_name) }
   }
+  var latestVersion by remember { mutableStateOf("…") }
+  LaunchedEffect(Unit) {
+    latestVersion = AndroidReleaseApi.fetch()?.version ?: "—"
+  }
 
   DemarBackScaffold(
     title = stringResource(R.string.service_menu_title),
@@ -51,6 +60,7 @@ fun ServiceMenuScreen(
         KvRow(stringResource(R.string.service_name), appName)
         KvRow(stringResource(R.string.service_package), BuildConfig.APPLICATION_ID)
         KvRow(stringResource(R.string.service_version), BuildConfig.VERSION_NAME)
+        KvRow(stringResource(R.string.service_latest_version), latestVersion)
         KvRow(stringResource(R.string.service_platform), stringResource(R.string.platform_android))
         KvRow(stringResource(R.string.service_singbox), singBoxLabel.ifEmpty { "…" })
       }

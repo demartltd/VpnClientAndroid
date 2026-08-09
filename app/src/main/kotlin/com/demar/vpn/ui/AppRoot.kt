@@ -1,14 +1,24 @@
 package com.demar.vpn.ui
 
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -16,8 +26,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.demar.vpn.data.update.AppUpdate
+import com.demar.vpn.data.update.AppUpdateState
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.content.LegalDocument
+import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.DemarSnackbarHost
 import com.demar.vpn.ui.components.snackbarHostBottomInset
 import com.demar.vpn.ui.scaffold.AppScaffold
@@ -25,6 +38,8 @@ import com.demar.vpn.ui.settings.AppSettingsScreen
 import com.demar.vpn.ui.settings.DocumentScreen
 import com.demar.vpn.ui.settings.ServiceMenuScreen
 import com.demar.vpn.ui.settings.TunSettingsScreen
+import com.demar.vpn.ui.update.UpdateBottomSheet
+import kotlinx.coroutines.launch
 
 object Routes {
   const val Main = "main"
@@ -47,10 +62,36 @@ fun AppRoot(
   val snackbarHost = remember { SnackbarHostState() }
   val backStack by navController.currentBackStackEntryAsState()
   val onMain = backStack?.destination?.route == Routes.Main
+  val context = LocalContext.current
+  val activity = LocalActivity.current
+  val scope = rememberCoroutineScope()
+  val lifecycleOwner = LocalLifecycleOwner.current
+  val updateState by AppUpdate.state.collectAsStateWithLifecycle()
+  var showUpdateSheet by remember { mutableStateOf(false) }
+  var autoPromptedVersion by remember { mutableStateOf<String?>(null) }
 
-  LaunchedEffect(openHomeTick) {
-    if (openHomeTick == 0) return@LaunchedEffect
-    navController.popBackStack(Routes.Main, inclusive = false)
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) {
+        scope.launch { AppUpdate.checkAndDownload(context) }
+      }
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+  }
+
+  LaunchedEffect(Unit) {
+    AppUpdate.errors.collect { resId ->
+      DemarSnackbar.showError(snackbarHost, context.getString(resId))
+    }
+  }
+
+  LaunchedEffect(updateState) {
+    val ready = updateState as? AppUpdateState.Ready ?: return@LaunchedEffect
+    if (autoPromptedVersion != ready.release.version) {
+      autoPromptedVersion = ready.release.version
+      showUpdateSheet = true
+    }
   }
 
   Box(Modifier.fillMaxSize()) {
@@ -62,6 +103,8 @@ fun AppRoot(
           vpnController = vpnController,
           openHomeTick = openHomeTick,
           authCallbackTick = authCallbackTick,
+          updateState = updateState,
+          onOpenUpdateSheet = { showUpdateSheet = true },
           onAppSettings = { navController.openOverlay(Routes.AppSettings) },
           onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
           onOpenDocument = { doc -> navController.openOverlay(Routes.document(doc)) },
@@ -105,6 +148,16 @@ fun AppRoot(
       bottomInset = snackbarHostBottomInset(onMain),
       modifier = Modifier.align(Alignment.BottomCenter),
     )
+    if (showUpdateSheet && updateState !is AppUpdateState.Idle) {
+      UpdateBottomSheet(
+        state = updateState,
+        onDismiss = { showUpdateSheet = false },
+        onUpdate = {
+          val act = activity
+          if (act != null) AppUpdate.install(act)
+        },
+      )
+    }
   }
 }
 

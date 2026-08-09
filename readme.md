@@ -36,7 +36,7 @@ pwsh scripts/build_android.ps1
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | Email OTP + Telegram OAuth → `auth.example.invalid` |
 | App settings (журнал + язык) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона) |
-| Service menu (3× tap version) | mock diagnostics |
+| Service menu (3× tap version) | about + latest version API + diagnostics |
 
 VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://auth.example.invalid`). Servers list по подписке — **реализовано** (`POST https://vpn.example.invalid/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
@@ -101,3 +101,4 @@ UI-журнал («Настройки → Настройки приложени�
 | Libbox VPN layer | `vpn/*` |
 | Domain / data / Hysteria2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |
+| Auto-update (APK + SHA-256) | `data/update/*`, Home FAB + UpdateBottomSheet |

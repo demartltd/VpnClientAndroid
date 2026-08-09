@@ -24,16 +24,19 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.logging.AppLog
+import com.demar.vpn.data.update.AppUpdateState
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.account.AccountScreen
 import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.AppFloatingToolbar
+import com.demar.vpn.ui.components.AppFloatingToolbarExtent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.home.HomeScreen
 import com.demar.vpn.ui.servers.ServersScreen
 import com.demar.vpn.ui.settings.SettingsScreen
+import com.demar.vpn.ui.update.UpdateFab
 import kotlinx.coroutines.launch
 
 @Composable
@@ -44,6 +47,8 @@ fun AppScaffold(
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
   onOpenDocument: (LegalDocument) -> Unit,
+  updateState: AppUpdateState = AppUpdateState.Idle,
+  onOpenUpdateSheet: () -> Unit = {},
   openHomeTick: Int = 0,
   authCallbackTick: Int = 0,
   modifier: Modifier = Modifier,
@@ -154,6 +159,16 @@ fun AppScaffold(
         .navigationBarsPadding()
         .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
     )
+    if (tab == 0) {
+      UpdateFab(
+        state = updateState,
+        onClick = onOpenUpdateSheet,
+        modifier = Modifier
+          .align(Alignment.BottomEnd)
+          .navigationBarsPadding()
+          .padding(end = 16.dp, bottom = AppFloatingToolbarExtent + 8.dp),
+      )
+    }
     if (showLoginSheet) {
       LoginBottomSheet(
         onDismiss = { showLoginSheet = false },
