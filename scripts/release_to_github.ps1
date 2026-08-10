@@ -54,6 +54,23 @@ if (-not $confirmed) {
     exit 0
 }
 
+$ans = Read-Host "Publish $version as [r]elease / [p]re-release / [c]ancel"
+if ($ans -match '^(c|cancel)$') {
+    Write-Host 'Cancelled.' -ForegroundColor Yellow
+    exit 0
+}
+if ($ans -match '^(p|pre|prerelease|pre-release)$') {
+    $prerelease = $true
+} elseif ($ans -match '^(r|release)?$') {
+    $prerelease = $false
+} else {
+    Write-Host 'Cancelled (unknown choice).' -ForegroundColor Yellow
+    exit 0
+}
+
+$kind = if ($prerelease) { 'pre-release' } else { 'release' }
+Write-Host "Selected: $kind" -ForegroundColor Cyan
+
 if (-not $SkipBuild) {
     Write-Host 'Building release APK...' -ForegroundColor Cyan
     Push-Location -LiteralPath $root
@@ -67,14 +84,24 @@ if (-not $SkipBuild) {
 
 if (-not (Test-Path -LiteralPath $apk)) { throw "APK not found: $apk" }
 $mb = [math]::Round((Get-Item $apk).Length / 1MB, 2)
-Write-Host "Publishing app-release.apk ($mb MB) → $repo@$version..." -ForegroundColor Cyan
+Write-Host "Publishing app-release.apk ($mb MB) → $repo@$version ($kind)..." -ForegroundColor Cyan
 
 gh release view $version -R $repo 2>$null | Out-Null
 if ($LASTEXITCODE -eq 0) {
     gh release upload $version $apk -R $repo --clobber
+    if ($LASTEXITCODE) { throw "gh release upload failed (exit $LASTEXITCODE)" }
+    if ($prerelease) {
+        gh release edit $version -R $repo --prerelease --latest=false
+    } else {
+        gh release edit $version -R $repo --prerelease=false --latest
+    }
 } else {
-    gh release create $version $apk -R $repo -t $version -n '' --latest
+    if ($prerelease) {
+        gh release create $version $apk -R $repo -t $version -n '' --prerelease
+    } else {
+        gh release create $version $apk -R $repo -t $version -n '' --latest
+    }
 }
 if ($LASTEXITCODE) { throw "gh release failed (exit $LASTEXITCODE)" }
 
-Write-Host "Published: https://github.com/$repo/releases/tag/$version" -ForegroundColor Green
+Write-Host "Published ($kind): https://github.com/$repo/releases/tag/$version" -ForegroundColor Green

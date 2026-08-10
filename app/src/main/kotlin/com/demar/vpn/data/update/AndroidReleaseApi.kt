@@ -12,13 +12,17 @@ data class AndroidRelease(
   val version: String,
   val asset: String,
   val sha256: String,
+  val downloadUrl: String,
 )
 
 object AndroidReleaseApi {
+  val DownloadUrl = "${AuthApi.VPN_API_BASE_URL}/android/download"
+  val BetaUrl = "${AuthApi.VPN_API_BASE_URL}/android/beta"
+
   private const val ConnectTimeoutMs = 15_000
   private const val ReadTimeoutMs = 20_000
 
-  suspend fun fetch(): AndroidRelease? = withContext(Dispatchers.IO) {
+  suspend fun fetch(preferBeta: Boolean = false): AndroidRelease? = withContext(Dispatchers.IO) {
     val conn = (URL("${AuthApi.VPN_API_BASE_URL}/android/version").openConnection() as HttpURLConnection).apply {
       requestMethod = "GET"
       connectTimeout = ConnectTimeoutMs
@@ -37,16 +41,33 @@ object AndroidReleaseApi {
         AppLog.append("update: version HTTP $code")
         return@withContext null
       }
-      val json = JSONObject(raw.ifBlank { "{}" })
-      val version = json.optString("version").trim().takeIf { it.isNotEmpty() } ?: return@withContext null
-      val asset = json.optString("asset").trim().takeIf { it.isNotEmpty() } ?: return@withContext null
-      val sha256 = json.optString("sha256").trim().lowercase().takeIf { it.isNotEmpty() } ?: return@withContext null
-      AndroidRelease(version, asset, sha256)
+      parse(JSONObject(raw.ifBlank { "{}" }), preferBeta)
     } catch (e: Exception) {
       AppLog.append("update: version check failed — ${e.message}")
       null
     } finally {
       conn.disconnect()
     }
+  }
+
+  /** Visible for tests. */
+  fun parse(json: JSONObject, preferBeta: Boolean): AndroidRelease? {
+    val stable = releaseFrom(json, DownloadUrl) ?: return null
+    if (!preferBeta) return stable
+    val beta = json.optJSONObject("beta") ?: return stable
+    return releaseFrom(beta, BetaUrl) ?: stable
+  }
+
+  private fun releaseFrom(json: JSONObject, downloadUrl: String): AndroidRelease? {
+    val version = json.optString("version").trim().takeIf { it.isNotEmpty() } ?: return null
+    val sha256 = json.optString("sha256").trim().lowercase().takeIf { it.isNotEmpty() } ?: return null
+    val asset = json.optString("asset").trim().takeIf { it.isNotEmpty() }
+      ?: apkFileName(version)
+    return AndroidRelease(version, asset, sha256, downloadUrl)
+  }
+
+  private fun apkFileName(version: String): String {
+    val safe = version.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    return "demar-$safe.apk"
   }
 }

@@ -35,6 +35,11 @@
     <string name="settings_tun_apps_search">Поиск приложений</string>
     <string name="settings_tun_apps_picker_title">Выбор приложения</string>
     <string name="settings_tun_apps_remove">Удалить</string>
+    <string name="settings_beta">Устанавливать бета-версии</string>
+    <string name="settings_beta_sub">Получать предварительные обновления, если они есть</string>
+    <string name="settings_beta_off_title">Отключение бета-канала</string>
+    <string name="settings_beta_off_body">Android не позволяет поставить более старую сборку поверх новой. Если у вас уже установлена бета, удалите приложение и скачайте стабильную версию с сайта — либо дождитесь новой стабильной: она установится автоматически.</string>
+    <string name="settings_beta_off_ok">Понятно</string>
     <string name="app_settings_title">Настройки приложения</string>
     <string name="journal_title">Журнал</string>
     <string name="journal_subtitle">Сообщения приложения и ядра VPN</string>

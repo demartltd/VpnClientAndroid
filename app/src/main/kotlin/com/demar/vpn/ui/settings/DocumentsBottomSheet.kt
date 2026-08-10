@@ -1,8 +1,6 @@
 package com.demar.vpn.ui.settings
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
@@ -17,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.SettingsActionButton
+import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,19 +35,20 @@ fun DocumentsBottomSheet(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       StaticSheetDragHandle()
-      SettingsActionButton(
-        Icons.Filled.Description,
-        stringResource(LegalDocument.Terms.titleRes),
-        stringResource(LegalDocument.Terms.subtitleRes),
-        onClick = { onOpenDocument(LegalDocument.Terms) },
-      )
-      Spacer(Modifier.height(12.dp))
-      SettingsActionButton(
-        Icons.Filled.PrivacyTip,
-        stringResource(LegalDocument.Privacy.titleRes),
-        stringResource(LegalDocument.Privacy.subtitleRes),
-        onClick = { onOpenDocument(LegalDocument.Privacy) },
-      )
+      SettingsGroup {
+        SettingsActionButton(
+          Icons.Filled.Description,
+          stringResource(LegalDocument.Terms.titleRes),
+          stringResource(LegalDocument.Terms.subtitleRes),
+          onClick = { onOpenDocument(LegalDocument.Terms) },
+        )
+        SettingsActionButton(
+          Icons.Filled.PrivacyTip,
+          stringResource(LegalDocument.Privacy.titleRes),
+          stringResource(LegalDocument.Privacy.subtitleRes),
+          onClick = { onOpenDocument(LegalDocument.Privacy) },
+        )
+      }
     }
   }
 }
