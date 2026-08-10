@@ -34,8 +34,6 @@ sealed class AppUpdateState {
 }
 
 object AppUpdate {
-  val DownloadUrl = "${AuthApi.VPN_API_BASE_URL}/android/download"
-
   private val mutex = Mutex()
   private val _state = MutableStateFlow<AppUpdateState>(AppUpdateState.Idle)
   val state: StateFlow<AppUpdateState> = _state.asStateFlow()
@@ -66,11 +64,17 @@ object AppUpdate {
     MessageDigest.getInstance("SHA-256").digest(bytes)
       .joinToString("") { "%02x".format(it) }
 
+  fun clearPending() {
+    if (_state.value !is AppUpdateState.Downloading) {
+      _state.value = AppUpdateState.Idle
+    }
+  }
+
   suspend fun checkAndDownload(context: Context) = mutex.withLock {
     if (_state.value is AppUpdateState.Downloading) return@withLock
 
     val app = context.applicationContext
-    val release = AndroidReleaseApi.fetch() ?: return@withLock
+    val release = AndroidReleaseApi.fetch(UpdateChannelStore.enabled.value) ?: return@withLock
     if (!isNewer(release.version)) {
       clearCache(app, keepAsset = null)
       _state.value = AppUpdateState.Idle
@@ -159,7 +163,7 @@ object AppUpdate {
         if (offset > 0) 1 else 0, // non-zero hint until Content-Range known
       )
 
-      val conn = (URL(DownloadUrl).openConnection() as HttpURLConnection).apply {
+      val conn = (URL(release.downloadUrl).openConnection() as HttpURLConnection).apply {
         instanceFollowRedirects = true
         connectTimeout = 30_000
         readTimeout = 120_000

@@ -1,6 +1,8 @@
 package com.demar.vpn
 
+import com.demar.vpn.data.update.AndroidReleaseApi
 import com.demar.vpn.data.update.AppUpdate
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -32,5 +34,61 @@ class AppUpdateTest {
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
       AppUpdate.sha256Hex("abc".toByteArray()),
     )
+  }
+
+  @Test
+  fun parse_stableWithoutAsset() {
+    val json = JSONObject(
+      """{"version":"1.0.12","sha256":"abc","publishedAt":"2026-01-01","beta":null}""",
+    )
+    val release = AndroidReleaseApi.parse(json, preferBeta = false)!!
+    assertEquals("1.0.12", release.version)
+    assertEquals("demar-1.0.12.apk", release.asset)
+    assertEquals(AndroidReleaseApi.DownloadUrl, release.downloadUrl)
+  }
+
+  @Test
+  fun parse_preferBetaUsesBetaChannel() {
+    val json = JSONObject(
+      """
+      {
+        "version":"1.0.12",
+        "sha256":"aaa",
+        "beta":{"version":"1.0.13","sha256":"bbb","publishedAt":"2026-01-02"}
+      }
+      """.trimIndent(),
+    )
+    val release = AndroidReleaseApi.parse(json, preferBeta = true)!!
+    assertEquals("1.0.13", release.version)
+    assertEquals("bbb", release.sha256)
+    assertEquals(AndroidReleaseApi.BetaUrl, release.downloadUrl)
+  }
+
+  @Test
+  fun parse_preferBetaFallsBackWhenNull() {
+    val json = JSONObject(
+      """{"version":"1.0.12","sha256":"abc","beta":null}""",
+    )
+    val release = AndroidReleaseApi.parse(json, preferBeta = true)!!
+    assertEquals("1.0.12", release.version)
+    assertEquals(AndroidReleaseApi.DownloadUrl, release.downloadUrl)
+  }
+
+  @Test
+  fun parse_ignoresBetaWhenDisabled() {
+    val json = JSONObject(
+      """
+      {
+        "version":"1.0.12",
+        "sha256":"aaa",
+        "asset":"custom.apk",
+        "beta":{"version":"1.0.13","sha256":"bbb"}
+      }
+      """.trimIndent(),
+    )
+    val release = AndroidReleaseApi.parse(json, preferBeta = false)!!
+    assertEquals("1.0.12", release.version)
+    assertEquals("custom.apk", release.asset)
+    assertEquals(AndroidReleaseApi.DownloadUrl, release.downloadUrl)
   }
 }

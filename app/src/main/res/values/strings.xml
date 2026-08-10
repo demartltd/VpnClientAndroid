@@ -35,6 +35,11 @@
     <string name="settings_tun_apps_search">Search apps</string>
     <string name="settings_tun_apps_picker_title">Select app</string>
     <string name="settings_tun_apps_remove">Remove</string>
+    <string name="settings_beta">Install beta versions</string>
+    <string name="settings_beta_sub">Get pre-release updates when available</string>
+    <string name="settings_beta_off_title">Leaving the beta channel</string>
+    <string name="settings_beta_off_body">Android does not allow installing an older build over a newer one. If you already installed a beta, either uninstall the app and download the stable release from the website, or wait for a newer stable version — it will install automatically.</string>
+    <string name="settings_beta_off_ok">Got it</string>
     <string name="app_settings_title">App settings</string>
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">App and VPN core messages</string>

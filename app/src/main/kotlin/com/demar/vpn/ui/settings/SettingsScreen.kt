@@ -45,6 +45,7 @@ import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SettingsActionButton
+import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.components.SettingsLinksStrip
 import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.util.shareAppPitch
@@ -99,18 +100,17 @@ fun SettingsScreen(
     Spacer(Modifier.height(32.dp))
     SettingsLinksStrip()
     Spacer(Modifier.height(32.dp))
-    SettingsActionButton(Icons.Filled.SettingsApplications, stringResource(R.string.settings_app), stringResource(R.string.settings_app_sub), onAppSettings)
-    Spacer(Modifier.height(12.dp))
-    SettingsActionButton(Icons.Filled.RateReview, stringResource(R.string.settings_feedback), stringResource(R.string.settings_feedback_sub), soon)
-    Spacer(Modifier.height(12.dp))
-    SettingsActionButton(Icons.Filled.Share, stringResource(R.string.settings_share), stringResource(R.string.settings_share_sub), { shareAppPitch(context) })
-    Spacer(Modifier.height(12.dp))
-    SettingsActionButton(
-      Icons.Filled.FolderOpen,
-      stringResource(R.string.settings_documents),
-      stringResource(R.string.settings_documents_sub),
-      { showDocumentsSheet = true },
-    )
+    SettingsGroup {
+      SettingsActionButton(Icons.Filled.SettingsApplications, stringResource(R.string.settings_app), stringResource(R.string.settings_app_sub), onAppSettings)
+      SettingsActionButton(Icons.Filled.RateReview, stringResource(R.string.settings_feedback), stringResource(R.string.settings_feedback_sub), soon)
+      SettingsActionButton(Icons.Filled.Share, stringResource(R.string.settings_share), stringResource(R.string.settings_share_sub), { shareAppPitch(context) })
+      SettingsActionButton(
+        Icons.Filled.FolderOpen,
+        stringResource(R.string.settings_documents),
+        stringResource(R.string.settings_documents_sub),
+        { showDocumentsSheet = true },
+      )
+    }
     Spacer(Modifier.height(36.dp))
     SettingsVersionFooter(
       versionName = BuildConfig.VERSION_NAME,

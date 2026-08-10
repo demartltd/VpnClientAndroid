@@ -35,7 +35,7 @@ pwsh scripts/build_android.ps1
 | Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `vpn.example.invalid` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
 | Account + login sheet | Email OTP + Telegram OAuth → `auth.example.invalid` |
-| App settings (журнал + язык) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона) |
+| App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона); бета-канал обновлений |
 | Service menu (3× tap version) | about + latest version API + diagnostics |
 
 VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://auth.example.invalid`). Servers list по подписке — **реализовано** (`POST https://vpn.example.invalid/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
@@ -101,4 +101,4 @@ UI-журнал («Настройки → Настройки приложени�
 | Libbox VPN layer | `vpn/*` |
 | Domain / data / Hysteria2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |
-| Auto-update (APK + SHA-256) | `data/update/*`, Home FAB + UpdateBottomSheet |
+| Auto-update (APK + SHA-256) | `data/update/*`, Home FAB + UpdateBottomSheet; beta channel via App settings → `/android/beta` |

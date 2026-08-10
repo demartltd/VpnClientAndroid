@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
 import com.demar.vpn.data.update.AndroidReleaseApi
+import com.demar.vpn.data.update.UpdateChannelStore
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
@@ -43,7 +44,7 @@ fun ServiceMenuScreen(
   }
   var latestVersion by remember { mutableStateOf("…") }
   LaunchedEffect(Unit) {
-    latestVersion = AndroidReleaseApi.fetch()?.version ?: "—"
+    latestVersion = AndroidReleaseApi.fetch(UpdateChannelStore.enabled.value)?.version ?: "—"
   }
 
   DemarBackScaffold(

@@ -18,7 +18,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── servers/                 # ServersApi (POST vpn.example.invalid/vpn/servers → profiles)
-│   ├── update/                  # AndroidReleaseApi + AppUpdate (APK + SHA-256)
+│   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateChannelStore (stable/beta)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
 │   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel
