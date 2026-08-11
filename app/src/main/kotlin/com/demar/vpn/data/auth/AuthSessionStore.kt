@@ -40,14 +40,37 @@ object AuthSessionStore {
   fun current(): AuthSession? = _session.value
 
   fun save(context: Context, exchange: SessionExchange, isLocal: Boolean = false) {
+    val prev = _session.value
     val session = AuthSession(
       userId = exchange.userId,
       loginAt = exchange.loginAt,
       username = exchange.username?.takeIf { it.isNotBlank() } ?: exchange.userId,
-      vpnSubscription = exchange.vpnSubscription,
-      vpnExpiresAt = exchange.vpnExpiresAt,
+      // VPN plan comes from fastapi /vpn/account — keep prior cache across re-login of same user.
+      vpnSubscription = if (prev?.userId == exchange.userId) prev.vpnSubscription else null,
+      vpnExpiresAt = if (prev?.userId == exchange.userId) prev.vpnExpiresAt else null,
       isLocal = isLocal,
     )
+    persist(context, session)
+  }
+
+  fun updateVpnProfile(context: Context, vpnSubscription: String?, vpnExpiresAt: String?) {
+    val current = _session.value ?: return
+    val session = current.copy(
+      vpnSubscription = vpnSubscription,
+      vpnExpiresAt = vpnExpiresAt,
+    )
+    persist(context, session)
+  }
+
+  fun clear(context: Context) {
+    context.applicationContext.getSharedPreferences(Prefs, Context.MODE_PRIVATE)
+      .edit()
+      .clear()
+      .apply()
+    _session.value = null
+  }
+
+  private fun persist(context: Context, session: AuthSession) {
     context.applicationContext.getSharedPreferences(Prefs, Context.MODE_PRIVATE)
       .edit()
       .putString(KeyUserId, session.userId)
@@ -58,14 +81,6 @@ object AuthSessionStore {
       .putBoolean(KeyIsLocal, session.isLocal)
       .apply()
     _session.value = session
-  }
-
-  fun clear(context: Context) {
-    context.applicationContext.getSharedPreferences(Prefs, Context.MODE_PRIVATE)
-      .edit()
-      .clear()
-      .apply()
-    _session.value = null
   }
 
   private fun load(context: Context): AuthSession? {

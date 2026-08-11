@@ -18,8 +18,7 @@ private val SocialLinks = listOf(
   R.drawable.ic_brand_x to "https://x.com/demargames",
   R.drawable.ic_brand_bluesky to "https://bsky.app/profile/demargames.bsky.social",
   R.drawable.ic_brand_instagram to "https://www.instagram.com/demargames/",
-  R.drawable.ic_brand_facebook to "https://www.facebook.com/demargames",
-  R.drawable.ic_brand_reddit to "https://reddit.com/r/demargames",
+  R.drawable.ic_brand_tiktok to "https://www.tiktok.com/@demargames",
   R.drawable.ic_brand_telegram to "https://t.me/demargames",
 )
 

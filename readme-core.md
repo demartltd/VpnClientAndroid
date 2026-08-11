@@ -86,8 +86,9 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 Модель: `domain/vpn/tun/TunSettings` — только `bypassPackages`.
 
-- Пакеты → TUN `exclude_package` + `VpnService.addDisallowedApplication` в `DemarLibboxPlatform`
-- UI: App settings → TUN settings → список исключений + picker launchable apps
+- `com.demar.vpn` всегда в TUN `exclude_package` + `VpnService.addDisallowedApplication` (control-plane мимо TUN)
+- User-пакеты → тот же `exclude_package` + `addDisallowedApplication` в `DemarLibboxPlatform`
+- UI: App settings → TUN settings → список исключений + picker launchable apps (self скрыт)
 - Persist: SharedPreferences `bypass_packages`
 
 ---

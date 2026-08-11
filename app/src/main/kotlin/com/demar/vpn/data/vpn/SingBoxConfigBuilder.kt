@@ -10,6 +10,8 @@ import org.json.JSONObject
 
 object SingBoxConfigBuilder {
   private const val DNS_UPSTREAM = "1.1.1.1"
+  /** Always exclude own UID from TUN (mirrors VpnService.addDisallowedApplication). */
+  const val SELF_PACKAGE = "com.demar.vpn"
   private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
 
   fun buildTunConfigJson(
@@ -29,7 +31,11 @@ object SingBoxConfigBuilder {
   ): JSONObject {
     val bootstrap = (plan.tun.bootstrapDomains + VpnTunnelProbe.probeBootstrapDomains).distinct()
     val ruleSets = plan.bypassRuleSets.distinctBy { it.tag }
-    val packages = tun.bypassPackages.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    val packages =
+      (listOf(SELF_PACKAGE) + tun.bypassPackages)
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
     val experimental = jObj(
       "clash_api" to jObj(
         "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
@@ -138,7 +144,7 @@ object SingBoxConfigBuilder {
     "udp_timeout" to "5m",
     "endpoint_independent_nat" to false,
   ).also { tun ->
-    if (packages.isNotEmpty()) tun.put("exclude_package", jArr(*packages.toTypedArray()))
+    tun.put("exclude_package", jArr(*packages.toTypedArray()))
     if (directIPs.isEmpty()) return@also
     tun.put("route_address", jArr("0.0.0.0/1", "128.0.0.0/1"))
     tun.put("route_exclude_address", jArr(*directIPs.map { "$it/32" }.toTypedArray()))

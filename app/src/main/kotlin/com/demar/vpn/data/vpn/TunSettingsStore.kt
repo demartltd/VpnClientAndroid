@@ -27,9 +27,10 @@ object TunSettingsStore {
   }
 
   fun load(context: Context): TunSettings {
+    val self = context.packageName
     val packages = prefs(context).getStringSet(KeyPackages, emptySet()).orEmpty()
       .map { it.trim() }
-      .filter { it.isNotEmpty() }
+      .filter { it.isNotEmpty() && it != self }
       .distinct()
       .sorted()
     val next = TunSettings(bypassPackages = packages)
@@ -38,14 +39,16 @@ object TunSettingsStore {
   }
 
   fun setPackages(context: Context, packages: List<String>) {
-    val cleaned = packages.map { it.trim() }.filter { it.isNotEmpty() }.distinct().sorted()
+    val self = context.packageName
+    val cleaned =
+      packages.map { it.trim() }.filter { it.isNotEmpty() && it != self }.distinct().sorted()
     prefs(context).edit().putStringSet(KeyPackages, cleaned.toSet()).apply()
     _settings.value = TunSettings(bypassPackages = cleaned)
   }
 
   fun addPackage(context: Context, packageName: String) {
     val pkg = packageName.trim()
-    if (pkg.isEmpty()) return
+    if (pkg.isEmpty() || pkg == context.packageName) return
     setPackages(context, _settings.value.bypassPackages + pkg)
   }
 
