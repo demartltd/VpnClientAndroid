@@ -39,6 +39,13 @@
     <string name="settings_tun_apps_search">Поиск приложений</string>
     <string name="settings_tun_apps_picker_title">Выбор приложения</string>
     <string name="settings_tun_apps_remove">Удалить</string>
+    <string name="settings_tun_custom_title">Свои приложения</string>
+    <string name="settings_tun_custom_free_sub">Доступно на платной подписке</string>
+    <string name="settings_tun_rules_title">Правила TUN</string>
+    <string name="settings_tun_rules_sub">Исключает выбранные приложения и группы из VPN</string>
+    <string name="settings_tun_group_sub">Вне VPN-туннеля</string>
+    <string name="settings_tun_groups_title">Системные группы</string>
+    <string name="settings_tun_groups_free_hint">На Free группы всегда включены. Отключить можно на платной подписке.</string>
     <string name="settings_beta">Устанавливать бета-версии</string>
     <string name="settings_beta_sub">Получать предварительные обновления, если они есть</string>
     <string name="settings_beta_off_title">Отключение бета-канала</string>

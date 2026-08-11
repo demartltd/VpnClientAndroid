@@ -11,10 +11,10 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarAppContextHolder.kt
 ├── domain/
 │   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, ApiBypassRuleSet
-│   │   └── tun/                 # TunSettings (bypassPackages)
+│   │   └── tun/                 # TunSettings, TunGroup, effectivePackages
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore, TunGroupsApi
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic)
@@ -43,6 +43,7 @@ app/src/main/kotlin/com/demar/vpn/
 
 ```
 app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
+app/src/test/kotlin/com/demar/vpn/TunGroupsParseTest.kt
 app/src/test/kotlin/com/demar/vpn/ServersApiParseTest.kt
 app/src/test/kotlin/com/demar/vpn/VpnAccountApiTest.kt
 app/src/test/kotlin/com/demar/vpn/AppUpdateTest.kt
