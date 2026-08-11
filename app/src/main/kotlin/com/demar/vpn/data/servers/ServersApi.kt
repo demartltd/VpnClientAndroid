@@ -3,6 +3,7 @@ package com.demar.vpn.data.servers
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.logging.AppLog
+import com.demar.vpn.data.network.DemarHttp
 import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -10,8 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 data class ServersListResult(
   val vpnSubscription: String?,
@@ -20,8 +19,8 @@ data class ServersListResult(
 )
 
 object ServersApi {
-  private const val ConnectTimeoutMs = 15_000
-  private const val ReadTimeoutMs = 25_000
+  private const val ConnectTimeoutMs = 4_000
+  private const val ReadTimeoutMs = 8_000
 
   suspend fun fetchServers(userId: String, loginAt: String): ServersListResult =
     withContext(Dispatchers.IO) {
@@ -143,30 +142,21 @@ object ServersApi {
   }
 
   private fun post(url: String, body: JSONObject): JSONObject {
-    val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-      requestMethod = "POST"
-      connectTimeout = ConnectTimeoutMs
-      readTimeout = ReadTimeoutMs
-      doOutput = true
-      useCaches = false
-      setRequestProperty("Content-Type", "application/json; charset=utf-8")
-      setRequestProperty("Accept", "application/json")
-      setRequestProperty("X-Demar-Client", AuthApi.CLIENT_ID)
-      setRequestProperty("User-Agent", AuthApi.UserAgent)
+    val (code, raw) = DemarHttp.exchange(
+      url,
+      method = "POST",
+      body = body.toString().toByteArray(Charsets.UTF_8),
+      headers = mapOf(
+        "Content-Type" to "application/json; charset=utf-8",
+        "Accept" to "application/json",
+      ),
+      connectTimeoutMs = ConnectTimeoutMs,
+      readTimeoutMs = ReadTimeoutMs,
+    )
+    val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
+    if (code !in 200..299) {
+      throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
     }
-    try {
-      conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-      val code = conn.responseCode
-      val raw = (if (code in 200..299) conn.inputStream else conn.errorStream)
-        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-        .orEmpty()
-      val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
-      if (code !in 200..299) {
-        throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
-      }
-      return json
-    } finally {
-      conn.disconnect()
-    }
+    return json
   }
 }

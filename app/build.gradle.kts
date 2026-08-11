@@ -110,6 +110,7 @@ dependencies {
     implementation(libs.markdown.renderer)
     implementation(libs.markdown.renderer.m3)
     implementation(libs.androidx.browser)
+    implementation(libs.okhttp)
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
 }

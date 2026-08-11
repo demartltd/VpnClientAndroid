@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.VpnService
 import androidx.core.content.ContextCompat
 import com.demar.vpn.R
+import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSessionStore
@@ -31,6 +32,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -92,7 +94,6 @@ class VpnController(private val context: Context) {
     VpnControlStateStore.hydrate(context)
     TunSettingsStore.init(context)
     scope.launch { refreshServers() }
-    scope.launch { refreshTunGroups() }
     scope.launch {
       var hadSession = AuthSessionStore.current() != null
       AuthSessionStore.session.collect { session ->
@@ -150,12 +151,14 @@ class VpnController(private val context: Context) {
   }
 
   fun refreshTunGroups() {
-    scope.launch(Dispatchers.IO) {
-      val payload = TunGroupsApi.fetch() ?: return@launch
-      TunSettingsStore.cacheGroups(context, payload.groups, payload.raw)
-      AppLog.append("tun_groups: loaded ${payload.groups.size}")
-      syncTunSettings()
-    }
+    scope.launch(Dispatchers.IO) { refreshTunGroupsSync() }
+  }
+
+  private suspend fun refreshTunGroupsSync() {
+    val payload = TunGroupsApi.fetch() ?: return
+    TunSettingsStore.cacheGroups(context, payload.groups, payload.raw)
+    AppLog.append("tun_groups: loaded ${payload.groups.size}")
+    syncTunSettings()
   }
 
   fun onTunSettingsChanged() {
@@ -214,6 +217,7 @@ class VpnController(private val context: Context) {
     _serverReachability.value = emptyMap()
     _serversError.value = null
     initialReachabilityDone = false
+    AccountStore.clear()
   }
 
   /** Stop VPN and wipe connect secrets when auth session ends. */
@@ -232,25 +236,33 @@ class VpnController(private val context: Context) {
     _serversLoading.value = true
     _serversError.value = null
     try {
-      val result = ServersApi.fetchServers(session.userId, session.loginAt)
-      applyServerList(result.servers)
-      AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
-    } catch (e: AuthException) {
-      if (e.isSessionInvalid) {
-        if (session.isLocal) {
+      coroutineScope {
+        val accountJob = async { AccountStore.refresh(context) }
+        val tunJob = async { refreshTunGroupsSync() }
+        try {
+          val result = ServersApi.fetchServers(session.userId, session.loginAt)
+          applyServerList(result.servers)
+          AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
+        } catch (e: AuthException) {
+          if (e.isSessionInvalid) {
+            if (session.isLocal) {
+              _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
+              AppLog.append("servers: local demo fetch unauthorized — keeping session")
+            } else {
+              AuthRepository.clearLocal(context)
+              AppLog.append("servers: session revoked")
+            }
+          } else {
+            _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
+            AppLog.append("servers: fetch failed — $e")
+          }
+        } catch (e: Exception) {
           _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
-          AppLog.append("servers: local demo fetch unauthorized — keeping session")
-        } else {
-          AuthRepository.clearLocal(context)
-          AppLog.append("servers: session revoked")
+          AppLog.append("servers: fetch failed — $e")
         }
-      } else {
-        _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
-        AppLog.append("servers: fetch failed — $e")
+        accountJob.await()
+        tunJob.await()
       }
-    } catch (e: Exception) {
-      _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
-      AppLog.append("servers: fetch failed — $e")
     } finally {
       _serversLoading.value = false
     }
@@ -458,7 +470,6 @@ class VpnController(private val context: Context) {
       }
 
       val dialServer = plan.proxyOutbound["server"]
-      TunGroupsApi.fetch()?.let { TunSettingsStore.cacheGroups(context, it.groups, it.raw) }
       val tun = effectiveTunSettings()
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
       TunSettingsStore.setTunnelFingerprint(context, tunnelFingerprint(profile))
