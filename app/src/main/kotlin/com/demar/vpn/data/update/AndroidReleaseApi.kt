@@ -54,8 +54,9 @@ object AndroidReleaseApi {
   fun parse(json: JSONObject, preferBeta: Boolean): AndroidRelease? {
     val stable = releaseFrom(json, DownloadUrl) ?: return null
     if (!preferBeta) return stable
-    val beta = json.optJSONObject("beta") ?: return stable
-    return releaseFrom(beta, BetaUrl) ?: stable
+    val beta = json.optJSONObject("beta")?.let { releaseFrom(it, BetaUrl) } ?: return stable
+    // Beta channel: newest of stable release and pre-release.
+    return if (AppUpdate.isNewer(beta.version, stable.version)) beta else stable
   }
 
   private fun releaseFrom(json: JSONObject, downloadUrl: String): AndroidRelease? {
