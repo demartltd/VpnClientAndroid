@@ -121,6 +121,7 @@ fun AppRoot(
         TunSettingsScreen(
           vpnController = vpnController,
           onBack = { navController.popBackStack() },
+          snackbarHost = snackbarHost,
         )
       }
       composable(Routes.ServiceMenu) {

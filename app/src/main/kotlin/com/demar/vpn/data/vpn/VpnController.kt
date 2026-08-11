@@ -20,6 +20,7 @@ import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
+import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
@@ -91,6 +92,7 @@ class VpnController(private val context: Context) {
     VpnControlStateStore.hydrate(context)
     TunSettingsStore.init(context)
     scope.launch { refreshServers() }
+    scope.launch { refreshTunGroups() }
     scope.launch {
       var hadSession = AuthSessionStore.current() != null
       AuthSessionStore.session.collect { session ->
@@ -111,16 +113,19 @@ class VpnController(private val context: Context) {
   }
 
   val tunSettings: StateFlow<TunSettings> get() = TunSettingsStore.settings
+  val tunGroups: StateFlow<List<TunGroup>> get() = TunSettingsStore.groups
 
-  fun setBypassPackages(packages: List<String>) {
-    TunSettingsStore.setPackages(context, packages)
-    AppLog.append("tun_apps=${TunSettingsStore.settings.value.fingerprint()}")
+  fun addBypassPackage(packageName: String) {
+    if (isFreeSubscription()) return
+    TunSettingsStore.addPackage(context, packageName)
+    AppLog.append("tun_apps=add $packageName")
     reconnectForTunChange()
   }
 
-  fun addBypassPackage(packageName: String) {
-    TunSettingsStore.addPackage(context, packageName)
-    AppLog.append("tun_apps=add $packageName")
+  fun setBypassPackages(packages: List<String>) {
+    if (isFreeSubscription()) return
+    TunSettingsStore.setPackages(context, packages)
+    AppLog.append("tun_apps=${tunFingerprint()}")
     reconnectForTunChange()
   }
 
@@ -130,16 +135,38 @@ class VpnController(private val context: Context) {
     reconnectForTunChange()
   }
 
+  fun setTunGroupEnabled(groupId: String, enabled: Boolean) {
+    if (isFreeSubscription()) return
+    TunSettingsStore.setGroupEnabled(context, groupId, enabled)
+    AppLog.append("tun_groups=${if (enabled) "on" else "off"} $groupId")
+    reconnectForTunChange()
+  }
+
+  fun setTunRulesEnabled(enabled: Boolean) {
+    if (isFreeSubscription()) return
+    TunSettingsStore.setRulesEnabled(context, enabled)
+    AppLog.append("tun_rules=${if (enabled) "on" else "off"}")
+    reconnectForTunChange()
+  }
+
+  fun refreshTunGroups() {
+    scope.launch(Dispatchers.IO) {
+      val payload = TunGroupsApi.fetch() ?: return@launch
+      TunSettingsStore.cacheGroups(context, payload.groups, payload.raw)
+      AppLog.append("tun_groups: loaded ${payload.groups.size}")
+      syncTunSettings()
+    }
+  }
+
   fun onTunSettingsChanged() {
     reconnectForTunChange()
   }
 
   /** Cold start / resume: reconnect if tunnel fingerprint stale. */
   fun syncTunSettings() {
-    val tun = TunSettingsStore.load(context)
     val pending = TunSettingsStore.consumePendingTunnelRefresh(context)
     val tunnelFp = TunSettingsStore.tunnelFingerprint(context)
-    val wantFp = tunnelFingerprint(tun, _selectedProfile.value)
+    val wantFp = tunnelFingerprint(_selectedProfile.value)
     if (!pending && (tunnelFp == null || tunnelFp == wantFp)) return
     when (_state.value) {
       VpnState.Connected, VpnState.Connecting -> {
@@ -150,9 +177,25 @@ class VpnController(private val context: Context) {
     }
   }
 
-  private fun tunnelFingerprint(tun: TunSettings, profile: ServerProfile?): String {
+  private fun isFreeSubscription(): Boolean {
+    val sub = AuthSessionStore.current()?.vpnSubscription
+    return sub == null || sub.equals("free", ignoreCase = true)
+  }
+
+  private fun tunFingerprint(): String {
+    val tun = TunSettingsStore.settings.value
+    val groups = TunSettingsStore.groups.value
+    return tun.fingerprint(groups, isFreeSubscription())
+  }
+
+  private fun tunnelFingerprint(profile: ServerProfile?): String {
     val rs = profile?.connectPlan?.bypassFingerprint().orEmpty()
-    return "${tun.fingerprint()};$rs"
+    return "${tunFingerprint()};$rs"
+  }
+
+  private fun effectiveTunSettings(): TunSettings {
+    val packages = TunSettingsStore.effectiveBypassPackages(context, isFreeSubscription())
+    return TunSettings(bypassPackages = packages)
   }
 
   private fun reconnectForTunChange() {
@@ -415,15 +458,16 @@ class VpnController(private val context: Context) {
       }
 
       val dialServer = plan.proxyOutbound["server"]
-      val tun = TunSettingsStore.load(context)
+      TunGroupsApi.fetch()?.let { TunSettingsStore.cacheGroups(context, it.groups, it.raw) }
+      val tun = effectiveTunSettings()
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
-      TunSettingsStore.setTunnelFingerprint(context, tunnelFingerprint(tun, profile))
+      TunSettingsStore.setTunnelFingerprint(context, tunnelFingerprint(profile))
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
       AppLog.append(
         "connect uplinkHost=$uplinkHost dialServer=$dialServer uplinkPort=$uplinkPort " +
-          "resolved=${resolved.joinToString()} tun=${tun.fingerprint()} " +
+          "resolved=${resolved.joinToString()} tun=${tunFingerprint()} " +
           "rs=${plan.bypassRuleSets.size}",
       )
       VpnControlStateStore.saveLastProfileId(context, profile.id)

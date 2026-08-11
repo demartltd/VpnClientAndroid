@@ -84,12 +84,14 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 ### TunSettings (локально)
 
-Модель: `domain/vpn/tun/TunSettings` — только `bypassPackages`.
+Модель: `domain/vpn/tun/TunSettings` — `bypassPackages` + `disabledGroupIds` + `rulesEnabled`.
 
 - `com.demar.vpn` всегда в TUN `exclude_package` + `VpnService.addDisallowedApplication` (control-plane мимо TUN)
-- User-пакеты → тот же `exclude_package` + `addDisallowedApplication` в `DemarLibboxPlatform`
-- UI: App settings → TUN settings → список исключений + picker launchable apps (self скрыт)
-- Persist: SharedPreferences `bypass_packages`
+- Эффективный exclude = ручные пакеты ∪ пакеты **включённых** preset-групп (если `rulesEnabled`; на Free master всегда ON)
+- Preset-группы: `GET https://fastapi.demar.cc/tun` → `android[]` (`TunGroupsApi`); кэш prefs `tun_groups_json`
+- Free: все группы forced ON (Switch locked); кастомные apps недоступны; Plus/Vip — master Switch + тоггл группы + кастом
+- UI: App settings → TUN → (paid) master rules → ручные apps → системные группы
+- Persist: SharedPreferences `bypass_packages`, `tun_disabled_groups`, `tun_rules_enabled`
 
 ---
 

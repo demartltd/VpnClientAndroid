@@ -39,6 +39,13 @@
     <string name="settings_tun_apps_search">Search apps</string>
     <string name="settings_tun_apps_picker_title">Select app</string>
     <string name="settings_tun_apps_remove">Remove</string>
+    <string name="settings_tun_custom_title">Custom apps</string>
+    <string name="settings_tun_custom_free_sub">Available with a paid subscription</string>
+    <string name="settings_tun_rules_title">TUN settings</string>
+    <string name="settings_tun_rules_sub">Exclude selected apps and groups from the VPN</string>
+    <string name="settings_tun_group_sub">Excluded from the VPN tunnel</string>
+    <string name="settings_tun_groups_title">Preset groups</string>
+    <string name="settings_tun_groups_free_hint">Groups stay on with Free. Upgrade to turn them off.</string>
     <string name="settings_beta">Install beta versions</string>
     <string name="settings_beta_sub">Get pre-release updates when available</string>
     <string name="settings_beta_off_title">Leaving the beta channel</string>

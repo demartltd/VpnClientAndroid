@@ -14,7 +14,7 @@ usage() {
   cat <<'EOF'
 Usage: tun_apps_test.sh [-s serial] [-h]
 
-  Greps demar_app.log for tun_apps=… lines (exclude-package settings).
+  Greps demar_app.log for tun_apps=… / tun_groups=… lines (exclude-package settings).
 EOF
   exit "${1:-0}"
 }
@@ -46,9 +46,9 @@ if ! "${ADB[@]}" pull "$REMOTE_JOURNAL" "$TMP" 2>/dev/null; then
   exit 1
 fi
 
-echo "--- tun_apps journal ---"
-if grep -E 'tun_apps=' "$TMP"; then
-  echo "OK: found tun_apps log lines"
+echo "--- tun_apps / tun_groups journal ---"
+if grep -E 'tun_apps=|tun_groups=' "$TMP"; then
+  echo "OK: found tun_apps/tun_groups log lines"
 else
-  echo "No tun_apps lines yet (App settings → TUN settings → Add app)."
+  echo "No tun_apps/tun_groups lines yet (App settings → TUN settings)."
 fi
