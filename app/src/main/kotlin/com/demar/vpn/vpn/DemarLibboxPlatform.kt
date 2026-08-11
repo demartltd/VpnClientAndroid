@@ -13,6 +13,7 @@ import android.os.Process
 import android.system.OsConstants
 import android.util.Base64
 import androidx.annotation.RequiresApi
+import com.demar.vpn.data.logging.AppLog
 import io.nekohasekai.libbox.ConnectionOwner
 import io.nekohasekai.libbox.InterfaceUpdateListener
 import io.nekohasekai.libbox.Libbox
@@ -142,6 +143,7 @@ class DemarLibboxPlatform(
     val pfd = builder.establish() ?: throw IllegalStateException("android: VPN establish() returned null")
     tunPfd = pfd
     tunFd = pfd.fd
+    AppLog.append("tun_apps=self_disallowed")
     onTunEstablished(tunFd)
     return pfd.fd
   }

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
 import com.demar.vpn.data.update.AppUpdateState
+import com.demar.vpn.ui.components.DemarLinearProgress
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,7 +67,7 @@ fun UpdateBottomSheet(
       when (state) {
         is AppUpdateState.Downloading -> {
           Spacer(Modifier.height(20.dp))
-          LinearProgressIndicator(
+          DemarLinearProgress(
             progress = { state.percent / 100f },
             modifier = Modifier.fillMaxWidth(),
           )

@@ -331,12 +331,20 @@ class VpnPipelineTest {
 
   @Test
   fun tunSettings_packages() {
+    val empty = SingBoxConfigBuilder.buildTunConfigJson(fixtureServers[0].connectPlan)
+    val emptyTun = JSONObject(empty).getJSONArray("inbounds").getJSONObject(0)
+    val emptyPkgs = emptyTun.getJSONArray("exclude_package")
+    assertEquals(1, emptyPkgs.length())
+    assertEquals(SingBoxConfigBuilder.SELF_PACKAGE, emptyPkgs.getString(0))
+
     val json = SingBoxConfigBuilder.buildTunConfigJson(
       fixtureServers[0].connectPlan,
-      TunSettings(bypassPackages = listOf("com.example.bank")),
+      TunSettings(bypassPackages = listOf("com.example.bank", SingBoxConfigBuilder.SELF_PACKAGE)),
     )
-    assertTrue(json.contains("exclude_package"))
-    assertTrue(json.contains("com.example.bank"))
+    val tun = JSONObject(json).getJSONArray("inbounds").getJSONObject(0)
+    val pkgs = tun.getJSONArray("exclude_package")
+    val list = (0 until pkgs.length()).map { pkgs.getString(it) }
+    assertEquals(listOf(SingBoxConfigBuilder.SELF_PACKAGE, "com.example.bank"), list)
   }
 
   @Test

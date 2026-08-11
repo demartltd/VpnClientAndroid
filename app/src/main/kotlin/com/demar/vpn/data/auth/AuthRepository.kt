@@ -13,6 +13,8 @@ object AuthRepository {
 
   fun signInLocal(context: Context) {
     AuthSessionStore.save(context, ReviewAuth.exchange(), isLocal = true)
+    val local = ReviewAuth.localAccount()
+    AuthSessionStore.updateVpnProfile(context, local.vpnSubscription, local.vpnExpiresAt)
     AppLog.append("auth: signed in locally as store-review")
   }
 
@@ -85,5 +87,9 @@ object AuthRepository {
   fun clearLocal(context: Context) {
     AuthSessionStore.clear(context)
     AppLog.append("auth: signed out")
+  }
+
+  fun updateVpnProfile(context: Context, vpnSubscription: String?, vpnExpiresAt: String?) {
+    AuthSessionStore.updateVpnProfile(context, vpnSubscription, vpnExpiresAt)
   }
 }

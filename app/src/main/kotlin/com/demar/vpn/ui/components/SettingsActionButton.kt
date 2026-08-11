@@ -42,9 +42,13 @@ fun SettingsActionButton(
   modifier: Modifier = Modifier,
   trailingIcon: ImageVector? = Icons.AutoMirrored.Filled.KeyboardArrowRight,
   trailing: (@Composable () -> Unit)? = null,
+  iconContent: (@Composable () -> Unit)? = null,
+  extra: (@Composable () -> Unit)? = null,
+  danger: Boolean = false,
 ) {
   val cs = MaterialTheme.colorScheme
   val shape = RoundedCornerShape(12.dp)
+  val accent = if (danger) cs.error else cs.primary
   Row(
     modifier
       .fillMaxWidth()
@@ -57,15 +61,17 @@ fun SettingsActionButton(
     Row(
       Modifier
         .clip(RoundedCornerShape(8.dp))
-        .background(cs.primary.copy(alpha = 0.1f))
+        .background(accent.copy(alpha = 0.1f))
         .padding(8.dp),
     ) {
-      Icon(icon, contentDescription = null, tint = cs.primary, modifier = Modifier.size(24.dp))
+      if (iconContent != null) iconContent()
+      else Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
     }
     Spacer(Modifier.width(16.dp))
     Column(Modifier.weight(1f)) {
       Text(title, style = MaterialTheme.typography.titleMedium)
       Text(subtitle, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+      extra?.invoke()
     }
     when {
       trailing != null -> trailing()

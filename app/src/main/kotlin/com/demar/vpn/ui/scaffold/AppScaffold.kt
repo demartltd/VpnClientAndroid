@@ -128,6 +128,7 @@ fun AppScaffold(
           active = tab == 3,
           session = session,
           signingOut = signingOut,
+          snackbarHost = snackbarHost,
           onSignOut = {
             if (!signingOut) {
               scope.launch {

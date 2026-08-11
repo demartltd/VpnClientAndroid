@@ -140,11 +140,13 @@ class VpnController(private val context: Context) {
     val pending = TunSettingsStore.consumePendingTunnelRefresh(context)
     val tunnelFp = TunSettingsStore.tunnelFingerprint(context)
     val wantFp = tunnelFingerprint(tun, _selectedProfile.value)
-    when {
-      pending || (tunnelFp != null && tunnelFp != wantFp) -> {
+    if (!pending && (tunnelFp == null || tunnelFp == wantFp)) return
+    when (_state.value) {
+      VpnState.Connected, VpnState.Connecting -> {
         AppLog.append("tun_settings sync fingerprint changed")
         reconnectForTunChange()
       }
+      else -> TunSettingsStore.setTunnelFingerprint(context, wantFp)
     }
   }
 

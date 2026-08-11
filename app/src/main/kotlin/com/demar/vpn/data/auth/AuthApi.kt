@@ -27,8 +27,6 @@ data class SessionExchange(
   val userId: String,
   val loginAt: String,
   val username: String?,
-  val vpnSubscription: String? = null,
-  val vpnExpiresAt: String? = null,
 )
 
 object AuthApi {
@@ -140,15 +138,7 @@ object AuthApi {
         val userId = profile.optString("id").takeIf { it.isNotBlank() }
           ?: throw AuthException("Missing userId")
         val username = profile.optString("username").takeIf { it.isNotBlank() }
-        val vpn = profile.optJSONObject("vpn")
-        val vpnSubscription = vpn?.optString("subscription")?.takeIf { it.isNotBlank() }
-        val vpnExpiresAt = vpn?.opt("expiresAt")?.let { rawExp ->
-          when (rawExp) {
-            is String -> rawExp.takeIf { it.isNotBlank() }
-            else -> rawExp.toString().takeIf { it.isNotBlank() && it != "null" }
-          }
-        }
-        SessionExchange(userId, loginAt, username, vpnSubscription, vpnExpiresAt)
+        SessionExchange(userId, loginAt, username)
       } finally {
         conn.disconnect()
       }
@@ -160,9 +150,7 @@ object AuthApi {
     val loginAt = json.optString("loginAt").takeIf { it.isNotBlank() }
       ?: throw AuthException("Missing loginAt")
     val username = json.optString("username").takeIf { it.isNotBlank() }
-    val vpnSubscription = json.optString("vpnSubscription").takeIf { it.isNotBlank() }
-    val vpnExpiresAt = json.optString("vpnExpiresAt").takeIf { it.isNotBlank() }
-    return SessionExchange(userId, loginAt, username, vpnSubscription, vpnExpiresAt)
+    return SessionExchange(userId, loginAt, username)
   }
 
   private suspend fun post(url: String, body: JSONObject): JSONObject =

@@ -34,11 +34,11 @@ pwsh scripts/build_android.ps1
 | Home (VPN toggle) | Hysteria2 connect/disconnect через `VpnController` |
 | Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `fastapi.demar.cc` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP с GitHub Markdown |
-| Account + login sheet | Email OTP + Telegram OAuth → `api.demar.cc` |
+| Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `api.demar.cc`; VPN profile/notify/traffic → `fastapi.demar.cc` |
 | App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона); бета-канал обновлений |
 | Service menu (3× tap version) | about + latest version API + diagnostics |
 
-VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 
@@ -52,6 +52,7 @@ VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegr
 ./scripts/adb/vpn_cycle_test.sh -n 5
 ./scripts/adb/server_switch_test.sh -n 10
 ./scripts/adb/tun_apps_test.sh
+./scripts/adb/self_traffic_test.sh
 ./scripts/adb/test_all_devices.sh -n 5
 ```
 

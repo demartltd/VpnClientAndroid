@@ -17,6 +17,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
+│   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic)
 │   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
 │   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateChannelStore (stable/beta)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
@@ -33,7 +34,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
 │   ├── settings/                # App settings, TunSettingsScreen, Documents, Service menu
-│   ├── account/
+│   ├── account/                 # AccountScreen + TrafficPieChart
 │   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput
 └── vpn/                         # Libbox (из demar_vpn)
 ```
@@ -43,6 +44,7 @@ app/src/main/kotlin/com/demar/vpn/
 ```
 app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
 app/src/test/kotlin/com/demar/vpn/ServersApiParseTest.kt
+app/src/test/kotlin/com/demar/vpn/VpnAccountApiTest.kt
 app/src/test/kotlin/com/demar/vpn/AppUpdateTest.kt
 ```
 
@@ -60,6 +62,7 @@ scripts/
 │   ├── vpn_cycle_test.sh
 │   ├── server_switch_test.sh
 │   ├── tun_apps_test.sh
+│   ├── self_traffic_test.sh
 │   └── test_all_devices.sh
 ├── libbox-build-android.py
 ├── generate_icons.py

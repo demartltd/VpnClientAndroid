@@ -168,6 +168,7 @@ class DemarVpnService :
           emitState("error", "sing-box failed to start TUN.")
           shutdownSingBox()
           stopForegroundCompat()
+          stopSelf()
           return
         }
 
@@ -214,6 +215,7 @@ class DemarVpnService :
         emitState("error", message)
         shutdownSingBox()
         stopForegroundCompat()
+        stopSelf()
         return
       }
 
@@ -230,6 +232,7 @@ class DemarVpnService :
       emitState("error", getString(VpnConnectMessages.FAILED))
       shutdownSingBox()
       stopForegroundCompat()
+      stopSelf()
     } catch (t: Throwable) {
       pendingStart = null
       Log.e(TAG, "connectVpn failed", t)
@@ -242,6 +245,7 @@ class DemarVpnService :
       emitState("error", message)
       shutdownSingBox()
       stopForegroundCompat()
+      stopSelf()
     } finally {
       connecting = false
       dispatchPendingConnect()
