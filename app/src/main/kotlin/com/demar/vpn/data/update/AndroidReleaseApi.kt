@@ -2,11 +2,10 @@ package com.demar.vpn.data.update
 
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.logging.AppLog
+import com.demar.vpn.data.network.DemarHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 data class AndroidRelease(
   val version: String,
@@ -19,24 +18,17 @@ object AndroidReleaseApi {
   val DownloadUrl = "${AuthApi.VPN_API_BASE_URL}/android/download"
   val BetaUrl = "${AuthApi.VPN_API_BASE_URL}/android/beta"
 
-  private const val ConnectTimeoutMs = 15_000
-  private const val ReadTimeoutMs = 20_000
+  private const val ConnectTimeoutMs = 4_000
+  private const val ReadTimeoutMs = 8_000
 
   suspend fun fetch(preferBeta: Boolean = false): AndroidRelease? = withContext(Dispatchers.IO) {
-    val conn = (URL("${AuthApi.VPN_API_BASE_URL}/android/version").openConnection() as HttpURLConnection).apply {
-      requestMethod = "GET"
-      connectTimeout = ConnectTimeoutMs
-      readTimeout = ReadTimeoutMs
-      useCaches = false
-      setRequestProperty("Accept", "application/json")
-      setRequestProperty("X-Demar-Client", AuthApi.CLIENT_ID)
-      setRequestProperty("User-Agent", AuthApi.UserAgent)
-    }
     try {
-      val code = conn.responseCode
-      val raw = (if (code in 200..299) conn.inputStream else conn.errorStream)
-        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-        .orEmpty()
+      val (code, raw) = DemarHttp.exchange(
+        "${AuthApi.VPN_API_BASE_URL}/android/version",
+        headers = mapOf("Accept" to "application/json"),
+        connectTimeoutMs = ConnectTimeoutMs,
+        readTimeoutMs = ReadTimeoutMs,
+      )
       if (code !in 200..299) {
         AppLog.append("update: version HTTP $code")
         return@withContext null
@@ -45,8 +37,6 @@ object AndroidReleaseApi {
     } catch (e: Exception) {
       AppLog.append("update: version check failed — ${e.message}")
       null
-    } finally {
-      conn.disconnect()
     }
   }
 

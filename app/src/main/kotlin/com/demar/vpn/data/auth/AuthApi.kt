@@ -2,12 +2,11 @@ package com.demar.vpn.data.auth
 
 import android.os.Build
 import com.demar.vpn.BuildConfig
+import com.demar.vpn.data.network.DemarHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 
 class AuthException(
   message: String,
@@ -59,8 +58,8 @@ object AuthApi {
     return filtered.ifBlank { fallback }
   }
 
-  private const val ConnectTimeoutMs = 15_000
-  private const val ReadTimeoutMs = 20_000
+  private const val ConnectTimeoutMs = 4_000
+  private const val ReadTimeoutMs = 8_000
 
   suspend fun sendEmail(email: String, purpose: String = "login") =
     post("$BASE_URL/auth/mobile/email/send", JSONObject().put("email", email).put("purpose", purpose))
@@ -113,35 +112,26 @@ object AuthApi {
   /** After Telegram OAuth handoff: demar://auth/callback?token=… */
   suspend fun sessionFromClientToken(token: String): SessionExchange =
     withContext(Dispatchers.IO) {
-      val conn = (URL("$ACCOUNT_BASE_URL/api/auth/client/me").openConnection() as HttpURLConnection).apply {
-        requestMethod = "GET"
-        connectTimeout = ConnectTimeoutMs
-        readTimeout = ReadTimeoutMs
-        useCaches = false
-        setRequestProperty("Accept", "application/json")
-        setRequestProperty("Authorization", "Bearer $token")
-        setRequestProperty("X-Demar-Client", CLIENT_ID)
-        setRequestProperty("User-Agent", UserAgent)
+      val (code, raw) = DemarHttp.exchange(
+        "$ACCOUNT_BASE_URL/api/auth/client/me",
+        headers = mapOf(
+          "Accept" to "application/json",
+          "Authorization" to "Bearer $token",
+        ),
+        connectTimeoutMs = ConnectTimeoutMs,
+        readTimeoutMs = ReadTimeoutMs,
+      )
+      val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
+      if (code !in 200..299) {
+        throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
       }
-      try {
-        val code = conn.responseCode
-        val raw = (if (code in 200..299) conn.inputStream else conn.errorStream)
-          ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-          .orEmpty()
-        val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
-        if (code !in 200..299) {
-          throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
-        }
-        val loginAt = json.optString("loginAt").takeIf { it.isNotBlank() }
-          ?: throw AuthException("Missing loginAt")
-        val profile = json.optJSONObject("profile") ?: throw AuthException("Missing profile")
-        val userId = profile.optString("id").takeIf { it.isNotBlank() }
-          ?: throw AuthException("Missing userId")
-        val username = profile.optString("username").takeIf { it.isNotBlank() }
-        SessionExchange(userId, loginAt, username)
-      } finally {
-        conn.disconnect()
-      }
+      val loginAt = json.optString("loginAt").takeIf { it.isNotBlank() }
+        ?: throw AuthException("Missing loginAt")
+      val profile = json.optJSONObject("profile") ?: throw AuthException("Missing profile")
+      val userId = profile.optString("id").takeIf { it.isNotBlank() }
+        ?: throw AuthException("Missing userId")
+      val username = profile.optString("username").takeIf { it.isNotBlank() }
+      SessionExchange(userId, loginAt, username)
     }
 
   private fun parseSession(json: JSONObject): SessionExchange {
@@ -155,33 +145,24 @@ object AuthApi {
 
   private suspend fun post(url: String, body: JSONObject): JSONObject =
     withContext(Dispatchers.IO) {
-      val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-        requestMethod = "POST"
-        connectTimeout = ConnectTimeoutMs
-        readTimeout = ReadTimeoutMs
-        doOutput = true
-        useCaches = false
-        setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        setRequestProperty("Accept", "application/json")
-        setRequestProperty("X-Demar-Client", CLIENT_ID)
-        setRequestProperty("User-Agent", UserAgent)
+      val (code, raw) = DemarHttp.exchange(
+        url,
+        method = "POST",
+        body = body.toString().toByteArray(Charsets.UTF_8),
+        headers = mapOf(
+          "Content-Type" to "application/json; charset=utf-8",
+          "Accept" to "application/json",
+        ),
+        connectTimeoutMs = ConnectTimeoutMs,
+        readTimeoutMs = ReadTimeoutMs,
+      )
+      val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
+      if (code !in 200..299) {
+        val message = json.optString("error").ifBlank { "HTTP $code" }
+        val retry = json.optInt("retryAfterSeconds", -1).takeIf { it > 0 }
+        val hint = json.optString("hint").takeIf { it.isNotBlank() }
+        throw AuthException(message, code, retry, hint)
       }
-      try {
-        conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-        val code = conn.responseCode
-        val raw = (if (code in 200..299) conn.inputStream else conn.errorStream)
-          ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
-          .orEmpty()
-        val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
-        if (code !in 200..299) {
-          val message = json.optString("error").ifBlank { "HTTP $code" }
-          val retry = json.optInt("retryAfterSeconds", -1).takeIf { it > 0 }
-          val hint = json.optString("hint").takeIf { it.isNotBlank() }
-          throw AuthException(message, code, retry, hint)
-        }
-        json
-      } finally {
-        conn.disconnect()
-      }
+      json
     }
 }
