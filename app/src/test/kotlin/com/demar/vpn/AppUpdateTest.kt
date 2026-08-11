@@ -48,7 +48,7 @@ class AppUpdateTest {
   }
 
   @Test
-  fun parse_preferBetaUsesBetaChannel() {
+  fun parse_preferBetaPicksNewerBeta() {
     val json = JSONObject(
       """
       {
@@ -62,6 +62,23 @@ class AppUpdateTest {
     assertEquals("1.0.13", release.version)
     assertEquals("bbb", release.sha256)
     assertEquals(AndroidReleaseApi.BetaUrl, release.downloadUrl)
+  }
+
+  @Test
+  fun parse_preferBetaPicksNewerStableOverBeta() {
+    val json = JSONObject(
+      """
+      {
+        "version":"1.0.14",
+        "sha256":"aaa",
+        "beta":{"version":"1.0.13","sha256":"bbb"}
+      }
+      """.trimIndent(),
+    )
+    val release = AndroidReleaseApi.parse(json, preferBeta = true)!!
+    assertEquals("1.0.14", release.version)
+    assertEquals("aaa", release.sha256)
+    assertEquals(AndroidReleaseApi.DownloadUrl, release.downloadUrl)
   }
 
   @Test
