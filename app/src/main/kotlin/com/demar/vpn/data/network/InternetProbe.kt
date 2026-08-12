@@ -6,8 +6,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.URL
 
 object InternetProbe {
   private const val TAG = "InternetProbe"
@@ -55,14 +57,21 @@ object InternetProbe {
       true
     }.getOrDefault(false)
 
-  private fun httpGet(url: String, timeoutMs: Int): String? =
-    runCatching {
-      val (code, body) = DemarHttp.exchange(
-        url,
-        headers = mapOf("Accept" to "application/json, text/plain, */*"),
-        connectTimeoutMs = timeoutMs * 2 / 3,
-        readTimeoutMs = timeoutMs / 3,
-      )
-      body.takeIf { code in 200..299 }
-    }.getOrNull()
+  private fun httpGet(url: String, timeoutMs: Int): String? {
+    var conn: HttpURLConnection? = null
+    return try {
+      conn = URL(url).openConnection() as HttpURLConnection
+      conn.requestMethod = "GET"
+      conn.connectTimeout = timeoutMs * 2 / 3
+      conn.readTimeout = timeoutMs / 3
+      conn.instanceFollowRedirects = true
+      conn.setRequestProperty("Accept", "application/json, text/plain, */*")
+      if (conn.responseCode in 200..299) conn.inputStream.bufferedReader().use { it.readText() }
+      else null
+    } catch (_: Throwable) {
+      null
+    } finally {
+      conn?.disconnect()
+    }
+  }
 }
