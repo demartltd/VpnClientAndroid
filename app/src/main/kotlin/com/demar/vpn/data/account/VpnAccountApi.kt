@@ -2,11 +2,12 @@ package com.demar.vpn.data.account
 
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
-import com.demar.vpn.data.network.DemarHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.pow
@@ -31,8 +32,8 @@ data class VpnTraffic(
 )
 
 object VpnAccountApi {
-  private const val ConnectTimeoutMs = 4_000
-  private const val ReadTimeoutMs = 8_000
+  private const val ConnectTimeoutMs = 15_000
+  private const val ReadTimeoutMs = 25_000
 
   suspend fun fetchAccount(userId: String, loginAt: String): VpnAccount =
     withContext(Dispatchers.IO) {
@@ -106,21 +107,30 @@ object VpnAccountApi {
     JSONObject().put("userId", userId).put("loginAt", loginAt)
 
   private fun post(path: String, body: JSONObject): JSONObject {
-    val (code, raw) = DemarHttp.exchange(
-      "${AuthApi.VPN_API_BASE_URL}$path",
-      method = "POST",
-      body = body.toString().toByteArray(Charsets.UTF_8),
-      headers = mapOf(
-        "Content-Type" to "application/json; charset=utf-8",
-        "Accept" to "application/json",
-      ),
-      connectTimeoutMs = ConnectTimeoutMs,
-      readTimeoutMs = ReadTimeoutMs,
-    )
-    val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
-    if (code !in 200..299) {
-      throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
+    val conn = (URL("${AuthApi.VPN_API_BASE_URL}$path").openConnection() as HttpURLConnection).apply {
+      requestMethod = "POST"
+      connectTimeout = ConnectTimeoutMs
+      readTimeout = ReadTimeoutMs
+      doOutput = true
+      useCaches = false
+      setRequestProperty("Content-Type", "application/json; charset=utf-8")
+      setRequestProperty("Accept", "application/json")
+      setRequestProperty("X-Demar-Client", AuthApi.CLIENT_ID)
+      setRequestProperty("User-Agent", AuthApi.UserAgent)
     }
-    return json
+    try {
+      conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+      val code = conn.responseCode
+      val raw = (if (code in 200..299) conn.inputStream else conn.errorStream)
+        ?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+        .orEmpty()
+      val json = runCatching { JSONObject(raw.ifBlank { "{}" }) }.getOrElse { JSONObject() }
+      if (code !in 200..299) {
+        throw AuthException(json.optString("error").ifBlank { "HTTP $code" }, code)
+      }
+      return json
+    } finally {
+      conn.disconnect()
+    }
   }
 }

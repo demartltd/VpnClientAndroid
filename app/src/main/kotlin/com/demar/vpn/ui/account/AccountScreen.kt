@@ -41,6 +41,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,15 +64,15 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
-import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.account.VpnAccount
 import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.data.account.VpnTraffic
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSession
+import com.demar.vpn.data.auth.ReviewAuth
+import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarLinearProgress
 import com.demar.vpn.ui.components.DemarSnackbar
@@ -79,6 +80,8 @@ import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.mainTabPadding
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -100,24 +103,65 @@ fun AccountScreen(
   onSignOut: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val context = LocalContext.current
-  val scope = rememberCoroutineScope()
-  val account by AccountStore.account.collectAsStateWithLifecycle()
-  val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
-  val loading by AccountStore.loading.collectAsStateWithLifecycle()
-
   ActiveTabContent(active, modifier) {
     val user = session ?: return@ActiveTabContent
+    val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
     val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
+    var account by remember(user.userId, user.loginAt) { mutableStateOf<VpnAccount?>(null) }
+    var traffic by remember(user.userId, user.loginAt) { mutableStateOf<VpnTraffic?>(null) }
+    var loading by remember(user.userId, user.loginAt) { mutableStateOf(true) }
     var notifyBusy by remember { mutableStateOf(false) }
     var showNotify by rememberSaveable { mutableStateOf(false) }
     var showTraffic by rememberSaveable { mutableStateOf(false) }
     var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
+    val loadFailed = stringResource(R.string.account_load_failed)
     val notifyFailed = stringResource(R.string.account_notify_failed)
     val idCopied = stringResource(R.string.account_id_copied)
     val otherLabel = stringResource(R.string.account_traffic_other)
     val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
+
+    LaunchedEffect(user.userId, user.loginAt) {
+      loading = true
+      if (user.isLocal) {
+        val local = ReviewAuth.localAccount()
+        account = local
+        traffic = ReviewAuth.localTraffic()
+        AuthRepository.updateVpnProfile(context, local.vpnSubscription, local.vpnExpiresAt)
+        loading = false
+        return@LaunchedEffect
+      }
+      try {
+        coroutineScope {
+          val accountDeferred = async {
+            runCatching { VpnAccountApi.fetchAccount(user.userId, user.loginAt) }
+          }
+          val trafficDeferred = async {
+            runCatching { VpnAccountApi.fetchTraffic(user.userId, user.loginAt) }
+          }
+          val accountResult = accountDeferred.await()
+          val trafficResult = trafficDeferred.await()
+          accountResult.onSuccess { a ->
+            account = a
+            AuthRepository.updateVpnProfile(context, a.vpnSubscription, a.vpnExpiresAt)
+          }
+          trafficResult.onSuccess { traffic = it }
+          val err = accountResult.exceptionOrNull() ?: trafficResult.exceptionOrNull()
+          if (err is AuthException && err.isSessionInvalid) {
+            AuthRepository.clearLocal(context)
+          } else if (err != null) {
+            AppLog.append("account: load failed — $err")
+            DemarSnackbar.showError(snackbarHost, loadFailed)
+          }
+        }
+      } catch (e: Exception) {
+        AppLog.append("account: load failed — $e")
+        DemarSnackbar.showError(snackbarHost, loadFailed)
+      } finally {
+        loading = false
+      }
+    }
 
     val rawPlan = account?.vpnSubscription ?: user.vpnSubscription
     val isFree = rawPlan.equals("free", ignoreCase = true)
@@ -144,10 +188,10 @@ fun AccountScreen(
         notifyImportant = important ?: cur.notifyImportant,
       )
       if (user.isLocal) {
-        AccountStore.applyAccount(next)
+        account = next
         return
       }
-      AccountStore.applyAccount(next)
+      account = next
       notifyBusy = true
       scope.launch {
         try {
@@ -157,15 +201,16 @@ fun AccountScreen(
             notifyNews = news,
             notifyImportant = important,
           )
-          AccountStore.applyAccount(
-            next.copy(notifyNews = updated.notifyNews, notifyImportant = updated.notifyImportant),
+          account = (account ?: next).copy(
+            notifyNews = updated.notifyNews,
+            notifyImportant = updated.notifyImportant,
           )
         } catch (e: AuthException) {
-          AccountStore.applyAccount(cur)
+          account = cur
           if (e.isSessionInvalid) AuthRepository.clearLocal(context)
           else DemarSnackbar.showError(snackbarHost, notifyFailed)
-        } catch (_: Exception) {
-          AccountStore.applyAccount(cur)
+        } catch (e: Exception) {
+          account = cur
           DemarSnackbar.showError(snackbarHost, notifyFailed)
         } finally {
           notifyBusy = false

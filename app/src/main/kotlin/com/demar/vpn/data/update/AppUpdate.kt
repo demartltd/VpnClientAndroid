@@ -8,8 +8,8 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.logging.AppLog
-import com.demar.vpn.data.network.DemarHttp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,6 +22,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.security.MessageDigest
 
 sealed class AppUpdateState {
@@ -161,36 +163,35 @@ object AppUpdate {
         if (offset > 0) 1 else 0, // non-zero hint until Content-Range known
       )
 
-      val headers = buildMap {
-        put("Accept", "application/vnd.android.package-archive,*/*")
-        if (offset > 0) put("Range", "bytes=$offset-")
+      val conn = (URL(release.downloadUrl).openConnection() as HttpURLConnection).apply {
+        instanceFollowRedirects = true
+        connectTimeout = 30_000
+        readTimeout = 120_000
+        setRequestProperty("Accept", "application/vnd.android.package-archive,*/*")
+        setRequestProperty("User-Agent", AuthApi.UserAgent)
+        setRequestProperty("X-Demar-Client", AuthApi.CLIENT_ID)
+        if (offset > 0) setRequestProperty("Range", "bytes=$offset-")
       }
-      DemarHttp.call(
-        release.downloadUrl,
-        headers = headers,
-        connectTimeoutMs = 30_000,
-        readTimeoutMs = 120_000,
-        attempts = 1,
-      ).use { resp ->
-        val code = resp.code
+      try {
+        val code = conn.responseCode
         when (code) {
           206 -> Unit // resume
           in 200..299 -> {
+            // Full body — restart partial.
             offset = 0L
             if (partial.exists()) partial.delete()
           }
           else -> error("HTTP $code")
         }
 
-        val contentLen = resp.body?.contentLength() ?: -1L
         val total = when {
-          code == 206 -> contentRangeTotal(resp.header("Content-Range"))
-            ?: (offset + contentLen).takeIf { contentLen > 0 }
-          else -> contentLen.takeIf { it > 0 }
+          code == 206 -> contentRangeTotal(conn.getHeaderField("Content-Range"))
+            ?: (offset + conn.contentLengthLong).takeIf { conn.contentLengthLong > 0 }
+          else -> conn.contentLengthLong.takeIf { it > 0 }
         } ?: -1L
 
         FileOutputStream(partial, offset > 0).use { out ->
-          resp.body!!.byteStream().use { input ->
+          conn.inputStream.use { input ->
             val buf = ByteArray(64 * 1024)
             var read = offset
             while (true) {
@@ -203,6 +204,8 @@ object AppUpdate {
             }
           }
         }
+      } finally {
+        conn.disconnect()
       }
 
       if (sha256File(partial) != release.sha256.lowercase()) {
