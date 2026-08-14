@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.VpnService
 import androidx.core.content.ContextCompat
 import com.demar.vpn.R
+import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSessionStore
@@ -12,6 +13,7 @@ import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.servers.ServersApi
+import com.demar.vpn.data.session.SessionCacheStore
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachState
@@ -31,9 +33,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,6 +82,7 @@ class VpnController(private val context: Context) {
   private val connectGeneration = AtomicInteger(0)
   private var activeConnectGeneration = 0
   private var connectSessionStartedAt = 0L
+  private val serversFetchMutex = Mutex()
   private val serviceStartInFlight = AtomicBoolean(false)
   private var pendingStartService = false
   private var pendingConnect = false
@@ -91,8 +97,16 @@ class VpnController(private val context: Context) {
   init {
     VpnControlStateStore.hydrate(context)
     TunSettingsStore.init(context)
-    scope.launch { refreshServers() }
     scope.launch { refreshTunGroups() }
+    scope.launch {
+      val session = AuthSessionStore.current() ?: return@launch
+      SessionCacheStore.load(context, session.userId)?.let { cached ->
+        if (cached.servers.isNotEmpty()) applyServerList(cached.servers)
+        AccountStore.hydrate(cached.account, cached.traffic)
+        AppLog.append("session: restored cache (servers=${cached.servers.size})")
+      }
+      refreshSessionData()
+    }
     scope.launch {
       var hadSession = AuthSessionStore.current() != null
       AuthSessionStore.session.collect { session ->
@@ -216,11 +230,26 @@ class VpnController(private val context: Context) {
     initialReachabilityDone = false
   }
 
-  /** Stop VPN and wipe connect secrets when auth session ends. */
   fun onSignedOut() {
     disconnect()
     VpnControlStateStore.clearSessionArtifacts(context)
+    SessionCacheStore.clear(context)
     clearServers()
+    AccountStore.clear()
+  }
+
+  /** Servers + account — app start, sign-in, servers pull-to-refresh. */
+  suspend fun refreshSessionData() {
+    coroutineScope {
+      launch { refreshServers() }
+      launch { AccountStore.refresh(context) }
+    }
+  }
+
+  /** Fetch when Servers tab opens — only if list empty or prior fetch failed. */
+  suspend fun refreshServersOnTabOpen() {
+    if (_serverProfiles.value.isNotEmpty() && _serversError.value == null) return
+    refreshServers()
   }
 
   suspend fun refreshServers() {
@@ -229,30 +258,35 @@ class VpnController(private val context: Context) {
       clearServers()
       return
     }
-    _serversLoading.value = true
-    _serversError.value = null
-    try {
-      val result = ServersApi.fetchServers(session.userId, session.loginAt)
-      applyServerList(result.servers)
-      AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
-    } catch (e: AuthException) {
-      if (e.isSessionInvalid) {
-        if (session.isLocal) {
-          _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
-          AppLog.append("servers: local demo fetch unauthorized — keeping session")
+    serversFetchMutex.withLock {
+      _serversLoading.value = true
+      _serversError.value = null
+      try {
+        val result = ServersApi.fetchServers(session.userId, session.loginAt)
+        applyServerList(result.servers)
+        result.rawJson?.let { SessionCacheStore.saveServers(context, session.userId, it) }
+        AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: AuthException) {
+        if (e.isSessionInvalid) {
+          if (session.isLocal) {
+            _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
+            AppLog.append("servers: local demo fetch unauthorized — keeping session")
+          } else {
+            AuthRepository.clearLocal(context)
+            AppLog.append("servers: session revoked")
+          }
         } else {
-          AuthRepository.clearLocal(context)
-          AppLog.append("servers: session revoked")
+          _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
+          AppLog.append("servers: fetch failed — $e")
         }
-      } else {
+      } catch (e: Exception) {
         _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
         AppLog.append("servers: fetch failed — $e")
+      } finally {
+        _serversLoading.value = false
       }
-    } catch (e: Exception) {
-      _serversError.value = e.message ?: context.getString(R.string.servers_load_failed)
-      AppLog.append("servers: fetch failed — $e")
-    } finally {
-      _serversLoading.value = false
     }
   }
 
