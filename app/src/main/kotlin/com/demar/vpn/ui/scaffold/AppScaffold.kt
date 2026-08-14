@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -65,6 +66,7 @@ fun AppScaffold(
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val throughput by vpnController.throughput.collectAsStateWithLifecycle()
   val signOutFailed = stringResource(R.string.sign_out_failed)
+  var wasSignedIn by remember { mutableStateOf<Boolean?>(null) }
 
   fun openLogin(returnTab: Int) {
     loginReturnTab = returnTab
@@ -78,9 +80,13 @@ fun AppScaffold(
   }
 
   LaunchedEffect(signedIn) {
+    val prev = wasSignedIn
+    wasSignedIn = signedIn
     if (signedIn) {
       showLoginSheet = false
-      vpnController.refreshServers()
+      if (prev == false) {
+        scope.launch { vpnController.refreshSessionData() }
+      }
     } else {
       tab = 0
     }

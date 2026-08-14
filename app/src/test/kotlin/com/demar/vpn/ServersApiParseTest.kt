@@ -1,5 +1,6 @@
 package com.demar.vpn
 
+import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import org.json.JSONObject
@@ -7,10 +8,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ServersApiParseTest {
+  @Test
+  fun validateParsedCount_rejectsEmptyParse() {
+    assertThrows(AuthException::class.java) {
+      ServersApi.validateParsedCount(3, 0)
+    }
+    ServersApi.validateParsedCount(0, 0)
+    ServersApi.validateParsedCount(2, 2)
+  }
+
   @Test
   fun parseUnsupportedProtocol_returnsNull() {
     val config = """

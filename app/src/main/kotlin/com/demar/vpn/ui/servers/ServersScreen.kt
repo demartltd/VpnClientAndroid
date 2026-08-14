@@ -114,8 +114,8 @@ fun ServersScreen(
     }
 
     LaunchedEffect(active, session?.userId) {
-      if (active && session != null && profiles.isEmpty() && !loading) {
-        vpnController.refreshServers()
+      if (active && session != null) {
+        vpnController.refreshServersOnTabOpen()
       }
     }
 
@@ -124,7 +124,7 @@ fun ServersScreen(
         if (refreshing || session == null) return@launch
         refreshing = true
         val t0 = System.currentTimeMillis()
-        vpnController.refreshServers()
+        vpnController.refreshSessionData()
         vpnController.refreshServerReachability()
         val remain = REFRESH_STUB_MIN_MS - (System.currentTimeMillis() - t0)
         if (remain > 0) delay(remain)

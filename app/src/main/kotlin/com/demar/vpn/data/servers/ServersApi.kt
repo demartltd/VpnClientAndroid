@@ -17,6 +17,7 @@ data class ServersListResult(
   val vpnSubscription: String?,
   val vpnExpiresAt: String?,
   val servers: List<ServerProfile>,
+  val rawJson: JSONObject? = null,
 )
 
 object ServersApi {
@@ -27,25 +28,40 @@ object ServersApi {
     withContext(Dispatchers.IO) {
       val body = JSONObject().put("userId", userId).put("loginAt", loginAt)
       val json = post("${AuthApi.VPN_API_BASE_URL}/vpn/servers", body)
-      val arr = json.optJSONArray("servers") ?: JSONArray()
-      val profiles = buildList {
-        for (i in 0 until arr.length()) {
-          val item = arr.optJSONObject(i) ?: continue
-          val profile = parseServerItem(item)
-          if (profile != null) add(profile)
-          else {
-            val proto = item.optString("protocol")
-            val name = item.optString("name")
-            AppLog.append("servers: skip unsupported protocol=$proto name=$name")
-          }
+      parseServersResponse(json)
+    }
+
+  fun parseServersResponse(json: JSONObject): ServersListResult {
+    val arr = json.optJSONArray("servers") ?: JSONArray()
+    val rawCount = arr.length()
+    val profiles = buildList {
+      for (i in 0 until rawCount) {
+        val item = arr.optJSONObject(i) ?: continue
+        val profile = parseServerItem(item)
+        if (profile != null) add(profile)
+        else {
+          val proto = item.optString("protocol")
+          val name = item.optString("name")
+          AppLog.append("servers: skip unsupported protocol=$proto name=$name")
         }
       }
-      ServersListResult(
-        vpnSubscription = json.optString("vpnSubscription").takeIf { it.isNotBlank() },
-        vpnExpiresAt = json.optString("vpnExpiresAt").takeIf { it.isNotBlank() },
-        servers = profiles,
-      )
     }
+    AppLog.append("servers: raw=$rawCount parsed=${profiles.size}")
+    validateParsedCount(rawCount, profiles.size)
+    return ServersListResult(
+      vpnSubscription = json.optString("vpnSubscription").takeIf { it.isNotBlank() },
+      vpnExpiresAt = json.optString("vpnExpiresAt").takeIf { it.isNotBlank() },
+      servers = profiles,
+      rawJson = json,
+    )
+  }
+
+  /** @throws AuthException when API returned servers but none were supported. */
+  internal fun validateParsedCount(rawCount: Int, parsedCount: Int) {
+    if (rawCount > 0 && parsedCount == 0) {
+      throw AuthException("No supported servers in response")
+    }
+  }
 
   fun parseServerItem(item: JSONObject): ServerProfile? {
     val id = item.optString("id").takeIf { it.isNotBlank() } ?: return null
