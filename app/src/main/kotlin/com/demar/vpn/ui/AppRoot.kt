@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.update.AppUpdate
 import com.demar.vpn.data.update.AppUpdateState
 import com.demar.vpn.data.vpn.VpnController
@@ -38,6 +39,7 @@ import com.demar.vpn.ui.settings.AppSettingsScreen
 import com.demar.vpn.ui.settings.DocumentScreen
 import com.demar.vpn.ui.settings.ServiceMenuScreen
 import com.demar.vpn.ui.settings.TunSettingsScreen
+import com.demar.vpn.ui.settings.support.SupportScreen
 import com.demar.vpn.ui.update.UpdateBottomSheet
 import kotlinx.coroutines.launch
 
@@ -46,6 +48,7 @@ object Routes {
   const val AppSettings = "app_settings"
   const val TunSettings = "tun_settings"
   const val ServiceMenu = "service_menu"
+  const val Support = "support"
   const val Document = "document/{kind}"
 
   fun document(kind: LegalDocument) = "document/${kind.name}"
@@ -67,6 +70,7 @@ fun AppRoot(
   val scope = rememberCoroutineScope()
   val lifecycleOwner = LocalLifecycleOwner.current
   val updateState by AppUpdate.state.collectAsStateWithLifecycle()
+  val authSession by AuthRepository.session.collectAsStateWithLifecycle()
   var showUpdateSheet by remember { mutableStateOf(false) }
   var autoPromptedVersion by remember { mutableStateOf<String?>(null) }
 
@@ -108,6 +112,7 @@ fun AppRoot(
           onAppSettings = { navController.openOverlay(Routes.AppSettings) },
           onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
           onOpenDocument = { doc -> navController.openOverlay(Routes.document(doc)) },
+          onSupport = { navController.openOverlay(Routes.Support) },
         )
       }
       composable(Routes.AppSettings) {
@@ -116,6 +121,18 @@ fun AppRoot(
           onTunSettings = { navController.openOverlay(Routes.TunSettings) },
           snackbarHost = snackbarHost,
         )
+      }
+      composable(Routes.Support) {
+        val session = authSession
+        if (session == null) {
+          LaunchedEffect(Unit) { navController.popBackStack() }
+        } else {
+          SupportScreen(
+            session = session,
+            snackbarHost = snackbarHost,
+            onBack = { navController.popBackStack() },
+          )
+        }
       }
       composable(Routes.TunSettings) {
         TunSettingsScreen(
