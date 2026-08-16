@@ -48,6 +48,7 @@ fun AppScaffold(
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
   onOpenDocument: (LegalDocument) -> Unit,
+  onSupport: () -> Unit,
   updateState: AppUpdateState = AppUpdateState.Idle,
   onOpenUpdateSheet: () -> Unit = {},
   openHomeTick: Int = 0,
@@ -129,6 +130,8 @@ fun AppScaffold(
           onAppSettings = onAppSettings,
           onServiceMenu = onServiceMenu,
           onOpenDocument = onOpenDocument,
+          onSupport = onSupport,
+          onNeedSignIn = { openLogin(2) },
         )
         AccountScreen(
           active = tab == 3,

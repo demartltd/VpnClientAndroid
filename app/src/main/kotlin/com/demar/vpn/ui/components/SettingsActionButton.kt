@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -34,6 +36,16 @@ fun SettingsGroup(
 }
 
 @Composable
+fun UnreadDot(modifier: Modifier = Modifier) {
+  Box(
+    modifier
+      .size(8.dp)
+      .clip(CircleShape)
+      .background(MaterialTheme.colorScheme.primary),
+  )
+}
+
+@Composable
 fun SettingsActionButton(
   icon: ImageVector,
   title: String,
@@ -43,6 +55,7 @@ fun SettingsActionButton(
   trailingIcon: ImageVector? = Icons.AutoMirrored.Filled.KeyboardArrowRight,
   trailing: (@Composable () -> Unit)? = null,
   iconContent: (@Composable () -> Unit)? = null,
+  titleLeading: (@Composable () -> Unit)? = null,
   extra: (@Composable () -> Unit)? = null,
   danger: Boolean = false,
 ) {
@@ -69,7 +82,13 @@ fun SettingsActionButton(
     }
     Spacer(Modifier.width(16.dp))
     Column(Modifier.weight(1f)) {
-      Text(title, style = MaterialTheme.typography.titleMedium)
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        titleLeading?.let {
+          it()
+          Spacer(Modifier.width(8.dp))
+        }
+        Text(title, style = MaterialTheme.typography.titleMedium)
+      }
       Text(subtitle, style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
       extra?.invoke()
     }

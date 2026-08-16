@@ -39,13 +39,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.data.auth.AuthRepository
+import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
+import com.demar.vpn.ui.components.UnreadDot
 import com.demar.vpn.ui.components.SettingsLinksStrip
 import com.demar.vpn.ui.components.mainTabPadding
 import kotlinx.coroutines.delay
@@ -62,6 +66,8 @@ fun SettingsScreen(
   onAppSettings: () -> Unit,
   onServiceMenu: () -> Unit,
   onOpenDocument: (LegalDocument) -> Unit,
+  onSupport: () -> Unit,
+  onNeedSignIn: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
@@ -69,6 +75,8 @@ fun SettingsScreen(
   var showDocumentsSheet by rememberSaveable { mutableStateOf(false) }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
+  val session by AuthRepository.session.collectAsStateWithLifecycle()
+  val supportUnread by SupportUnreadStore.hasUnread.collectAsStateWithLifecycle()
   val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
 
   LaunchedEffect(tapCount) {
@@ -101,7 +109,20 @@ fun SettingsScreen(
     Spacer(Modifier.height(32.dp))
     SettingsGroup {
       SettingsActionButton(Icons.Filled.SettingsApplications, stringResource(R.string.settings_app), stringResource(R.string.settings_app_sub), onAppSettings)
-      SettingsActionButton(Icons.Filled.RateReview, stringResource(R.string.settings_feedback), stringResource(R.string.settings_feedback_sub), soon)
+      SettingsActionButton(
+        Icons.Filled.RateReview,
+        stringResource(R.string.settings_feedback),
+        stringResource(R.string.settings_feedback_sub),
+        onClick = {
+          if (session == null) onNeedSignIn()
+          else onSupport()
+        },
+        titleLeading = if (supportUnread) {
+          { UnreadDot() }
+        } else {
+          null
+        },
+      )
       SettingsActionButton(Icons.Filled.Share, stringResource(R.string.settings_share), stringResource(R.string.settings_share_sub), soon)
       SettingsActionButton(
         Icons.Filled.FolderOpen,
@@ -148,7 +169,8 @@ private fun SettingsVersionFooter(versionName: String, singBoxLabel: String, onT
     ) {
       Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("Demar VPN - $versionName - ${stringResource(R.string.platform_android)}", style = style, textAlign = TextAlign.Center)
-        Text("sing-box - $singBoxLabel", style = style, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(2.dp))
+        Text(singBoxLabel, style = style, textAlign = TextAlign.Center)
       }
     }
   }

@@ -18,6 +18,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic)
+│   ├── support/                 # SupportApi → csauth.example.invalid tickets
 │   ├── servers/                 # ServersApi (POST vpn.example.invalid/vpn/servers → profiles)
 │   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateChannelStore (stable/beta)
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
@@ -33,7 +34,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
-│   ├── settings/                # App settings, TunSettingsScreen, Documents, Service menu
+│   ├── settings/                # App settings, TunSettings, Documents, SupportScreen, Service menu
 │   ├── account/                 # AccountScreen + TrafficPieChart
 │   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput
 └── vpn/                         # Libbox (из demar_vpn)
