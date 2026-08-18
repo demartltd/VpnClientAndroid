@@ -33,7 +33,7 @@ pwsh scripts/build_android.ps1
 |-------|--------|
 | Home (VPN toggle) | Hysteria2 connect/disconnect через `VpnController` |
 | Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `vpn.example.invalid` по подписке |
-| Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csauth.example.invalid`) |
+| Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csauth.example.invalid`, channel `android`, `sourceId=2`) |
 | Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `auth.example.invalid`; VPN profile/notify/traffic → `vpn.example.invalid` |
 | App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона); бета-канал обновлений |
 | Service menu (3× tap version) | about + latest version API + diagnostics |

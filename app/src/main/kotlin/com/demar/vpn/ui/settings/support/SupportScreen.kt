@@ -1,8 +1,10 @@
 package com.demar.vpn.ui.settings.support
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -11,11 +13,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -27,6 +38,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -34,18 +46,25 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
-import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthSession
 import com.demar.vpn.data.support.SupportApi
 import com.demar.vpn.data.support.SupportCacheStore
-import com.demar.vpn.data.support.SupportMediaTooLargeException
 import com.demar.vpn.data.support.SupportTheme
 import com.demar.vpn.data.support.SupportTicketSummary
 import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.ui.components.DemarSnackbar
+import com.demar.vpn.ui.components.SettingsActionButton
+import com.demar.vpn.ui.components.UnreadDot
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private sealed interface Dest {
+  data object List : Dest
+  data class Chat(val ticketId: String) : Dest
+  data class Draft(val themeId: String) : Dest
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +73,7 @@ fun SupportScreen(
   snackbarHost: SnackbarHostState,
   onBack: () -> Unit,
 ) {
-  var route by remember { mutableStateOf<SupportRoute>(SupportRoute.List) }
+  var dest by remember { mutableStateOf<Dest>(Dest.List) }
   var tickets by remember { mutableStateOf<List<SupportTicketSummary>>(emptyList()) }
   var loadingList by remember { mutableStateOf(true) }
   var confirmNew by remember { mutableStateOf(false) }
@@ -66,14 +85,7 @@ fun SupportScreen(
   val context = LocalContext.current
 
   fun err(t: Throwable) = scope.launch {
-    val msg = when {
-      t is SupportMediaTooLargeException -> context.getString(R.string.support_media_too_large)
-      t is AuthException && t.message == "ticket_channel_mismatch" ->
-        context.getString(R.string.support_channel_locked)
-      t is AuthException -> t.message?.takeIf { it.isNotBlank() }
-        ?: context.getString(R.string.support_error_generic)
-      else -> context.getString(R.string.support_error_generic)
-    }
+    val msg = supportErrorMessage(context, t) ?: return@launch
     DemarSnackbar.showError(snackbarHost, msg)
   }
 
@@ -86,9 +98,10 @@ fun SupportScreen(
       tickets = fresh
       SupportCacheStore.saveList(context, session.userId, fresh)
       SupportUnreadStore.apply(fresh)
+    } catch (t: CancellationException) {
+      throw t
     } catch (t: Throwable) {
-      if (tickets.isEmpty()) err(t)
-      else if (!quiet) err(t)
+      if (tickets.isEmpty() || !quiet) err(t)
     } finally {
       loadingList = false
     }
@@ -120,11 +133,11 @@ fun SupportScreen(
     if (tickets.isNotEmpty()) loadingList = false
     launch { ensureThemes() }
     reloadList(quiet = tickets.isNotEmpty())
+    SupportUnreadStore.warmTickets(context, session, tickets)
   }
 
-  // Quietly refresh ticket previews while the list is visible.
-  LaunchedEffect(route, session.userId) {
-    if (route !is SupportRoute.List) return@LaunchedEffect
+  LaunchedEffect(dest, session.userId) {
+    if (dest !is Dest.List) return@LaunchedEffect
     reloadList(quiet = tickets.isNotEmpty())
     while (true) {
       delay(8_000)
@@ -133,12 +146,12 @@ fun SupportScreen(
   }
 
   fun goBack() {
-    route = when (route) {
-      is SupportRoute.Chat, is SupportRoute.Draft -> {
+    dest = when (dest) {
+      is Dest.Chat, is Dest.Draft -> {
         scope.launch { reloadList(quiet = true) }
-        SupportRoute.List
+        Dest.List
       }
-      SupportRoute.List -> {
+      Dest.List -> {
         onBack()
         return
       }
@@ -147,17 +160,17 @@ fun SupportScreen(
 
   BackHandler(onBack = ::goBack)
 
-  val title = when (val r = route) {
-    SupportRoute.List -> stringResource(R.string.support_title)
-    is SupportRoute.Draft -> stringResource(R.string.support_create)
-    is SupportRoute.Chat -> stringResource(R.string.support_ticket, r.ticketId)
+  val title = when (val d = dest) {
+    Dest.List -> stringResource(R.string.support_title)
+    is Dest.Draft -> stringResource(R.string.support_create)
+    is Dest.Chat -> stringResource(R.string.support_ticket, d.ticketId)
   }
 
   DemarBackScaffold(title = title, onBack = ::goBack) { padding ->
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val imeOpen = WindowInsets.ime.getBottom(density) > 0
-    val inComposer = route is SupportRoute.Chat || route is SupportRoute.Draft
+    val inComposer = dest is Dest.Chat || dest is Dest.Draft
     Box(
       Modifier
         .fillMaxSize()
@@ -172,36 +185,36 @@ fun SupportScreen(
         )
         .imePadding(),
     ) {
-      when (val r = route) {
-        SupportRoute.List -> SupportListPane(
+      when (val d = dest) {
+        Dest.List -> SupportListPane(
           tickets = tickets,
           loading = loadingList,
-          onOpen = { route = SupportRoute.Chat(it) },
+          onOpen = { dest = Dest.Chat(it) },
           onCreate = {
             val openAndroid = tickets.any { it.isOpen && it.channel == SupportApi.Channel }
             if (openAndroid) confirmNew = true
             else openThemePicker()
           },
         )
-        is SupportRoute.Draft -> SupportChatPane(
+        is Dest.Draft -> SupportChatPane(
           session = session,
           ticketId = null,
-          themeId = r.themeId,
+          themeId = d.themeId,
           onError = ::err,
-          onTicketGone = { route = SupportRoute.List },
+          onTicketGone = { dest = Dest.List },
           onTicketCreated = { ticket ->
             scope.launch { reloadList(quiet = true) }
-            route = SupportRoute.Chat(ticket.id)
+            dest = Dest.Chat(ticket.id)
           },
         )
-        is SupportRoute.Chat -> SupportChatPane(
+        is Dest.Chat -> SupportChatPane(
           session = session,
-          ticketId = r.ticketId,
+          ticketId = d.ticketId,
           onError = ::err,
           onTicketGone = {
-            SupportCacheStore.removeTicket(context, session.userId, r.ticketId)
+            SupportCacheStore.removeTicket(context, session.userId, d.ticketId)
             scope.launch { reloadList(quiet = true) }
-            route = SupportRoute.List
+            dest = Dest.List
           },
         )
       }
@@ -271,7 +284,7 @@ fun SupportScreen(
           onClick = {
             val theme = selectedTheme ?: return@TextButton
             pickTheme = false
-            route = SupportRoute.Draft(theme.id)
+            dest = Dest.Draft(theme.id)
           },
         ) { Text(stringResource(R.string.support_create)) }
       },
@@ -281,5 +294,62 @@ fun SupportScreen(
         }
       },
     )
+  }
+}
+
+@Composable
+private fun SupportListPane(
+  tickets: List<SupportTicketSummary>,
+  loading: Boolean,
+  onOpen: (String) -> Unit,
+  onCreate: () -> Unit,
+) {
+  val cs = MaterialTheme.colorScheme
+  Box(Modifier.fillMaxSize()) {
+    when {
+      loading && tickets.isEmpty() -> Unit
+      tickets.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(stringResource(R.string.support_empty), color = cs.onSurfaceVariant)
+      }
+      else -> LazyColumn(
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        modifier = Modifier.fillMaxSize(),
+      ) {
+        items(tickets, key = { it.id }) { t ->
+          val status = if (t.isOpen) {
+            stringResource(R.string.support_status_open)
+          } else {
+            stringResource(R.string.support_status_closed)
+          }
+          val preview = t.preview
+            ?.lineSequence()
+            ?.firstOrNull()
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?: stringResource(R.string.support_no_preview)
+          SettingsActionButton(
+            Icons.Filled.SupportAgent,
+            "$status · #${t.id}",
+            preview,
+            onClick = { onOpen(t.id) },
+            titleLeading = if (t.hasUnread) {
+              { UnreadDot() }
+            } else {
+              null
+            },
+          )
+        }
+      }
+    }
+    FloatingActionButton(
+      onClick = onCreate,
+      containerColor = cs.primaryContainer,
+      contentColor = cs.onPrimaryContainer,
+      elevation = FloatingActionButtonDefaults.elevation(),
+      modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+    ) {
+      Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.support_create))
+    }
   }
 }

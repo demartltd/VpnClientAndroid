@@ -14,6 +14,7 @@ import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.data.network.resolveUplinkIpv4s
 import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.data.session.SessionCacheStore
+import com.demar.vpn.data.support.SupportCacheStore
 import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -238,6 +239,7 @@ class VpnController(private val context: Context) {
     clearServers()
     AccountStore.clear()
     SupportUnreadStore.clear()
+    SupportCacheStore.clearAll(context)
   }
 
   /** Servers + account — app start, sign-in, servers pull-to-refresh. */
@@ -247,7 +249,7 @@ class VpnController(private val context: Context) {
       launch { AccountStore.refresh(context) }
       launch {
         val session = AuthSessionStore.current() ?: return@launch
-        runCatching { SupportUnreadStore.refresh(session) }
+        runCatching { SupportUnreadStore.refresh(context, session) }
       }
     }
   }

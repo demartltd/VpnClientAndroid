@@ -1,5 +1,6 @@
 package com.demar.vpn.ui.settings.support
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -18,9 +19,19 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.style.TextDecoration
+import com.demar.vpn.R
+import com.demar.vpn.data.auth.AuthException
+import com.demar.vpn.data.support.SupportMediaTooLargeException
+import kotlinx.coroutines.CancellationException
+import java.net.ConnectException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import javax.net.ssl.SSLException
 
 internal val SupportTimeFmt: DateTimeFormatter =
   DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
@@ -29,11 +40,14 @@ internal val SupportUrlRegex = Regex("""https?://[^\s<>\]]+""", RegexOption.IGNO
 
 internal fun formatMsgTime(raw: String?): String? {
   if (raw.isNullOrBlank()) return null
-  return runCatching {
-    val instant = Instant.parse(raw)
-    SupportTimeFmt.format(instant)
-  }.getOrNull()
+  val instant = parseSupportInstant(raw.trim()) ?: return null
+  return SupportTimeFmt.format(instant)
 }
+
+private fun parseSupportInstant(raw: String): Instant? =
+  runCatching { Instant.parse(raw) }.getOrNull()
+    ?: runCatching { Instant.parse(raw.replace(' ', 'T')) }.getOrNull()
+    ?: runCatching { OffsetDateTime.parse(raw, DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant() }.getOrNull()
 
 internal fun decodeSampledBitmap(bytes: ByteArray, maxSide: Int): android.graphics.Bitmap? {
   val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -48,6 +62,30 @@ internal fun decodeSampledBitmap(bytes: ByteArray, maxSide: Int): android.graphi
     inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
   }
   return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+}
+
+internal fun supportErrorMessage(context: Context, t: Throwable): String? {
+  if (t is CancellationException) return null
+  return when {
+    t is SupportMediaTooLargeException -> context.getString(R.string.support_media_too_large)
+    t is AuthException && t.message?.startsWith("media: max") == true ->
+      context.getString(R.string.support_media_limit)
+    t is AuthException && t.message == "ticket_channel_mismatch" ->
+      context.getString(R.string.support_channel_locked)
+    t is AuthException -> t.message?.takeIf { it.isNotBlank() }
+      ?: context.getString(R.string.support_error_generic)
+    else -> context.getString(R.string.support_error_generic)
+  }
+}
+
+internal fun isTransientSupportFailure(t: Throwable): Boolean {
+  if (t is CancellationException) return true
+  if (t is AuthException) return t.statusCode == 502
+  return t is SocketTimeoutException ||
+    t is UnknownHostException ||
+    t is ConnectException ||
+    t is SocketException ||
+    t is SSLException
 }
 
 @Composable
