@@ -1,9 +1,56 @@
 package com.demar.vpn.data.support
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
+import com.demar.vpn.data.auth.AuthSession
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.io.File
+
+object SupportUnreadStore {
+  private val _hasUnread = MutableStateFlow(false)
+  val hasUnread: StateFlow<Boolean> = _hasUnread.asStateFlow()
+
+  fun clear() {
+    _hasUnread.value = false
+  }
+
+  fun apply(tickets: List<SupportTicketSummary>) {
+    _hasUnread.value = tickets.any { it.hasUnread }
+  }
+
+  suspend fun refresh(context: Context, session: AuthSession) {
+    runCatching {
+      val tickets = SupportApi.listTickets(session.userId, session.loginAt)
+      apply(tickets)
+      SupportCacheStore.saveList(context, session.userId, tickets)
+      warmTickets(context, session, tickets)
+    }
+  }
+
+  suspend fun warmTickets(
+    context: Context,
+    session: AuthSession,
+    summaries: List<SupportTicketSummary>,
+  ) {
+    val missing = summaries.filter {
+      SupportCacheStore.loadTicket(context, session.userId, it.id) == null
+    }
+    if (missing.isEmpty()) return
+    coroutineScope {
+      for (summary in missing) {
+        launch {
+          runCatching {
+            val fresh = SupportApi.getTicket(session.userId, session.loginAt, summary.id)
+            SupportCacheStore.saveTicket(context, session.userId, fresh)
+          }
+        }
+      }
+    }
+  }
+}
 
 object SupportCacheStore {
   private const val DIR = "support_cache"
@@ -26,6 +73,10 @@ object SupportCacheStore {
     file(context, userId, "ticket_$ticketId.json").delete()
   }
 
+  fun clearAll(context: Context) {
+    File(context.applicationContext.filesDir, DIR).deleteRecursively()
+  }
+
   private fun read(context: Context, userId: String, name: String): String? =
     runCatching { file(context, userId, name).takeIf { it.isFile }?.readText() }.getOrNull()
       ?.takeIf { it.isNotBlank() }
@@ -34,7 +85,12 @@ object SupportCacheStore {
     runCatching {
       val f = file(context, userId, name)
       f.parentFile?.mkdirs()
-      f.writeText(body)
+      val tmp = File(f.parentFile, "${f.name}.tmp")
+      tmp.writeText(body)
+      if (!tmp.renameTo(f)) {
+        f.writeText(body)
+        tmp.delete()
+      }
     }
   }
 
@@ -46,24 +102,8 @@ object SupportCacheStore {
 
 object SupportMediaCache {
   private const val DIR = "support_media"
-  private const val DIMS = "dims.json"
   private const val MaxFiles = 80
   private const val MaxBytes = 64L * 1024 * 1024
-
-  data class Dims(val width: Int, val height: Int)
-
-  private val bitmaps = object : android.util.LruCache<String, android.graphics.Bitmap>(
-    ((Runtime.getRuntime().maxMemory() / 1024) / 10).toInt().coerceIn(8_192, 48_000),
-  ) {
-    override fun sizeOf(key: String, value: android.graphics.Bitmap): Int =
-      value.byteCount / 1024
-  }
-
-  fun memoryGet(key: String): android.graphics.Bitmap? = synchronized(bitmaps) { bitmaps.get(key) }
-
-  fun memoryPut(key: String, bitmap: android.graphics.Bitmap) {
-    synchronized(bitmaps) { bitmaps.put(key, bitmap) }
-  }
 
   fun load(context: Context, key: String): ByteArray? =
     runCatching {
@@ -77,37 +117,15 @@ object SupportMediaCache {
     runCatching {
       val f = file(context, key)
       f.parentFile?.mkdirs()
-      f.writeBytes(bytes)
+      val tmp = File(f.parentFile, "${f.name}.tmp")
+      tmp.writeBytes(bytes)
+      if (!tmp.renameTo(f)) {
+        f.writeBytes(bytes)
+        tmp.delete()
+      }
       trim(context)
     }
   }
-
-  fun loadDims(context: Context, url: String): Dims? {
-    val o = dimsJson(context).optJSONObject(url) ?: return null
-    val w = o.optInt("w")
-    val h = o.optInt("h")
-    return if (w > 0 && h > 0) Dims(w, h) else null
-  }
-
-  fun saveDims(context: Context, url: String, width: Int, height: Int) {
-    if (width <= 0 || height <= 0 || url.isBlank()) return
-    runCatching {
-      val root = dimsJson(context)
-      root.put(url, JSONObject().put("w", width).put("h", height))
-      val f = dimsFile(context)
-      f.parentFile?.mkdirs()
-      f.writeText(root.toString())
-    }
-  }
-
-  private fun dimsJson(context: Context): JSONObject =
-    runCatching {
-      val raw = dimsFile(context).takeIf { it.isFile }?.readText().orEmpty()
-      if (raw.isBlank()) JSONObject() else JSONObject(raw)
-    }.getOrDefault(JSONObject())
-
-  private fun dimsFile(context: Context) =
-    File(context.applicationContext.cacheDir, "$DIR/$DIMS")
 
   private fun file(context: Context, key: String): File {
     val name = key.hashCode().toUInt().toString(16) + ".bin"
@@ -117,7 +135,7 @@ object SupportMediaCache {
   private fun trim(context: Context) {
     val dir = File(context.applicationContext.cacheDir, DIR)
     if (!dir.isDirectory) return
-    val files = dir.listFiles()?.filter { it.name != DIMS }?.sortedBy { it.lastModified() } ?: return
+    val files = dir.listFiles()?.sortedBy { it.lastModified() } ?: return
     var total = files.sumOf { it.length() }
     var i = 0
     while ((files.size - i > MaxFiles || total > MaxBytes) && i < files.size) {

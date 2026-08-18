@@ -1,6 +1,5 @@
 package com.demar.vpn.ui.settings.support
 
-import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -9,11 +8,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,11 +32,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -51,10 +45,12 @@ import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthSession
 import com.demar.vpn.data.support.SupportApi
 import com.demar.vpn.data.support.SupportMedia
-import com.demar.vpn.data.support.SupportMediaCache
 import com.demar.vpn.data.support.SupportMessage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private val BubbleMaxWidth = 260.dp
+private val AlbumGap = 3.dp
 
 @Composable
 internal fun SupportBubble(
@@ -66,7 +62,6 @@ internal fun SupportBubble(
 ) {
   val cs = MaterialTheme.colorScheme
   val mine = message.isUser
-  val maxBubbleWidth = (LocalConfiguration.current.screenWidthDp * 0.78f).dp
   val shape = RoundedCornerShape(
     topStart = 16.dp,
     topEnd = 16.dp,
@@ -77,17 +72,12 @@ internal fun SupportBubble(
   val canSelect = !message.deleted
   val photos = message.media.filter { it.isPhoto && !it.url.isNullOrBlank() }
   val files = message.media.filter { !(it.isPhoto && !it.url.isNullOrBlank()) }
-  val overlayTimeOnMedia =
-    !message.deleted &&
-      message.text.isNullOrBlank() &&
-      photos.size == 1 &&
-      files.isEmpty()
   Row(
     horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
   ) {
     Column(
       Modifier
-        .widthIn(max = maxBubbleWidth)
+        .widthIn(max = BubbleMaxWidth)
         .wrapContentWidth()
         .clip(shape)
         .background(
@@ -107,10 +97,7 @@ internal fun SupportBubble(
             Modifier
           },
         )
-        .padding(
-          horizontal = if (overlayTimeOnMedia) 4.dp else 12.dp,
-          vertical = if (overlayTimeOnMedia) 4.dp else 8.dp,
-        ),
+        .padding(10.dp),
     ) {
       if (message.deleted) {
         Text(
@@ -121,43 +108,17 @@ internal fun SupportBubble(
       } else {
         message.text?.let { LinkifiedText(it, onLongPress = onLongPress) }
         if (photos.isNotEmpty()) {
-          SupportPhotoAlbum(
-            photos = photos,
-            session = session,
-            ticketId = ticketId,
-            maxWidth = maxBubbleWidth - if (overlayTimeOnMedia) 8.dp else 24.dp,
-            overlayTime = if (overlayTimeOnMedia) time else null,
-            overlayEdited = overlayTimeOnMedia && message.edited,
+          SupportPhotoAlbum(photos = photos, session = session, ticketId = ticketId)
+        }
+        files.forEach { SupportFileRow(it) }
+        if (time != null) {
+          Text(
+            time,
+            modifier = Modifier.align(Alignment.End).padding(top = 2.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = cs.onSurfaceVariant,
+            fontSize = 10.sp,
           )
-        }
-        if (files.isNotEmpty()) {
-          Column(
-            Modifier.padding(top = if (photos.isNotEmpty() || message.text != null) 6.dp else 0.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-          ) {
-            files.forEach { SupportFileRow(it) }
-          }
-        }
-      }
-      if (!overlayTimeOnMedia) {
-        Row(
-          Modifier
-            .align(Alignment.End)
-            .padding(top = 2.dp),
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          if (message.edited && !message.deleted) {
-            Text(
-              stringResource(R.string.support_edited),
-              style = MaterialTheme.typography.labelSmall,
-              color = cs.onSurfaceVariant,
-              fontSize = 10.sp,
-              modifier = Modifier.padding(end = 6.dp),
-            )
-          }
-          if (time != null) {
-            Text(time, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant, fontSize = 10.sp)
-          }
         }
       }
     }
@@ -168,16 +129,10 @@ internal fun SupportBubble(
 private fun SupportFileRow(media: SupportMedia) {
   val cs = MaterialTheme.colorScheme
   val name = media.fileName ?: media.type ?: stringResource(R.string.support_attachment)
-  val meta = buildString {
-    formatFileSize(media.fileSize)?.let { append(it) }
-    media.mimeType?.substringAfter('/')?.uppercase()?.takeIf { it.isNotBlank() }?.let {
-      if (isNotEmpty()) append(" · ")
-      append(it)
-    }
-  }
   Row(
     Modifier
       .fillMaxWidth()
+      .padding(top = 6.dp)
       .clip(RoundedCornerShape(12.dp))
       .background(cs.surface.copy(alpha = 0.45f))
       .padding(horizontal = 10.dp, vertical = 8.dp),
@@ -198,22 +153,13 @@ private fun SupportFileRow(media: SupportMedia) {
       )
     }
     Spacer(Modifier.width(10.dp))
-    Column(Modifier.weight(1f)) {
-      Text(
-        name,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis,
-        color = cs.onSurface,
-      )
-      if (meta.isNotBlank()) {
-        Text(
-          meta,
-          style = MaterialTheme.typography.labelSmall,
-          color = cs.onSurfaceVariant,
-        )
-      }
-    }
+    Text(
+      name,
+      style = MaterialTheme.typography.bodyMedium,
+      maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
+      color = cs.onSurface,
+    )
   }
 }
 
@@ -222,204 +168,121 @@ private fun SupportPhotoAlbum(
   photos: List<SupportMedia>,
   session: AuthSession,
   ticketId: String,
-  maxWidth: Dp,
-  overlayTime: String? = null,
-  overlayEdited: Boolean = false,
 ) {
-  val context = LocalContext.current
-  val gap = 2.dp
-  when (photos.size) {
-    1 -> SupportPhotoPreview(
+  val count = photos.size
+  if (count == 1) {
+    SupportPhotoThumb(
+      media = photos[0],
       session = session,
       ticketId = ticketId,
-      media = photos[0],
-      overlayTime = overlayTime,
-      overlayEdited = overlayEdited,
-      modifier = Modifier.widthIn(max = maxWidth),
+      maxWidth = BubbleMaxWidth,
+      maxHeight = 220.dp,
       maxSide = 1280,
-      grid = false,
     )
-    else -> {
-      val rows = photos.chunked(2)
-      Column(
-        Modifier.width(maxWidth),
-        verticalArrangement = Arrangement.spacedBy(gap),
+    return
+  }
+  val cols = when (count) {
+    in 2..4 -> 2
+    in 5..9 -> 3
+    else -> 4
+  }
+  val thumbH = when (count) {
+    2 -> 140.dp
+    3, 4 -> 110.dp
+    5, 6 -> 88.dp
+    in 7..9 -> 72.dp
+    else -> 58.dp
+  }
+  val thumbW = (BubbleMaxWidth - AlbumGap * (cols - 1)) / cols
+  Column(verticalArrangement = Arrangement.spacedBy(AlbumGap)) {
+    photos.chunked(cols).forEach { row ->
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(AlbumGap),
+        verticalAlignment = Alignment.Bottom,
       ) {
-        rows.forEach { row ->
-          if (row.size == 1) {
-            val aspect = photoAspect(context, row[0]) ?: 1.35f
-            SupportPhotoPreview(
-              session = session,
-              ticketId = ticketId,
-              media = row[0],
-              modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(aspect.coerceIn(0.5f, 2.2f)),
-              maxSide = 720,
-              grid = true,
-            )
-          } else {
-            Row(
-              Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(gap),
-              verticalAlignment = Alignment.Bottom,
-            ) {
-              row.forEach { photo ->
-                val aspect = photoAspect(context, photo) ?: 1f
-                SupportPhotoPreview(
-                  session = session,
-                  ticketId = ticketId,
-                  media = photo,
-                  modifier = Modifier
-                    .weight(1f)
-                    .aspectRatio(aspect.coerceIn(0.5f, 2.2f)),
-                  maxSide = 640,
-                  grid = true,
-                )
-              }
-            }
-          }
+        row.forEach { photo ->
+          SupportPhotoThumb(
+            media = photo,
+            session = session,
+            ticketId = ticketId,
+            maxWidth = thumbW,
+            maxHeight = thumbH,
+            maxSide = 640,
+          )
         }
       }
     }
   }
 }
 
-private fun photoAspect(context: android.content.Context, media: SupportMedia): Float? {
-  val url = media.url ?: return null
-  val w = media.width ?: SupportMediaCache.loadDims(context, url)?.width
-  val h = media.height ?: SupportMediaCache.loadDims(context, url)?.height
-  if (w == null || h == null || w <= 0 || h <= 0) return null
-  return w.toFloat() / h.toFloat()
+/** Fit inside maxW×maxH, keep aspect (iOS SupportMediaThumb.frameSize). */
+private fun albumFrame(maxW: Dp, maxH: Dp, aspect: Float): Pair<Dp, Dp> {
+  val r = aspect.coerceAtLeast(0.25f)
+  var w = maxW
+  var h = w / r
+  if (h > maxH) {
+    h = maxH
+    w = h * r
+    if (w > maxW) {
+      w = maxW
+      h = w / r
+    }
+  }
+  return w to h
+}
+
+private fun photoAspect(media: SupportMedia, bitmap: android.graphics.Bitmap?): Float {
+  if (bitmap != null && bitmap.height > 0) return bitmap.width.toFloat() / bitmap.height
+  val w = media.width
+  val h = media.height
+  return if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h.toFloat() else 4f / 3f
 }
 
 @Composable
-private fun SupportPhotoPreview(
+private fun SupportPhotoThumb(
+  media: SupportMedia,
   session: AuthSession,
   ticketId: String,
-  media: SupportMedia,
-  overlayTime: String? = null,
-  overlayEdited: Boolean = false,
-  modifier: Modifier = Modifier,
-  maxSide: Int = 1280,
-  grid: Boolean = false,
+  maxWidth: Dp,
+  maxHeight: Dp,
+  maxSide: Int,
 ) {
   val context = LocalContext.current
   val url = media.url ?: return
-  val memKey = "$url|$maxSide"
-  var bitmap by remember(memKey) {
-    mutableStateOf(SupportMediaCache.memoryGet(memKey))
-  }
+  var bitmap by remember(url, maxSide) { mutableStateOf<android.graphics.Bitmap?>(null) }
   var failed by remember(url) { mutableStateOf(false) }
-  val cachedDims = remember(url) { SupportMediaCache.loadDims(context, url) }
-  var aspect by remember(url) {
-    val w = media.width ?: cachedDims?.width
-    val h = media.height ?: cachedDims?.height
-    mutableStateOf(
-      if (w != null && h != null && w > 0 && h > 0) w.toFloat() / h.toFloat() else null,
-    )
-  }
-  LaunchedEffect(media.width, media.height, url) {
-    val w = media.width
-    val h = media.height
-    if (w != null && h != null && w > 0 && h > 0) {
-      SupportMediaCache.saveDims(context, url, w, h)
-      aspect = w.toFloat() / h.toFloat()
-    }
-  }
-  LaunchedEffect(memKey, ticketId, session.userId, session.loginAt) {
+  LaunchedEffect(url, maxSide, ticketId, session.userId, session.loginAt) {
     failed = false
-    SupportMediaCache.memoryGet(memKey)?.let {
-      bitmap = it
-      return@LaunchedEffect
-    }
+    bitmap = null
     runCatching {
       withContext(Dispatchers.IO) {
         val bytes = SupportApi.loadMediaBytes(context, session.userId, session.loginAt, url, ticketId)
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        if (bounds.outWidth > 0 && bounds.outHeight > 0) {
-          SupportMediaCache.saveDims(context, url, bounds.outWidth, bounds.outHeight)
-        }
-        val thumbSide = (maxSide / 4).coerceIn(120, 320)
-        val low = decodeSampledBitmap(bytes, maxSide = thumbSide)
-        val hi = decodeSampledBitmap(bytes, maxSide = maxSide) ?: low
-        Triple(
-          if (bounds.outWidth > 0 && bounds.outHeight > 0) {
-            bounds.outWidth.toFloat() / bounds.outHeight.toFloat()
-          } else null,
-          low,
-          hi,
-        )
+        decodeSampledBitmap(bytes, maxSide)
       }
-    }.onSuccess { (a, low, hi) ->
-      if (a != null) aspect = a
-      if (low != null && bitmap == null) bitmap = low
-      if (hi != null) {
-        SupportMediaCache.memoryPut(memKey, hi)
-        bitmap = hi
-      } else if (low == null) failed = true
+    }.onSuccess { decoded ->
+      if (decoded != null) bitmap = decoded else failed = true
     }.onFailure { failed = true }
   }
-  val shape = RoundedCornerShape(if (grid) 4.dp else 10.dp)
+  val (w, h) = albumFrame(maxWidth, maxHeight, photoAspect(media, bitmap))
+  val shape = RoundedCornerShape(6.dp)
+  val box = Modifier.width(w).height(h).clip(shape)
   when {
-    bitmap != null -> {
-      Box(modifier.clip(shape)) {
-        Image(
-          bitmap = bitmap!!.asImageBitmap(),
-          contentDescription = media.fileName ?: stringResource(R.string.support_attachment),
-          modifier = if (grid) Modifier.fillMaxSize() else Modifier.heightIn(max = 240.dp),
-          contentScale = ContentScale.Fit,
-        )
-        if (overlayTime != null) {
-          Row(
-            Modifier
-              .align(Alignment.BottomEnd)
-              .padding(6.dp)
-              .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(6.dp))
-              .padding(horizontal = 6.dp, vertical = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-          ) {
-            if (overlayEdited) {
-              Text(
-                stringResource(R.string.support_edited),
-                color = Color(0xFFD4D4D8),
-                fontSize = 10.sp,
-                modifier = Modifier.padding(end = 4.dp),
-              )
-            }
-            Text(overlayTime, color = Color(0xFFD4D4D8), fontSize = 10.sp)
-          }
-        }
-      }
+    bitmap != null -> Image(
+      bitmap = bitmap!!.asImageBitmap(),
+      contentDescription = media.fileName ?: stringResource(R.string.support_attachment),
+      modifier = box,
+      contentScale = ContentScale.Fit,
+    )
+    failed -> Text(
+      media.fileName ?: stringResource(R.string.support_attachment),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    else -> Box(
+      box.background(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f)),
+      contentAlignment = Alignment.Center,
+    ) {
+      CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
     }
-    failed -> {
-      val label = media.fileName ?: media.type ?: stringResource(R.string.support_attachment)
-      Text("📎 $label", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-    else -> {
-      val placeholder = modifier
-        .then(
-          when {
-            grid -> Modifier
-            aspect != null -> Modifier.aspectRatio(aspect!!.coerceIn(0.5f, 2f)).heightIn(max = 240.dp)
-            else -> Modifier.fillMaxWidth().height(140.dp)
-          },
-        )
-        .clip(shape)
-        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.35f))
-      Box(placeholder, contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-      }
-    }
-  }
-}
-
-private fun formatFileSize(bytes: Long?): String? {
-  if (bytes == null || bytes <= 0) return null
-  val kb = bytes / 1024.0
-  return when {
-    kb < 1024 -> "${kb.toInt().coerceAtLeast(1)} KB"
-    else -> String.format("%.1f MB", kb / 1024.0)
   }
 }

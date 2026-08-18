@@ -53,7 +53,6 @@ data class SupportMessage(
   val resolved: SupportResolved?,
 ) {
   val isUser: Boolean get() = role == "user"
-  val isStaff: Boolean get() = role == "staff"
   val text: String? get() = resolved?.text?.takeIf { it.isNotBlank() }
   val media: List<SupportMedia> get() = resolved?.media.orEmpty()
 }
@@ -75,14 +74,6 @@ data class SupportUploadMedia(
   val dataBase64: String,
   val fileName: String?,
   val mimeType: String?,
-) {
-  val isImage: Boolean
-    get() {
-      if (mimeType?.startsWith("image/") == true) return true
-      val name = fileName?.lowercase().orEmpty()
-      return name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") ||
-        name.endsWith(".webp") || name.endsWith(".gif") || name.endsWith(".heic")
-    }
-}
+)
 
 class SupportMediaTooLargeException : Exception("media_too_large")

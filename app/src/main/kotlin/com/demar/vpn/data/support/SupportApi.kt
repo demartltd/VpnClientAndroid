@@ -4,14 +4,15 @@ import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
-import android.util.Base64OutputStream
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.device.DeviceIdentityCollector
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.logging.journalStampUtc
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
@@ -30,16 +31,9 @@ object SupportApi {
   private const val ConnectTimeoutMs = 15_000
   private const val ReadTimeoutMs = 25_000
   private const val MediaTimeoutMs = 180_000L
-  private const val MinMessageChars = 10
-  private const val MinMessageWords = 3
-
-  /** More than 3 words and at least 10 characters. */
-  fun isMessageTextOk(text: String): Boolean {
-    val t = text.trim()
-    if (t.length < MinMessageChars) return false
-    val words = t.split(Regex("\\s+")).count { it.isNotEmpty() }
-    return words >= MinMessageWords
-  }
+  /** Match iOS: keep base64 JSON small enough for CS relay. */
+  private const val MaxPhotoEdge = 1600
+  private const val MaxPhotoBytes = 1024 * 1024
 
   suspend fun listTickets(userId: String, loginAt: String): List<SupportTicketSummary> =
     withContext(Dispatchers.IO) {
@@ -126,18 +120,14 @@ object SupportApi {
 
   suspend fun getTicket(userId: String, loginAt: String, ticketId: String): SupportTicket =
     withContext(Dispatchers.IO) {
-      val json = get("/support/tickets/${enc(ticketId)}", userId, loginAt)
-      parseTicket(json.getJSONObject("ticket"))
+      parseTicketPayload(get("/support/tickets/${enc(ticketId)}", userId, loginAt))
     }
 
   suspend fun markTicketRead(userId: String, loginAt: String, ticketId: String): SupportTicket =
     withContext(Dispatchers.IO) {
-      val json = post(
-        "/support/tickets/${enc(ticketId)}/read",
-        sessionBody(userId, loginAt),
-        hasMedia = false,
+      parseTicketPayload(
+        post("/support/tickets/${enc(ticketId)}/read", sessionBody(userId, loginAt), hasMedia = false),
       )
-      parseTicket(json.getJSONObject("ticket"))
     }
 
   suspend fun postTicket(
@@ -162,31 +152,43 @@ object SupportApi {
         putLog(body, log, logMedia)
         themeId?.takeIf { it.isNotBlank() }?.let { body.put("themeId", it) }
         sourceId?.takeIf { it.isNotBlank() }?.let { body.put("sourceId", it) }
-        if (media.isNotEmpty()) {
-          body.put("media", mediaToJson(media))
-        }
-        val json = post("/support/tickets", body, hasMedia = media.isNotEmpty() || logMedia.isNotEmpty())
-        parseTicket(json.getJSONObject("ticket"))
+        if (media.isNotEmpty()) body.put("media", mediaToJson(media))
+        parseTicketPayload(post("/support/tickets", body, hasMedia = media.isNotEmpty() || logMedia.isNotEmpty()))
       }
     }
 
-  /** Photos and non-image files go as separate messages (photos first). */
+  /** Photos go in their own request — CS API forbids mixing text and media. */
   suspend fun postMediaSeparated(
     userId: String,
     loginAt: String,
     media: List<SupportUploadMedia>,
     ticketId: String,
   ): SupportTicket {
-    val images = media.filter { it.isImage }
-    val docs = media.filterNot { it.isImage }
-    var ticket: SupportTicket? = null
-    if (images.isNotEmpty()) {
-      ticket = postTicket(userId = userId, loginAt = loginAt, media = images, ticketId = ticketId)
+    val total = media.sumOf { it.dataBase64.length }
+    val names = media.joinToString(",") { it.fileName ?: "?" }
+    AppLog.append("support media post: n=${media.size} b64=$total names=$names")
+    var delayMs = 400L
+    var last: Throwable = AuthException("media upload failed", 500)
+    repeat(3) { attempt ->
+      try {
+        return postTicket(userId = userId, loginAt = loginAt, media = media, ticketId = ticketId)
+      } catch (t: CancellationException) {
+        throw t
+      } catch (t: Throwable) {
+        last = t
+        val msg = t.message.orEmpty()
+        AppLog.append("support media post try${attempt + 1}: $msg")
+        val retryable =
+          msg.contains("fetch failed", ignoreCase = true) ||
+            msg.contains("архив", ignoreCase = true) ||
+            msg.contains("archive", ignoreCase = true) ||
+            (t is AuthException && t.statusCode == 502)
+        if (attempt == 2 || !retryable) throw t
+        delay(delayMs)
+        delayMs *= 2
+      }
     }
-    if (docs.isNotEmpty()) {
-      ticket = postTicket(userId = userId, loginAt = loginAt, media = docs, ticketId = ticketId)
-    }
-    return ticket ?: getTicket(userId, loginAt, ticketId)
+    throw last
   }
 
   suspend fun patchMessage(
@@ -204,17 +206,14 @@ object SupportApi {
         text != null -> body.put("text", text)
         else -> throw AuthException("text or deleted required", 400)
       }
-      val json = patch(
-        "/support/tickets/${enc(ticketId)}/messages/${enc(messageId)}",
-        body,
+      parseTicketPayload(
+        patch("/support/tickets/${enc(ticketId)}/messages/${enc(messageId)}", body),
       )
-      parseTicket(json.getJSONObject("ticket"))
     }
 
   suspend fun readUriAsUpload(context: Context, uri: Uri): SupportUploadMedia =
     withContext(Dispatchers.IO) {
       val cr = context.contentResolver
-      val mime = cr.getType(uri)
       var name: String? = null
       var size = -1L
       cr.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)
@@ -225,27 +224,57 @@ object SupportApi {
           }
         }
       if (size > MaxMediaBytes) throw SupportMediaTooLargeException()
-      val encoded = ByteArrayOutputStream(if (size > 0) ((size * 4) / 3 + 8).toInt() else 64 * 1024)
-      cr.openInputStream(uri)?.use { input ->
-        Base64OutputStream(encoded, Base64.NO_WRAP).use { b64 ->
-          val buf = ByteArray(64 * 1024)
-          var total = 0L
-          while (true) {
-            val n = input.read(buf)
-            if (n < 0) break
-            total += n
-            if (total > MaxMediaBytes) throw SupportMediaTooLargeException()
-            b64.write(buf, 0, n)
-          }
-          if (total == 0L) throw AuthException("empty media", 400)
-        }
-      } ?: throw AuthException("cannot_read_file", 400)
+      val bytes = cr.openInputStream(uri)?.use { it.readBytes() }
+        ?: throw AuthException("cannot_read_file", 400)
+      if (bytes.isEmpty()) throw AuthException("empty media", 400)
+      if (bytes.size > MaxMediaBytes) throw SupportMediaTooLargeException()
+      val jpeg = compressImageToJpeg(bytes) ?: throw AuthException("unsupported image", 400)
       SupportUploadMedia(
-        dataBase64 = encoded.toString(Charsets.US_ASCII.name()),
-        fileName = name,
-        mimeType = mime,
+        dataBase64 = Base64.encodeToString(jpeg, Base64.NO_WRAP),
+        fileName = (name?.substringBeforeLast('.') ?: "photo") + ".jpg",
+        mimeType = "image/jpeg",
       )
     }
+
+  private fun compressImageToJpeg(raw: ByteArray): ByteArray? {
+    val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
+    val w = bounds.outWidth
+    val h = bounds.outHeight
+    if (w <= 0 || h <= 0) return null
+    var sample = 1
+    val longest = maxOf(w, h)
+    while (longest / sample > MaxPhotoEdge * 2) sample *= 2
+    val opts = android.graphics.BitmapFactory.Options().apply {
+      inSampleSize = sample
+      inPreferredConfig = android.graphics.Bitmap.Config.ARGB_8888
+    }
+    val decoded = android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.size, opts) ?: return null
+    val scaled = run {
+      val lw = decoded.width
+      val lh = decoded.height
+      val edge = maxOf(lw, lh)
+      if (edge <= MaxPhotoEdge) decoded
+      else {
+        val scale = MaxPhotoEdge.toFloat() / edge
+        val nw = (lw * scale).toInt().coerceAtLeast(1)
+        val nh = (lh * scale).toInt().coerceAtLeast(1)
+        android.graphics.Bitmap.createScaledBitmap(decoded, nw, nh, true).also {
+          if (it !== decoded) decoded.recycle()
+        }
+      }
+    }
+    var quality = 82
+    var out = ByteArrayOutputStream()
+    scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, out)
+    while (out.size() > MaxPhotoBytes && quality > 35) {
+      quality -= 10
+      out = ByteArrayOutputStream()
+      scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, out)
+    }
+    if (scaled !== decoded) scaled.recycle() else decoded.recycle()
+    return out.toByteArray().takeIf { it.isNotEmpty() }
+  }
 
   suspend fun buildSilentDiagnostics(context: Context): Pair<String, SupportUploadMedia> =
     withContext(Dispatchers.IO) {
@@ -265,10 +294,6 @@ object SupportApi {
       )
       deviceText to upload
     }
-
-  fun assertMediaCount(n: Int) {
-    if (n > MaxMediaFiles) throw AuthException("media: max $MaxMediaFiles files", 400)
-  }
 
   private fun mediaToJson(media: List<SupportUploadMedia>): JSONArray {
     val arr = JSONArray()
@@ -409,12 +434,18 @@ object SupportApi {
     }
   }
 
+  private fun parseTicketPayload(json: JSONObject): SupportTicket {
+    json.optJSONObject("ticket")?.let { return parseTicket(it) }
+    if (json.anyId("id", "_id") != null || json.has("messages")) return parseTicket(json)
+    throw AuthException("missing ticket", 500)
+  }
+
   private fun parseSummaries(arr: JSONArray?): List<SupportTicketSummary> {
     if (arr == null) return emptyList()
     return buildList {
       for (i in 0 until arr.length()) {
         val o = arr.optJSONObject(i) ?: continue
-        val id = o.optString("id").takeIf { it.isNotBlank() } ?: continue
+        val id = o.anyId("id", "_id") ?: continue
         add(
           SupportTicketSummary(
             id = id,
@@ -438,9 +469,8 @@ object SupportApi {
     return buildList {
       for (i in 0 until arr.length()) {
         val o = arr.optJSONObject(i) ?: continue
-        val id = o.optString("id").ifBlank { o.optString("_id") }.takeIf { it.isNotBlank() } ?: continue
-        val name = o.optString("name").ifBlank { id }
-        add(SupportTheme(id, name))
+        val id = o.anyId("id", "_id") ?: continue
+        add(SupportTheme(id, o.optString("name").ifBlank { id }))
       }
     }
   }
@@ -456,7 +486,7 @@ object SupportApi {
       }
     }
     return SupportTicket(
-      id = o.getString("id"),
+      id = o.anyId("id", "_id").orEmpty(),
       status = o.optString("status"),
       channel = o.optString("channel").nullIfBlank(),
       sourceId = o.optString("sourceId").nullIfBlank(),
@@ -491,13 +521,28 @@ object SupportApi {
       SupportResolved(text = r.optString("text").nullIfBlank(), media = media)
     }
     return SupportMessage(
-      id = o.getString("id"),
+      id = o.anyId("id", "_id").orEmpty(),
       role = o.optString("role"),
       edited = o.optBoolean("edited"),
       deleted = o.optBoolean("deleted"),
       createdAt = o.optString("createdAt").nullIfBlank(),
       resolved = resolved,
     )
+  }
+
+  /** API may send ids as string or number. */
+  private fun JSONObject.anyId(vararg keys: String): String? {
+    for (key in keys) {
+      if (!has(key) || isNull(key)) continue
+      val s = when (val v = opt(key)) {
+        is String -> v
+        is Int, is Long -> v.toString()
+        is Number -> v.toLong().toString()
+        else -> optString(key)
+      }.trim()
+      if (s.isNotEmpty() && s != "null") return s
+    }
+    return null
   }
 
   private fun String.nullIfBlank(): String? = takeIf { it.isNotBlank() && it != "null" }

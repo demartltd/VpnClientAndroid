@@ -1,6 +1,7 @@
 package com.demar.vpn.ui.settings.support
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,9 +70,12 @@ internal fun SupportComposer(
   val cs = MaterialTheme.colorScheme
   val density = LocalDensity.current
   val fieldScroll = rememberScrollState()
+  val pendingScroll = rememberScrollState()
   val focusRequester = remember { FocusRequester() }
   val keyboard = LocalSoftwareKeyboardController.current
-  val interactive = enabled && !sending
+  // Keep field enabled while sending so IME does not dismiss (iOS parity).
+  val fieldEnabled = enabled
+  val actionsEnabled = enabled && !sending
   val canSend = when {
     !enabled || sending -> false
     editTarget != null -> text.isNotBlank()
@@ -81,11 +86,10 @@ internal fun SupportComposer(
   val btnFg = cs.onSurfaceVariant
   val btnFgDisabled = cs.onSurfaceVariant.copy(alpha = 0.45f)
   val imeOpen = WindowInsets.ime.getBottom(density) > 0
-  // Keep breathing room above the keyboard; gesture inset only when IME is closed.
   val bottomPad = if (imeOpen) {
-    12.dp
+    4.dp
   } else {
-    with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+    with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }.coerceAtLeast(4.dp)
   }
   val buttonColors = IconButtonDefaults.filledIconButtonColors(
     containerColor = btnBg,
@@ -123,71 +127,101 @@ internal fun SupportComposer(
         .padding(bottom = bottomPad),
     ) {
       if (editTarget != null && enabled) {
-        Row(
-          Modifier
+        Surface(
+          modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-          verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 8.dp)
+            .padding(bottom = 8.dp),
+          shape = RoundedCornerShape(14.dp),
+          color = cs.surfaceVariant.copy(alpha = 0.92f),
         ) {
-          Box(
-            Modifier
-              .width(3.dp)
-              .heightIn(min = 28.dp)
-              .background(cs.primary, RoundedCornerShape(2.dp)),
-          )
-          Spacer(Modifier.width(10.dp))
-          Column(Modifier.weight(1f)) {
-            Text(
-              stringResource(R.string.support_editing),
-              style = MaterialTheme.typography.labelMedium,
-              color = cs.primary,
+          Row(
+            Modifier.padding(start = 12.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Box(
+              Modifier
+                .width(3.dp)
+                .heightIn(min = 28.dp)
+                .background(cs.primary, RoundedCornerShape(2.dp)),
             )
-            Text(
-              editTarget.text.orEmpty(),
-              maxLines = 1,
-              overflow = TextOverflow.Ellipsis,
-              style = MaterialTheme.typography.bodySmall,
-              color = cs.onSurfaceVariant,
-            )
-          }
-          IconButton(onClick = onCancelEdit) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+              Text(
+                stringResource(R.string.support_editing),
+                style = MaterialTheme.typography.labelMedium,
+                color = cs.primary,
+              )
+              Text(
+                editTarget.text.orEmpty(),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSurfaceVariant,
+              )
+            }
+            IconButton(
+              onClick = onCancelEdit,
+              modifier = Modifier.size(36.dp),
+            ) {
+              Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+            }
           }
         }
       }
-      pendingNames.forEachIndexed { i, name ->
+      if (pendingNames.isNotEmpty() && editTarget == null) {
         Row(
           Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 2.dp),
+            .horizontalScroll(pendingScroll)
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp),
           verticalAlignment = Alignment.CenterVertically,
         ) {
-          Text(
-            name,
-            Modifier.weight(1f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodySmall,
-            color = cs.onSurface,
-          )
-          IconButton(
-            onClick = { onRemovePending(i) },
-            enabled = interactive && editTarget == null,
-            modifier = Modifier.size(36.dp),
-          ) {
-            Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.cancel))
+          pendingNames.forEachIndexed { i, name ->
+            Surface(
+              shape = RoundedCornerShape(50),
+              color = cs.surfaceVariant.copy(alpha = 0.92f),
+              modifier = Modifier.padding(end = 8.dp),
+            ) {
+              Row(
+                Modifier.padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(
+                  name,
+                  modifier = Modifier.widthIn(max = 140.dp),
+                  maxLines = 1,
+                  overflow = TextOverflow.Ellipsis,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = cs.onSurface,
+                )
+                IconButton(
+                  onClick = { onRemovePending(i) },
+                  enabled = actionsEnabled,
+                  modifier = Modifier.size(28.dp),
+                ) {
+                  Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.cancel),
+                    modifier = Modifier.size(16.dp),
+                  )
+                }
+              }
+            }
           }
         }
       }
       Row(
         Modifier
           .fillMaxWidth()
-          .padding(horizontal = 8.dp, vertical = 6.dp),
+          .padding(horizontal = 8.dp)
+          .padding(bottom = 4.dp),
         verticalAlignment = Alignment.Bottom,
       ) {
         FilledIconButton(
           onClick = onAttach,
-          enabled = interactive && editTarget == null,
+          enabled = actionsEnabled && editTarget == null,
           shape = CircleShape,
           colors = buttonColors,
         ) {
@@ -211,7 +245,7 @@ internal fun SupportComposer(
           BasicTextField(
             value = text,
             onValueChange = onTextChange,
-            enabled = interactive,
+            enabled = fieldEnabled,
             modifier = Modifier
               .fillMaxWidth()
               .padding(horizontal = 14.dp, vertical = 10.dp)
