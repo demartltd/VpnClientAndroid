@@ -34,7 +34,7 @@ object AuthApi {
   const val VPN_API_BASE_URL = "https://vpn.example.invalid"
   const val ACCOUNT_BASE_URL = "https://account.example.invalid"
   const val CLIENT_ID = "demar-vpn"
-  /** HTTPS handoff page (Chrome cannot reliably open demar:// after Telegram). */
+  /** HTTPS handoff page (Chrome cannot reliably open demarvpn:// after Telegram). */
   const val APP_OAUTH_RETURN = "$ACCOUNT_BASE_URL/auth/app/complete"
 
   /** e.g. Pixel 7 (14) - DemarVPN (1.0.7) (Android). ASCII hyphen — HTTP headers must be ASCII. */
@@ -110,7 +110,7 @@ object AuthApi {
     if (!json.optBoolean("ok")) throw AuthException("Logout rejected")
   }
 
-  /** After Telegram OAuth handoff: demar://auth/callback?token=… */
+  /** After Telegram OAuth handoff: demarvpn://auth/callback?token=… */
   suspend fun sessionFromClientToken(token: String): SessionExchange =
     withContext(Dispatchers.IO) {
       val conn = (URL("$ACCOUNT_BASE_URL/api/auth/client/me").openConnection() as HttpURLConnection).apply {

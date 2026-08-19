@@ -51,11 +51,11 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.SettingsRoute
 import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.support.SupportUnreadStore
-import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SettingsActionButton
@@ -74,11 +74,8 @@ fun SettingsScreen(
   active: Boolean,
   singBoxLabel: String,
   snackbarHost: SnackbarHostState,
-  onAppSettings: () -> Unit,
+  onOpenRoute: (SettingsRoute) -> Unit,
   onPromoActivated: () -> Unit,
-  onServiceMenu: () -> Unit,
-  onOpenDocument: (LegalDocument) -> Unit,
-  onSupport: () -> Unit,
   onNeedSignIn: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -136,14 +133,19 @@ fun SettingsScreen(
     SettingsLinksStrip()
     Spacer(Modifier.height(32.dp))
     SettingsGroup {
-      SettingsActionButton(Icons.Filled.SettingsApplications, stringResource(R.string.settings_app), stringResource(R.string.settings_app_sub), onAppSettings)
+      SettingsActionButton(
+        Icons.Filled.SettingsApplications,
+        stringResource(R.string.settings_app),
+        stringResource(R.string.settings_app_sub),
+        onClick = { onOpenRoute(SettingsRoute.AppSettings) },
+      )
       SettingsActionButton(
         Icons.Filled.RateReview,
         stringResource(R.string.settings_feedback),
         stringResource(R.string.settings_feedback_sub),
         onClick = {
           if (session == null) onNeedSignIn()
-          else onSupport()
+          else onOpenRoute(SettingsRoute.Support())
         },
         titleLeading = if (supportUnread) {
           { UnreadDot() }
@@ -175,7 +177,7 @@ fun SettingsScreen(
       onTap = {
         if (++tapCount >= ServiceMenuTapCount) {
           tapCount = 0
-          onServiceMenu()
+          onOpenRoute(SettingsRoute.ServiceMenu)
         }
       },
     )
@@ -185,7 +187,7 @@ fun SettingsScreen(
       onDismiss = { showDocumentsSheet = false },
       onOpenDocument = { doc ->
         showDocumentsSheet = false
-        onOpenDocument(doc)
+        onOpenRoute(SettingsRoute.Document(doc))
       },
     )
   }

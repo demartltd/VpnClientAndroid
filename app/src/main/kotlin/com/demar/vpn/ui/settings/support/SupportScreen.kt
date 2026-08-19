@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
+import com.demar.vpn.SupportRoute
 import com.demar.vpn.data.auth.AuthSession
 import com.demar.vpn.data.support.SupportApi
 import com.demar.vpn.data.support.SupportCacheStore
@@ -60,20 +61,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private sealed interface Dest {
-  data object List : Dest
-  data class Chat(val ticketId: String) : Dest
-  data class Draft(val themeId: String) : Dest
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SupportScreen(
   session: AuthSession,
   snackbarHost: SnackbarHostState,
   onBack: () -> Unit,
+  initialRoute: SupportRoute? = null,
 ) {
-  var dest by remember { mutableStateOf<Dest>(Dest.List) }
+  var route by remember { mutableStateOf<SupportRoute?>(null) }
   var tickets by remember { mutableStateOf<List<SupportTicketSummary>>(emptyList()) }
   var loadingList by remember { mutableStateOf(true) }
   var confirmNew by remember { mutableStateOf(false) }
@@ -127,6 +123,10 @@ fun SupportScreen(
     }
   }
 
+  LaunchedEffect(initialRoute, session.userId) {
+    route = initialRoute
+  }
+
   LaunchedEffect(session.userId) {
     tickets = SupportCacheStore.loadList(context, session.userId).orEmpty()
     SupportUnreadStore.apply(tickets)
@@ -136,8 +136,8 @@ fun SupportScreen(
     SupportUnreadStore.warmTickets(context, session, tickets)
   }
 
-  LaunchedEffect(dest, session.userId) {
-    if (dest !is Dest.List) return@LaunchedEffect
+  LaunchedEffect(route, session.userId) {
+    if (route != null) return@LaunchedEffect
     reloadList(quiet = tickets.isNotEmpty())
     while (true) {
       delay(8_000)
@@ -146,31 +146,27 @@ fun SupportScreen(
   }
 
   fun goBack() {
-    dest = when (dest) {
-      is Dest.Chat, is Dest.Draft -> {
-        scope.launch { reloadList(quiet = true) }
-        Dest.List
-      }
-      Dest.List -> {
+    if (route == null) {
         onBack()
         return
-      }
     }
+    scope.launch { reloadList(quiet = true) }
+    route = null
   }
 
   BackHandler(onBack = ::goBack)
 
-  val title = when (val d = dest) {
-    Dest.List -> stringResource(R.string.support_title)
-    is Dest.Draft -> stringResource(R.string.support_create)
-    is Dest.Chat -> stringResource(R.string.support_ticket, d.ticketId)
+  val title = when (val current = route) {
+    null -> stringResource(R.string.support_title)
+    is SupportRoute.Draft -> stringResource(R.string.support_create)
+    is SupportRoute.Chat -> stringResource(R.string.support_ticket, current.ticketId)
   }
 
   DemarBackScaffold(title = title, onBack = ::goBack) { padding ->
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val imeOpen = WindowInsets.ime.getBottom(density) > 0
-    val inComposer = dest is Dest.Chat || dest is Dest.Draft
+    val inComposer = route != null
     Box(
       Modifier
         .fillMaxSize()
@@ -185,36 +181,36 @@ fun SupportScreen(
         )
         .imePadding(),
     ) {
-      when (val d = dest) {
-        Dest.List -> SupportListPane(
+      when (val current = route) {
+        null -> SupportListPane(
           tickets = tickets,
           loading = loadingList,
-          onOpen = { dest = Dest.Chat(it) },
+          onOpen = { route = SupportRoute.Chat(it) },
           onCreate = {
             val openAndroid = tickets.any { it.isOpen && it.channel == SupportApi.Channel }
             if (openAndroid) confirmNew = true
             else openThemePicker()
           },
         )
-        is Dest.Draft -> SupportChatPane(
+        is SupportRoute.Draft -> SupportChatPane(
           session = session,
           ticketId = null,
-          themeId = d.themeId,
+          themeId = current.themeId,
           onError = ::err,
-          onTicketGone = { dest = Dest.List },
+          onTicketGone = { route = null },
           onTicketCreated = { ticket ->
             scope.launch { reloadList(quiet = true) }
-            dest = Dest.Chat(ticket.id)
+            route = SupportRoute.Chat(ticket.id)
           },
         )
-        is Dest.Chat -> SupportChatPane(
+        is SupportRoute.Chat -> SupportChatPane(
           session = session,
-          ticketId = d.ticketId,
+          ticketId = current.ticketId,
           onError = ::err,
           onTicketGone = {
-            SupportCacheStore.removeTicket(context, session.userId, d.ticketId)
+            SupportCacheStore.removeTicket(context, session.userId, current.ticketId)
             scope.launch { reloadList(quiet = true) }
-            dest = Dest.List
+            route = null
           },
         )
       }
@@ -284,7 +280,7 @@ fun SupportScreen(
           onClick = {
             val theme = selectedTheme ?: return@TextButton
             pickTheme = false
-            dest = Dest.Draft(theme.id)
+            route = SupportRoute.Draft(theme.id)
           },
         ) { Text(stringResource(R.string.support_create)) }
       },

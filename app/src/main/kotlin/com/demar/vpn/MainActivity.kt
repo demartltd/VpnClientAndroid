@@ -3,7 +3,6 @@ package com.demar.vpn
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.service.quicksettings.TileService
 import androidx.activity.ComponentActivity
@@ -41,12 +40,16 @@ class MainActivity : ComponentActivity() {
   private val openHomeTick: StateFlow<Int> = _openHomeTick.asStateFlow()
   private val _authCallbackTick = MutableStateFlow(0)
   private val authCallbackTick: StateFlow<Int> = _authCallbackTick.asStateFlow()
+  private val _pendingSettingsRoute = MutableStateFlow<SettingsRoute?>(null)
+  private val pendingSettingsRoute: StateFlow<SettingsRoute?> = _pendingSettingsRoute.asStateFlow()
+  private val _settingsRouteRequestTick = MutableStateFlow(0)
+  private val settingsRouteRequestTick: StateFlow<Int> = _settingsRouteRequestTick.asStateFlow()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     DemarAppContextHolder.init(this)
     super.onCreate(savedInstanceState)
     handleOpenHomeIntent(intent)
-    consumeAuthHandoff(intent)
+    consumeIncomingIntent(intent)
     enableEdgeToEdge()
     setContent {
       val controller = remember {
@@ -70,6 +73,8 @@ class MainActivity : ComponentActivity() {
       val singBoxLabel = rememberSingBoxVersionLabel()
       val homeTick by openHomeTick.collectAsStateWithLifecycle()
       val authTick by authCallbackTick.collectAsStateWithLifecycle()
+      val settingsRoute by pendingSettingsRoute.collectAsStateWithLifecycle()
+      val settingsTick by settingsRouteRequestTick.collectAsStateWithLifecycle()
       LaunchedEffect(Unit) {
         AuthRepository.refreshSession(this@MainActivity)
       }
@@ -79,6 +84,9 @@ class MainActivity : ComponentActivity() {
           vpnController = controller,
           openHomeTick = homeTick,
           authCallbackTick = authTick,
+          pendingSettingsRoute = settingsRoute,
+          settingsRouteRequestTick = settingsTick,
+          onConsumePendingSettingsRoute = { _pendingSettingsRoute.value = null },
         )
       }
     }
@@ -88,7 +96,7 @@ class MainActivity : ComponentActivity() {
     super.onNewIntent(intent)
     setIntent(intent)
     handleOpenHomeIntent(intent)
-    consumeAuthHandoff(intent)
+    consumeIncomingIntent(intent)
   }
 
   private fun handleOpenHomeIntent(intent: Intent?) {
@@ -101,10 +109,20 @@ class MainActivity : ComponentActivity() {
     _openHomeTick.value++
   }
 
-  private fun consumeAuthHandoff(intent: Intent?) {
-    val handoff = extractAuthHandoff(intent?.data) ?: return
-    AppLog.append("auth: deep link ${intent?.data}")
+  private fun consumeIncomingIntent(intent: Intent?) {
+    val incoming = parseIncomingRoute(intent?.data) ?: return
+    AppLog.append("app: deep link ${intent?.data}")
     intent?.data = null
+    when (incoming) {
+      is IncomingRoute.Auth -> consumeAuthHandoff(incoming.handoff)
+      is IncomingRoute.Settings -> {
+        _pendingSettingsRoute.value = incoming.route
+        _settingsRouteRequestTick.value++
+      }
+    }
+  }
+
+  private fun consumeAuthHandoff(handoff: AuthHandoff) {
     // Must not run inside Compose LaunchedEffect — clearing/recomposing cancels the job.
     lifecycleScope.launch {
       runCatching {
@@ -134,23 +152,5 @@ class MainActivity : ComponentActivity() {
         )
       }
 
-    fun extractAuthHandoff(uri: Uri?): AuthHandoff? {
-      if (uri == null) return null
-      if (uri.scheme != "demar" || uri.host != "auth") return null
-      val path = uri.path ?: return null
-      if (path != "/callback" && path != "callback") return null
-      uri.getQueryParameter("token")?.trim()?.takeIf { it.isNotEmpty() }?.let {
-        return AuthHandoff.ClientToken(it)
-      }
-      uri.getQueryParameter("code")?.trim()?.takeIf { it.isNotEmpty() }?.let {
-        return AuthHandoff.ExchangeCode(it)
-      }
-      return null
-    }
   }
-}
-
-sealed class AuthHandoff {
-  data class ExchangeCode(val code: String) : AuthHandoff()
-  data class ClientToken(val token: String) : AuthHandoff()
 }
