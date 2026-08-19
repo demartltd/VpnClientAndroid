@@ -30,7 +30,7 @@ fun openSocialLink(context: android.content.Context, url: String) {
   }
 }
 
-/** OAuth / login URLs — Custom Tabs so demar:// return lands back in the app task. */
+/** OAuth / login URLs — Custom Tabs so demarvpn:// return lands back in the app task. */
 fun openAuthUrl(context: android.content.Context, url: String) {
   try {
     androidx.browser.customtabs.CustomTabsIntent.Builder()

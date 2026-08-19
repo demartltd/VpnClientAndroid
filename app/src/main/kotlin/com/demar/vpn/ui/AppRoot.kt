@@ -26,6 +26,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.demar.vpn.AppNavRoute
+import com.demar.vpn.SettingsRoute
+import com.demar.vpn.SupportRoute
+import com.demar.vpn.toNavRoute
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.update.AppUpdate
 import com.demar.vpn.data.update.AppUpdateState
@@ -43,28 +47,20 @@ import com.demar.vpn.ui.settings.support.SupportScreen
 import com.demar.vpn.ui.update.UpdateBottomSheet
 import kotlinx.coroutines.launch
 
-object Routes {
-  const val Main = "main"
-  const val AppSettings = "app_settings"
-  const val TunSettings = "tun_settings"
-  const val ServiceMenu = "service_menu"
-  const val Support = "support"
-  const val Document = "document/{kind}"
-
-  fun document(kind: LegalDocument) = "document/${kind.name}"
-}
-
 @Composable
 fun AppRoot(
   singBoxLabel: String,
   vpnController: VpnController,
   openHomeTick: Int = 0,
   authCallbackTick: Int = 0,
+  pendingSettingsRoute: SettingsRoute? = null,
+  settingsRouteRequestTick: Int = 0,
+  onConsumePendingSettingsRoute: () -> Unit = {},
 ) {
   val navController = rememberNavController()
   val snackbarHost = remember { SnackbarHostState() }
   val backStack by navController.currentBackStackEntryAsState()
-  val onMain = backStack?.destination?.route == Routes.Main
+  val onMain = backStack?.destination?.route == AppNavRoute.Main.pattern
   val context = LocalContext.current
   val activity = LocalActivity.current
   val scope = rememberCoroutineScope()
@@ -99,49 +95,71 @@ fun AppRoot(
   }
 
   Box(Modifier.fillMaxSize()) {
-    NavHost(navController, startDestination = Routes.Main, Modifier.fillMaxSize()) {
-      composable(Routes.Main) {
+    NavHost(navController, startDestination = AppNavRoute.Main.pattern, Modifier.fillMaxSize()) {
+      composable(AppNavRoute.Main.pattern) {
         AppScaffold(
           singBoxLabel = singBoxLabel,
           snackbarHost = snackbarHost,
           vpnController = vpnController,
           openHomeTick = openHomeTick,
           authCallbackTick = authCallbackTick,
+          pendingSettingsRoute = pendingSettingsRoute,
+          settingsRouteRequestTick = settingsRouteRequestTick,
+          onConsumePendingSettingsRoute = onConsumePendingSettingsRoute,
           updateState = updateState,
           onOpenUpdateSheet = { showUpdateSheet = true },
-          onAppSettings = { navController.openOverlay(Routes.AppSettings) },
-          onServiceMenu = { navController.openOverlay(Routes.ServiceMenu) },
-          onOpenDocument = { doc -> navController.openOverlay(Routes.document(doc)) },
-          onSupport = { navController.openOverlay(Routes.Support) },
+          onOpenSettingsRoute = { navController.openOverlay(it.toNavRoute()) },
         )
       }
-      composable(Routes.AppSettings) {
+      composable(AppNavRoute.AppSettings.pattern) {
         AppSettingsScreen(
           onBack = { navController.popBackStack() },
-          onTunSettings = { navController.openOverlay(Routes.TunSettings) },
+          onTunSettings = { navController.openOverlay(AppNavRoute.TunSettings.pattern) },
           snackbarHost = snackbarHost,
         )
       }
-      composable(Routes.Support) {
+      composable(
+        route = AppNavRoute.Support.pattern,
+        arguments = listOf(
+          navArgument("ticketId") {
+            type = NavType.StringType
+            nullable = true
+            defaultValue = null
+          },
+          navArgument("themeId") {
+            type = NavType.StringType
+            nullable = true
+            defaultValue = null
+          },
+        ),
+      ) { entry ->
         val session = authSession
         if (session == null) {
           LaunchedEffect(Unit) { navController.popBackStack() }
         } else {
+          val initialRoute = when {
+            !entry.arguments?.getString("ticketId").isNullOrBlank() ->
+              SupportRoute.Chat(entry.arguments?.getString("ticketId").orEmpty())
+            !entry.arguments?.getString("themeId").isNullOrBlank() ->
+              SupportRoute.Draft(entry.arguments?.getString("themeId").orEmpty())
+            else -> null
+          }
           SupportScreen(
             session = session,
             snackbarHost = snackbarHost,
             onBack = { navController.popBackStack() },
+            initialRoute = initialRoute,
           )
         }
       }
-      composable(Routes.TunSettings) {
+      composable(AppNavRoute.TunSettings.pattern) {
         TunSettingsScreen(
           vpnController = vpnController,
           onBack = { navController.popBackStack() },
           snackbarHost = snackbarHost,
         )
       }
-      composable(Routes.ServiceMenu) {
+      composable(AppNavRoute.ServiceMenu.pattern) {
         ServiceMenuScreen(
           singBoxLabel = singBoxLabel,
           onBack = { navController.popBackStack() },
@@ -149,7 +167,7 @@ fun AppRoot(
         )
       }
       composable(
-        route = Routes.Document,
+        route = AppNavRoute.Document.pattern,
         arguments = listOf(navArgument("kind") { type = NavType.StringType }),
       ) { entry ->
         val kind = entry.arguments?.getString("kind")

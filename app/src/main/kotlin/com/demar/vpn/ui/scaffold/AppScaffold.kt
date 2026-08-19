@@ -23,11 +23,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
+import com.demar.vpn.SettingsRoute
+import com.demar.vpn.requiresAuth
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.update.AppUpdateState
 import com.demar.vpn.data.vpn.VpnController
-import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.ui.account.AccountScreen
 import com.demar.vpn.ui.auth.LoginBottomSheet
@@ -45,14 +46,14 @@ fun AppScaffold(
   singBoxLabel: String,
   snackbarHost: SnackbarHostState,
   vpnController: VpnController,
-  onAppSettings: () -> Unit,
-  onServiceMenu: () -> Unit,
-  onOpenDocument: (LegalDocument) -> Unit,
-  onSupport: () -> Unit,
+  onOpenSettingsRoute: (SettingsRoute) -> Unit,
+  onConsumePendingSettingsRoute: () -> Unit,
   updateState: AppUpdateState = AppUpdateState.Idle,
   onOpenUpdateSheet: () -> Unit = {},
   openHomeTick: Int = 0,
   authCallbackTick: Int = 0,
+  pendingSettingsRoute: SettingsRoute? = null,
+  settingsRouteRequestTick: Int = 0,
   modifier: Modifier = Modifier,
 ) {
   var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -68,10 +69,22 @@ fun AppScaffold(
   val throughput by vpnController.throughput.collectAsStateWithLifecycle()
   val signOutFailed = stringResource(R.string.sign_out_failed)
   var wasSignedIn by remember { mutableStateOf<Boolean?>(null) }
+  var deferredSettingsRoute by remember { mutableStateOf<SettingsRoute?>(null) }
 
   fun openLogin(returnTab: Int) {
     loginReturnTab = returnTab
     showLoginSheet = true
+  }
+
+  fun openSettingsRoute(route: SettingsRoute) {
+    tab = 2
+    if (route.requiresAuth() && !signedIn) {
+      deferredSettingsRoute = route
+      openLogin(2)
+      return
+    }
+    deferredSettingsRoute = null
+    onOpenSettingsRoute(route)
   }
 
   LaunchedEffect(openHomeTick) {
@@ -88,6 +101,7 @@ fun AppScaffold(
       if (prev == false) {
         scope.launch { vpnController.refreshSessionData() }
       }
+      deferredSettingsRoute?.let(::openSettingsRoute)
     } else {
       tab = 0
     }
@@ -96,6 +110,14 @@ fun AppScaffold(
   LaunchedEffect(authCallbackTick, signedIn) {
     if (authCallbackTick == 0) return@LaunchedEffect
     if (signedIn) tab = loginReturnTab
+  }
+
+  LaunchedEffect(settingsRouteRequestTick, pendingSettingsRoute, signedIn) {
+    if (settingsRouteRequestTick == 0) return@LaunchedEffect
+    pendingSettingsRoute?.let {
+      onConsumePendingSettingsRoute()
+      openSettingsRoute(it)
+    }
   }
 
   Box(modifier.fillMaxSize()) {
@@ -127,11 +149,8 @@ fun AppScaffold(
           active = tab == 2,
           singBoxLabel = singBoxLabel,
           snackbarHost = snackbarHost,
-          onAppSettings = onAppSettings,
+          onOpenRoute = ::openSettingsRoute,
           onPromoActivated = { scope.launch { vpnController.refreshSessionData() } },
-          onServiceMenu = onServiceMenu,
-          onOpenDocument = onOpenDocument,
-          onSupport = onSupport,
           onNeedSignIn = { openLogin(2) },
         )
         AccountScreen(
