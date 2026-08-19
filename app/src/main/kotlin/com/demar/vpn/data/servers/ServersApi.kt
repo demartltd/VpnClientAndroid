@@ -49,8 +49,8 @@ object ServersApi {
     AppLog.append("servers: raw=$rawCount parsed=${profiles.size}")
     validateParsedCount(rawCount, profiles.size)
     return ServersListResult(
-      vpnSubscription = json.optString("vpnSubscription").takeIf { it.isNotBlank() },
-      vpnExpiresAt = json.optString("vpnExpiresAt").takeIf { it.isNotBlank() },
+      vpnSubscription = json.optApiString("vpnSubscription"),
+      vpnExpiresAt = json.optApiString("vpnExpiresAt"),
       servers = profiles,
       rawJson = json,
     )
@@ -185,4 +185,7 @@ object ServersApi {
       conn.disconnect()
     }
   }
+
+  private fun JSONObject.optApiString(key: String): String? =
+    optString(key).takeIf { it.isNotBlank() && it != "null" }
 }

@@ -32,6 +32,10 @@ object AccountStore {
     _account.value?.let { _account.value = transform(it) }
   }
 
+  fun updateVpnProfile(vpnSubscription: String?, vpnExpiresAt: String?) {
+    patchAccount { it.copy(vpnSubscription = vpnSubscription, vpnExpiresAt = vpnExpiresAt) }
+  }
+
   fun clear() {
     _account.value = null
     _traffic.value = null

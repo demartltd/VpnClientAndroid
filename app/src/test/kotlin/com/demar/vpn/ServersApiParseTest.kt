@@ -155,6 +155,23 @@ class ServersApiParseTest {
   }
 
   @Test
+  fun parseServersResponse_normalizesNullableEntitlements() {
+    val result = ServersApi.parseServersResponse(
+      JSONObject(
+        """
+        {
+          "vpnSubscription": "",
+          "vpnExpiresAt": "null",
+          "servers": []
+        }
+        """.trimIndent(),
+      ),
+    )
+    assertNull(result.vpnSubscription)
+    assertNull(result.vpnExpiresAt)
+  }
+
+  @Test
   fun parseHysteria2_missingPassword_keepsEmpty() {
     val config = """
       {
