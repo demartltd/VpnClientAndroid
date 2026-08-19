@@ -242,7 +242,7 @@ class VpnController(private val context: Context) {
     SupportCacheStore.clearAll(context)
   }
 
-  /** Servers + account — app start, sign-in, servers pull-to-refresh. */
+  /** Account + servers (+ support unread) — sign-in, promo, pull-to-refresh, app start. */
   suspend fun refreshSessionData() {
     coroutineScope {
       launch { refreshServers() }
@@ -271,6 +271,8 @@ class VpnController(private val context: Context) {
       _serversError.value = null
       try {
         val result = ServersApi.fetchServers(session.userId, session.loginAt)
+        AuthRepository.updateVpnProfile(context, result.vpnSubscription, result.vpnExpiresAt)
+        AccountStore.updateVpnProfile(result.vpnSubscription, result.vpnExpiresAt)
         applyServerList(result.servers)
         result.rawJson?.let { SessionCacheStore.saveServers(context, session.userId, it) }
         AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
