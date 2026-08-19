@@ -128,6 +128,7 @@ fun AppScaffold(
           singBoxLabel = singBoxLabel,
           snackbarHost = snackbarHost,
           onAppSettings = onAppSettings,
+          onPromoActivated = { scope.launch { vpnController.refreshSessionData() } },
           onServiceMenu = onServiceMenu,
           onOpenDocument = onOpenDocument,
           onSupport = onSupport,

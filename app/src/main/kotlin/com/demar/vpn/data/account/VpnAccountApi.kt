@@ -21,6 +21,15 @@ data class VpnAccount(
 
 data class VpnNotify(val notifyNews: Boolean, val notifyImportant: Boolean)
 
+data class PromoActivateResult(
+  val result: String,
+  val message: String,
+  val subscription: String?,
+  val expiresAt: String?,
+) {
+  val isActivated: Boolean get() = result == "activated"
+}
+
 data class VpnTrafficServer(val name: String, val bytes: Long)
 
 data class VpnTraffic(
@@ -60,6 +69,19 @@ object VpnAccountApi {
   suspend fun fetchTraffic(userId: String, loginAt: String): VpnTraffic =
     withContext(Dispatchers.IO) {
       parseTraffic(post("/vpn/traffic", sessionBody(userId, loginAt)))
+    }
+
+  suspend fun activatePromo(userId: String, loginAt: String, code: String): PromoActivateResult =
+    withContext(Dispatchers.IO) {
+      val body = sessionBody(userId, loginAt)
+      body.put("code", code.trim().uppercase(Locale.ROOT))
+      val json = post("/vpn/promo/activate", body)
+      PromoActivateResult(
+        result = json.optString("result").ifBlank { "not_found" },
+        message = json.optString("message"),
+        subscription = json.optString("subscription").takeIf { it.isNotBlank() && it != "null" },
+        expiresAt = json.optString("expiresAt").takeIf { it.isNotBlank() && it != "null" },
+      )
     }
 
   fun parseAccount(json: JSONObject): VpnAccount = VpnAccount(

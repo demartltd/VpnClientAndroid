@@ -22,6 +22,8 @@
     <string name="settings_feedback_sub">Ask a question or get help with the app</string>
     <string name="settings_share">Invite friends with a link</string>
     <string name="settings_share_sub">Get free premium</string>
+    <string name="settings_promo_code">Promo code</string>
+    <string name="settings_promo_code_sub">Activate a subscription promo code</string>
     <string name="settings_documents">Documents</string>
     <string name="settings_documents_sub">Terms of use and privacy</string>
     <string name="settings_terms">Terms of use</string>
@@ -131,6 +133,13 @@
     <string name="account_family_sub">Your subscription can be used by four people</string>
     <string name="account_family_free">1 free spot</string>
     <string name="account_family_change">Change</string>
+    <string name="promo_enter_code">Enter promo code</string>
+    <string name="promo_activate">Activate</string>
+    <string name="promo_activated">Promo code activated! Subscription has been applied.</string>
+    <string name="promo_not_found">Promo code not found.</string>
+    <string name="promo_already_used">This promo code has already been used.</string>
+    <string name="promo_blocked_by_other">You cannot activate this promo code.</string>
+    <string name="promo_expired">This promo code has expired.</string>
     <string name="soon">Coming soon</string>
     <string name="server_selected">Server selected</string>
     <string name="servers_sign_in_hint">Sign in to see available servers</string>
