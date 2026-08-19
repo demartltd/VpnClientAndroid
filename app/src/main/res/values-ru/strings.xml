@@ -22,6 +22,8 @@
     <string name="settings_feedback_sub">Ответим на вопросы и поможем с приложением</string>
     <string name="settings_share">Пригласите друзей по ссылке</string>
     <string name="settings_share_sub">Получите бесплатный премиум</string>
+    <string name="settings_promo_code">Промокод</string>
+    <string name="settings_promo_code_sub">Активируйте промокод на подписку</string>
     <string name="settings_documents">Документы</string>
     <string name="settings_documents_sub">Условия использования и конфиденциальность</string>
     <string name="settings_terms">Условия использования</string>
@@ -133,6 +135,13 @@
     <string name="account_family_sub">Вашей подпиской можно пользоваться вчетвером</string>
     <string name="account_family_free">Есть 1 свободное место</string>
     <string name="account_family_change">Изменить</string>
+    <string name="promo_enter_code">Введите промокод</string>
+    <string name="promo_activate">Активировать</string>
+    <string name="promo_activated">Промокод активирован! Подписка применена.</string>
+    <string name="promo_not_found">Промокод не найден.</string>
+    <string name="promo_already_used">Промокод уже был использован.</string>
+    <string name="promo_blocked_by_other">Вы не можете активировать этот промокод.</string>
+    <string name="promo_expired">Срок действия промокода истёк.</string>
     <string name="soon">Скоро</string>
     <string name="server_selected">Сервер выбран</string>
     <string name="servers_sign_in_hint">Войдите, чтобы увидеть доступные серверы</string>

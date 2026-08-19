@@ -10,15 +10,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.RateReview
 import androidx.compose.material.icons.filled.SettingsApplications
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.outlined.ShieldMoon
+import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,12 +42,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
+import com.demar.vpn.data.account.VpnAccountApi
+import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.domain.content.LegalDocument
@@ -64,6 +75,7 @@ fun SettingsScreen(
   singBoxLabel: String,
   snackbarHost: SnackbarHostState,
   onAppSettings: () -> Unit,
+  onPromoActivated: () -> Unit,
   onServiceMenu: () -> Unit,
   onOpenDocument: (LegalDocument) -> Unit,
   onSupport: () -> Unit,
@@ -73,11 +85,27 @@ fun SettingsScreen(
   ActiveTabContent(active, modifier) {
   var tapCount by remember { mutableIntStateOf(0) }
   var showDocumentsSheet by rememberSaveable { mutableStateOf(false) }
+  var showPromoDialog by rememberSaveable { mutableStateOf(false) }
+  var promoCode by rememberSaveable { mutableStateOf("") }
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
   val session by AuthRepository.session.collectAsStateWithLifecycle()
   val supportUnread by SupportUnreadStore.hasUnread.collectAsStateWithLifecycle()
   val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
+  val promoActivated = stringResource(R.string.promo_activated)
+  val promoNotFound = stringResource(R.string.promo_not_found)
+  val promoAlreadyUsed = stringResource(R.string.promo_already_used)
+  val promoBlockedByOther = stringResource(R.string.promo_blocked_by_other)
+  val promoExpired = stringResource(R.string.promo_expired)
+
+  fun promoMessage(result: String, fallback: String): String = when (result) {
+    "activated" -> promoActivated
+    "not_found" -> promoNotFound
+    "already_used" -> promoAlreadyUsed
+    "blocked_by_other" -> promoBlockedByOther
+    "expired" -> promoExpired
+    else -> fallback.ifBlank { promoNotFound }
+  }
 
   LaunchedEffect(tapCount) {
     if (tapCount in 1..<ServiceMenuTapCount) {
@@ -125,6 +153,15 @@ fun SettingsScreen(
       )
       SettingsActionButton(Icons.Filled.Share, stringResource(R.string.settings_share), stringResource(R.string.settings_share_sub), soon)
       SettingsActionButton(
+        Icons.Filled.Tag,
+        stringResource(R.string.settings_promo_code),
+        stringResource(R.string.settings_promo_code_sub),
+        onClick = {
+          if (session == null) onNeedSignIn()
+          else showPromoDialog = true
+        },
+      )
+      SettingsActionButton(
         Icons.Filled.FolderOpen,
         stringResource(R.string.settings_documents),
         stringResource(R.string.settings_documents_sub),
@@ -152,6 +189,48 @@ fun SettingsScreen(
       },
     )
   }
+  if (showPromoDialog) {
+    PromoCodeDialog(
+      code = promoCode,
+      onCodeChange = { promoCode = it },
+      onDismiss = {
+        showPromoDialog = false
+        promoCode = ""
+      },
+      onActivate = {
+        val authSession = session
+        if (authSession == null) {
+          showPromoDialog = false
+          onNeedSignIn()
+          return@PromoCodeDialog
+        }
+        val code = promoCode.trim()
+        if (code.isEmpty()) return@PromoCodeDialog
+        showPromoDialog = false
+        promoCode = ""
+        scope.launch {
+          try {
+            val result = VpnAccountApi.activatePromo(authSession.userId, authSession.loginAt, code)
+            val message = promoMessage(result.result, result.message)
+            if (result.isActivated) {
+              DemarSnackbar.showSuccess(snackbarHost, message)
+              onPromoActivated()
+            } else {
+              DemarSnackbar.showError(snackbarHost, message)
+            }
+          } catch (e: AuthException) {
+            if (e.isSessionInvalid) {
+              AuthRepository.clearLocal(context)
+            } else {
+              DemarSnackbar.showError(snackbarHost, e.message ?: promoNotFound)
+            }
+          } catch (e: Exception) {
+            DemarSnackbar.showError(snackbarHost, e.message ?: promoNotFound)
+          }
+        }
+      },
+    )
+  }
   }
 }
 
@@ -171,6 +250,86 @@ private fun SettingsVersionFooter(versionName: String, singBoxLabel: String, onT
         Text("Demar VPN - $versionName - ${stringResource(R.string.platform_android)}", style = style, textAlign = TextAlign.Center)
         Spacer(Modifier.height(2.dp))
         Text(singBoxLabel, style = style, textAlign = TextAlign.Center)
+      }
+    }
+  }
+}
+
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun PromoCodeDialog(
+  code: String,
+  onCodeChange: (String) -> Unit,
+  onDismiss: () -> Unit,
+  onActivate: () -> Unit,
+) {
+  BasicAlertDialog(
+    onDismissRequest = onDismiss,
+    properties = DialogProperties(usePlatformDefaultWidth = false),
+  ) {
+    Surface(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 28.dp),
+      shape = RoundedCornerShape(28.dp),
+      color = MaterialTheme.colorScheme.surfaceContainerHigh,
+      tonalElevation = 6.dp,
+    ) {
+      Column(
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = 24.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        Text(
+          stringResource(R.string.promo_enter_code),
+          modifier = Modifier.fillMaxWidth(),
+          textAlign = TextAlign.Center,
+          style = MaterialTheme.typography.headlineSmall,
+          color = MaterialTheme.colorScheme.onSurface,
+        )
+        Spacer(Modifier.height(20.dp))
+        OutlinedTextField(
+          value = code,
+          onValueChange = onCodeChange,
+          modifier = Modifier.fillMaxWidth(),
+          placeholder = { Text("DEMARFREE") },
+          singleLine = true,
+          keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Characters,
+            keyboardType = KeyboardType.Ascii,
+          ),
+        )
+        Spacer(Modifier.height(28.dp))
+        Button(
+          onClick = onActivate,
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+          shape = RoundedCornerShape(16.dp),
+        ) {
+          Text(
+            stringResource(R.string.promo_activate),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleMedium,
+          )
+        }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+          onClick = onDismiss,
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+          shape = RoundedCornerShape(16.dp),
+        ) {
+          Text(
+            stringResource(R.string.cancel),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleMedium,
+          )
+        }
       }
     }
   }
