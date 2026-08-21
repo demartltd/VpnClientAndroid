@@ -26,11 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
 import com.demar.vpn.data.network.EgressConstants
 import com.demar.vpn.data.network.InternetProbe
+import com.demar.vpn.data.network.PublicEgressDiagnostics
 import com.demar.vpn.data.network.egressHostProbeLabel
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
@@ -42,6 +43,8 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
   val scope = rememberCoroutineScope()
   val spin = remember { Animatable(0f) }
   var inFlight by remember { mutableStateOf(false) }
+  var ipValue by remember { mutableStateOf("…") }
+  var countryValue by remember { mutableStateOf("…") }
   val probes = remember {
     mutableStateListOf<String>().also { list ->
       repeat(EgressConstants.TcpLatencyProbeHosts.size) { list.add("…") }
@@ -51,9 +54,15 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
   suspend fun load() {
     if (inFlight) return
     inFlight = true
+    ipValue = "…"
+    countryValue = "…"
     for (i in probes.indices) probes[i] = "…"
     spin.snapTo(0f)
     scope.launch { spin.animateTo(360f, tween(durationMillis = 2_000, easing = LinearEasing)) }
+
+    val geo = PublicEgressDiagnostics.fetchGeo()
+    ipValue = PublicEgressDiagnostics.censorPublicIpv4(geo.ip)
+    countryValue = geo.country
 
     coroutineScope {
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
@@ -98,6 +107,8 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
     },
   ) {
     Column {
+      KvRow(stringResource(R.string.service_ip), ipValue)
+      KvRow(stringResource(R.string.service_country), countryValue)
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
         KvRow(host, probes.getOrElse(i) { "…" })
       }

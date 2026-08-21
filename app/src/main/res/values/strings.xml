@@ -82,6 +82,8 @@
     <string name="service_singbox">Sing-box</string>
     <string name="service_snack_bar">Snack bar</string>
     <string name="service_internet">Internet</string>
+    <string name="service_ip">IP</string>
+    <string name="service_country">Country</string>
     <string name="service_refresh">Refresh</string>
     <string name="service_device">Device</string>
     <string name="login_sheet_title">Sign in / Register</string>
@@ -107,8 +109,8 @@
     <string name="account_expires">Expires</string>
     <string name="account_expires_with_days">%1$s (%2$s)</string>
     <plurals name="account_in_days">
-        <item quantity="one">in %d day</item>
-        <item quantity="other">in %d days</item>
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
     </plurals>
     <string name="account_expires_today">today</string>
     <string name="account_buy">Buy subscription</string>
@@ -119,8 +121,10 @@
     <string name="account_load_failed">Could not load account</string>
     <string name="account_notify_title">Notifications</string>
     <string name="account_notify_sub">Notification settings</string>
-    <string name="account_notify_news">News and offers</string>
-    <string name="account_notify_important">Important notices</string>
+    <string name="account_notify_news">News</string>
+    <string name="account_notify_news_sub">Product updates and announcements.</string>
+    <string name="account_notify_important">Important</string>
+    <string name="account_notify_important_sub">Security alerts and critical account notices.</string>
     <string name="account_notify_failed">Could not update notifications</string>
     <string name="account_traffic_title">Traffic this month</string>
     <string name="account_traffic_preview">%1$s / %2$s · %3$d%%</string>
@@ -173,6 +177,8 @@
     <string name="device_brand">Brand</string>
     <string name="device_model">Model</string>
     <string name="device_sdk">SDK</string>
+    <string name="device_locale">Locale</string>
+    <string name="device_timezone">Timezone</string>
     <string name="device_pc_name">PC Name</string>
     <string name="device_machine_guid">MachineGuid</string>
     <string name="device_error_android">Error Android</string>

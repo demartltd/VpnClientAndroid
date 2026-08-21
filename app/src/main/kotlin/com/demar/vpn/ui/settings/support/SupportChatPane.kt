@@ -353,21 +353,24 @@ internal fun SupportChatPane(
                 editTarget = null
                 text = ""
               } else if (creating) {
-                val selectedTheme = themeId ?: return@launch
-                val (deviceText, logFile) = SupportApi.buildSilentDiagnostics(context)
-                var created = SupportApi.postTicket(
+                val selectedTheme = themeId
+                if (selectedTheme.isNullOrBlank()) {
+                  onError(AuthException(context.getString(R.string.support_pick_theme), 400))
+                  return@launch
+                }
+                val diagnostics = SupportApi.buildSilentDiagnostics(context)
+                var created = SupportApi.postTicketCreate(
                   userId = session.userId,
                   loginAt = session.loginAt,
                   text = body.takeIf { it.isNotEmpty() },
-                  media = if (body.isEmpty()) uploads else emptyList(),
-                  log = deviceText,
-                  logMedia = listOf(logFile),
+                  log = diagnostics.logText,
+                  logMedia = diagnostics.logMedia,
                   themeId = selectedTheme,
                   forceNew = true,
                 )
                 text = ""
-                if (body.isNotEmpty() && uploads.isNotEmpty()) {
-                  created = SupportApi.postMediaSeparated(
+                if (uploads.isNotEmpty()) {
+                  created = SupportApi.postMediaAlbum(
                     userId = session.userId,
                     loginAt = session.loginAt,
                     media = uploads,
@@ -391,7 +394,7 @@ internal fun SupportChatPane(
                   text = ""
                 }
                 if (uploads.isNotEmpty()) {
-                  fresh = SupportApi.postMediaSeparated(
+                  fresh = SupportApi.postMediaAlbum(
                     userId = session.userId,
                     loginAt = session.loginAt,
                     media = uploads,
