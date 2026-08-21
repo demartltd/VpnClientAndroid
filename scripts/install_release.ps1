@@ -10,7 +10,7 @@
   Удалить com.demar.vpn перед установкой (нужно при смене debug → release).
 #>
 param(
-    [switch]$SkipBuild,
+    [switch]$SkipBuild, 
     [switch]$NoLaunch,
     [switch]$Replace
 )

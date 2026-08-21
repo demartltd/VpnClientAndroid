@@ -9,7 +9,8 @@ import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.device.DeviceIdentityCollector
 import com.demar.vpn.data.logging.AppLog
-import com.demar.vpn.data.logging.journalStampUtc
+import com.demar.vpn.data.update.AndroidReleaseApi
+import com.demar.vpn.data.update.UpdateChannelStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -31,9 +32,10 @@ object SupportApi {
   private const val ConnectTimeoutMs = 15_000
   private const val ReadTimeoutMs = 25_000
   private const val MediaTimeoutMs = 180_000L
-  /** Match iOS: keep base64 JSON small enough for CS relay. */
-  private const val MaxPhotoEdge = 1600
-  private const val MaxPhotoBytes = 1024 * 1024
+  /** Match Apple SupportAttach — smaller payloads survive CS Telegram relay. */
+  private const val MaxPhotoEdge = 1024
+  private const val MaxPhotoBytes = 400 * 1024
+  private const val MediaAttempts = 2
 
   suspend fun listTickets(userId: String, loginAt: String): List<SupportTicketSummary> =
     withContext(Dispatchers.IO) {
@@ -157,38 +159,90 @@ object SupportApi {
       }
     }
 
-  /** Photos go in their own request — CS API forbids mixing text and media. */
-  suspend fun postMediaSeparated(
+  /**
+   * Create ticket with silent diagnostics: device text + full journal.txt attach.
+   */
+  suspend fun postTicketCreate(
     userId: String,
     loginAt: String,
+    text: String? = null,
+    log: String? = null,
+    logMedia: List<SupportUploadMedia> = emptyList(),
+    themeId: String? = null,
+    forceNew: Boolean = false,
+  ): SupportTicket =
+    postTicketWithRetry(
+      userId, loginAt, text, media = emptyList(), log, logMedia,
+      themeId, ticketId = null, forceNew = forceNew, maxAttempts = 2,
+    )
+
+  private suspend fun postTicketWithRetry(
+    userId: String,
+    loginAt: String,
+    text: String?,
     media: List<SupportUploadMedia>,
-    ticketId: String,
+    log: String?,
+    logMedia: List<SupportUploadMedia>,
+    themeId: String?,
+    ticketId: String?,
+    forceNew: Boolean,
+    maxAttempts: Int = 3,
   ): SupportTicket {
-    val total = media.sumOf { it.dataBase64.length }
-    val names = media.joinToString(",") { it.fileName ?: "?" }
-    AppLog.append("support media post: n=${media.size} b64=$total names=$names")
     var delayMs = 400L
-    var last: Throwable = AuthException("media upload failed", 500)
-    repeat(3) { attempt ->
+    var last: Throwable = AuthException("ticket post failed", 500)
+    repeat(maxAttempts) { attempt ->
       try {
-        return postTicket(userId = userId, loginAt = loginAt, media = media, ticketId = ticketId)
+        return postTicket(
+          userId = userId,
+          loginAt = loginAt,
+          text = text,
+          media = media,
+          log = log,
+          logMedia = logMedia,
+          themeId = themeId,
+          ticketId = ticketId,
+          forceNew = forceNew,
+        )
       } catch (t: CancellationException) {
         throw t
       } catch (t: Throwable) {
         last = t
         val msg = t.message.orEmpty()
-        AppLog.append("support media post try${attempt + 1}: $msg")
+        AppLog.append("support ticket post try${attempt + 1}: $msg")
         val retryable =
           msg.contains("fetch failed", ignoreCase = true) ||
             msg.contains("архив", ignoreCase = true) ||
             msg.contains("archive", ignoreCase = true) ||
             (t is AuthException && t.statusCode == 502)
-        if (attempt == 2 || !retryable) throw t
+        if (attempt == maxAttempts - 1 || !retryable) throw t
         delay(delayMs)
         delayMs *= 2
       }
     }
     throw last
+  }
+
+  /** Album: one POST with media[1…10] → one ticket message. */
+  suspend fun postMediaAlbum(
+    userId: String,
+    loginAt: String,
+    media: List<SupportUploadMedia>,
+    ticketId: String,
+  ): SupportTicket {
+    require(media.isNotEmpty()) { "media required" }
+    AppLog.append("support media album: ${media.size} files")
+    return postTicketWithRetry(
+      userId = userId,
+      loginAt = loginAt,
+      text = null,
+      media = media,
+      log = null,
+      logMedia = emptyList(),
+      themeId = null,
+      ticketId = ticketId,
+      forceNew = false,
+      maxAttempts = MediaAttempts,
+    )
   }
 
   suspend fun patchMessage(
@@ -228,15 +282,15 @@ object SupportApi {
         ?: throw AuthException("cannot_read_file", 400)
       if (bytes.isEmpty()) throw AuthException("empty media", 400)
       if (bytes.size > MaxMediaBytes) throw SupportMediaTooLargeException()
-      val jpeg = compressImageToJpeg(bytes) ?: throw AuthException("unsupported image", 400)
+      val webp = compressImageToWebp(bytes) ?: throw AuthException("unsupported image", 400)
       SupportUploadMedia(
-        dataBase64 = Base64.encodeToString(jpeg, Base64.NO_WRAP),
-        fileName = (name?.substringBeforeLast('.') ?: "photo") + ".jpg",
-        mimeType = "image/jpeg",
+        dataBase64 = Base64.encodeToString(webp, Base64.NO_WRAP),
+        fileName = (name?.substringBeforeLast('.') ?: "photo") + ".webp",
+        mimeType = "image/webp",
       )
     }
 
-  private fun compressImageToJpeg(raw: ByteArray): ByteArray? {
+  private fun compressImageToWebp(raw: ByteArray): ByteArray? {
     val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
     android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.size, bounds)
     val w = bounds.outWidth
@@ -266,33 +320,44 @@ object SupportApi {
     }
     var quality = 82
     var out = ByteArrayOutputStream()
-    scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, out)
+    scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, quality, out)
     while (out.size() > MaxPhotoBytes && quality > 35) {
       quality -= 10
       out = ByteArrayOutputStream()
-      scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, quality, out)
+      scaled.compress(android.graphics.Bitmap.CompressFormat.WEBP_LOSSY, quality, out)
     }
     if (scaled !== decoded) scaled.recycle() else decoded.recycle()
     return out.toByteArray().takeIf { it.isNotEmpty() }
   }
 
-  suspend fun buildSilentDiagnostics(context: Context): Pair<String, SupportUploadMedia> =
+  data class SilentDiagnostics(
+    val logText: String,
+    val logMedia: List<SupportUploadMedia>,
+  )
+
+  /** Device summary as log text; full journal as `journal.txt` attach. */
+  suspend fun buildSilentDiagnostics(context: Context): SilentDiagnostics =
     withContext(Dispatchers.IO) {
       AppLog.importPendingNativeDiag(context)
       val device = DeviceIdentityCollector.load(context)
+      val latest = runCatching {
+        withTimeout(3_000L) { AndroidReleaseApi.fetch(UpdateChannelStore.enabled.value) }
+      }.getOrNull()
       val deviceText = buildString {
         appendLine("Demar VPN ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        appendLine("Latest: ${latest?.version ?: "—"}")
         appendLine("UA: ${AuthApi.UserAgent}")
         appendLine("--- device ---")
         for ((k, v) in device) appendLine("$k=$v")
       }.trim().take(8_000)
-      val logBody = AppLog.readPersistedUtf8().ifBlank { "(empty)" }.take(512_000)
-      val upload = SupportUploadMedia(
-        dataBase64 = Base64.encodeToString(logBody.toByteArray(Charsets.UTF_8), Base64.NO_WRAP),
-        fileName = "demar_vpn_journal_${journalStampUtc()}.txt",
+      val journal = AppLog.readPersistedUtf8().ifBlank { "(empty)" }
+      val bytes = journal.toByteArray(Charsets.UTF_8)
+      val file = SupportUploadMedia(
+        dataBase64 = Base64.encodeToString(bytes, Base64.NO_WRAP),
+        fileName = "journal.txt",
         mimeType = "text/plain",
       )
-      deviceText to upload
+      SilentDiagnostics(logText = deviceText, logMedia = listOf(file))
     }
 
   private fun mediaToJson(media: List<SupportUploadMedia>): JSONArray {

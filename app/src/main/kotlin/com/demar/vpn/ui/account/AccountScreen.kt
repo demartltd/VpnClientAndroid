@@ -29,6 +29,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -529,12 +531,14 @@ private fun NotifySheet(
         account != null -> {
           NotifyRow(
             stringResource(R.string.account_notify_news),
+            stringResource(R.string.account_notify_news_sub),
             account.notifyNews,
             !notifyBusy,
           ) { onSetNotify(it, null) }
           Spacer(Modifier.height(8.dp))
           NotifyRow(
             stringResource(R.string.account_notify_important),
+            stringResource(R.string.account_notify_important_sub),
             account.notifyImportant,
             !notifyBusy,
           ) { onSetNotify(null, it) }
@@ -585,17 +589,28 @@ private fun TrafficSheet(
 
 @Composable
 private fun NotifyRow(
-  label: String,
+  title: String,
+  subtitle: String,
   checked: Boolean,
   enabled: Boolean,
   onCheckedChange: (Boolean) -> Unit,
 ) {
-  Row(
-    Modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.SpaceBetween,
+  Card(
+    modifier = Modifier.fillMaxWidth(),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
   ) {
-    Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-    Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+    Row(
+      Modifier.padding(16.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(Modifier.weight(1f)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(4.dp))
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      Spacer(Modifier.width(12.dp))
+      Switch(checked = checked, onCheckedChange = onCheckedChange, enabled = enabled)
+    }
   }
 }

@@ -9,6 +9,8 @@ import com.google.android.gms.appset.AppSet
 import com.google.android.gms.tasks.Tasks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
+import java.util.TimeZone
 
 object DeviceIdentityCollector {
   private var cache: Map<String, String>? = null
@@ -27,6 +29,8 @@ object DeviceIdentityCollector {
       m["manufacturer"] = Build.MANUFACTURER?.takeIf { it.isNotBlank() } ?: "—"
       m["model"] = Build.MODEL?.takeIf { it.isNotBlank() } ?: "—"
       m["sdk_int"] = Build.VERSION.SDK_INT.toString()
+      m["locale"] = Locale.getDefault().toLanguageTag()
+      m["timezone"] = TimeZone.getDefault().id
       try {
         val ad = AdvertisingIdClient.getAdvertisingIdInfo(context)
         m["google_ad_id"] = ad.id?.takeIf { it.isNotBlank() } ?: "—"
@@ -60,6 +64,8 @@ private val RowOrder = listOf(
   "google_ad_limited",
   "app_set_scope",
   "sdk_int",
+  "locale",
+  "timezone",
   "windows_machine_guid",
   "windows_computer_name",
   "android_identity_error",
@@ -76,6 +82,8 @@ fun deviceFieldLabelRes(key: String): Int? = when (key) {
   "manufacturer" -> R.string.device_brand
   "model" -> R.string.device_model
   "sdk_int" -> R.string.device_sdk
+  "locale" -> R.string.device_locale
+  "timezone" -> R.string.device_timezone
   "windows_computer_name" -> R.string.device_pc_name
   "windows_machine_guid" -> R.string.device_machine_guid
   "android_identity_error" -> R.string.device_error_android

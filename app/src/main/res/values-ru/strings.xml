@@ -82,6 +82,8 @@
     <string name="service_singbox">Sing-box</string>
     <string name="service_snack_bar">Snack bar</string>
     <string name="service_internet">Интернет</string>
+    <string name="service_ip">IP</string>
+    <string name="service_country">Страна</string>
     <string name="service_refresh">Обновить</string>
     <string name="service_device">Устройство</string>
     <string name="login_sheet_title">Вход/Регистрация</string>
@@ -107,10 +109,10 @@
     <string name="account_expires">Истекает</string>
     <string name="account_expires_with_days">%1$s (%2$s)</string>
     <plurals name="account_in_days">
-        <item quantity="one">через %d день</item>
-        <item quantity="few">через %d дня</item>
-        <item quantity="many">через %d дней</item>
-        <item quantity="other">через %d дней</item>
+        <item quantity="one">%d день</item>
+        <item quantity="few">%d дня</item>
+        <item quantity="many">%d дней</item>
+        <item quantity="other">%d дней</item>
     </plurals>
     <string name="account_expires_today">сегодня</string>
     <string name="account_buy">Купить подписку</string>
@@ -121,8 +123,10 @@
     <string name="account_load_failed">Не удалось загрузить аккаунт</string>
     <string name="account_notify_title">Уведомления</string>
     <string name="account_notify_sub">Настройка уведомлений</string>
-    <string name="account_notify_news">Новости и акции</string>
-    <string name="account_notify_important">Важные уведомления</string>
+    <string name="account_notify_news">Новости</string>
+    <string name="account_notify_news_sub">Обновления продукта и анонсы.</string>
+    <string name="account_notify_important">Важные</string>
+    <string name="account_notify_important_sub">Оповещения безопасности и критические уведомления аккаунта.</string>
     <string name="account_notify_failed">Не удалось обновить уведомления</string>
     <string name="account_traffic_title">Трафик за месяц</string>
     <string name="account_traffic_preview">%1$s / %2$s · %3$d%%</string>
@@ -175,6 +179,8 @@
     <string name="device_brand">Бренд</string>
     <string name="device_model">Модель</string>
     <string name="device_sdk">SDK</string>
+    <string name="device_locale">Локализация</string>
+    <string name="device_timezone">Часовой пояс</string>
     <string name="device_pc_name">Имя ПК</string>
     <string name="device_machine_guid">MachineGuid</string>
     <string name="device_error_android">Ошибка Android</string>
