@@ -157,6 +157,7 @@
     <string name="server_status_degraded">Server limited</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Could not connect</string>
+    <string name="vpn_traffic_exceeded">Monthly traffic limit reached. Upgrade your subscription to continue.</string>
     <string name="vpn_server_unreachable">Server unavailable</string>
     <string name="vpn_other_vpn">Disconnect the other app\'s VPN</string>
     <string name="vpn_permission_denied">VPN permission denied</string>

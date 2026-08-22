@@ -159,6 +159,7 @@
     <string name="server_status_degraded">Сервер с ограничениями</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Не удалось подключиться</string>
+    <string name="vpn_traffic_exceeded">Лимит трафика исчерпан. Оформите подписку для продолжения.</string>
     <string name="vpn_server_unreachable">Сервер недоступен</string>
     <string name="vpn_other_vpn">Отключите VPN другого приложения</string>
     <string name="vpn_permission_denied">Нет разрешения VPN</string>

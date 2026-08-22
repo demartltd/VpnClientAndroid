@@ -17,6 +17,7 @@ data class ServersListResult(
   val vpnSubscription: String?,
   val vpnExpiresAt: String?,
   val servers: List<ServerProfile>,
+  val trafficExceeded: Boolean = false,
   val rawJson: JSONObject? = null,
 )
 
@@ -52,6 +53,7 @@ object ServersApi {
       vpnSubscription = json.optApiString("vpnSubscription"),
       vpnExpiresAt = json.optApiString("vpnExpiresAt"),
       servers = profiles,
+      trafficExceeded = json.optBoolean("trafficExceeded", false),
       rawJson = json,
     )
   }
