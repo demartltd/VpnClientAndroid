@@ -77,6 +77,7 @@ class VpnController(private val context: Context) {
   private val _throughput = MutableStateFlow(ThroughputRates.ZERO)
   val throughput: StateFlow<ThroughputRates> = _throughput.asStateFlow()
   private var trafficJob: Job? = null
+  private var trafficExceeded = false
 
   private var watchdogJob: Job? = null
   private var disconnectWatchdogJob: Job? = null
@@ -230,6 +231,7 @@ class VpnController(private val context: Context) {
     _serverReachability.value = emptyMap()
     _serversError.value = null
     initialReachabilityDone = false
+    trafficExceeded = false
   }
 
   fun onSignedOut() {
@@ -274,6 +276,7 @@ class VpnController(private val context: Context) {
         AuthRepository.updateVpnProfile(context, result.vpnSubscription, result.vpnExpiresAt)
         AccountStore.updateVpnProfile(result.vpnSubscription, result.vpnExpiresAt)
         applyServerList(result.servers)
+        trafficExceeded = result.trafficExceeded
         result.rawJson?.let { SessionCacheStore.saveServers(context, session.userId, it) }
         AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
       } catch (e: CancellationException) {
@@ -461,8 +464,14 @@ class VpnController(private val context: Context) {
     }
   }
 
+  private fun isTrafficConnectBlocked(): Boolean = trafficExceeded
+
   private fun startConnect() {
     val profile = _selectedProfile.value ?: return
+    if (isTrafficConnectBlocked()) {
+      failConnect(context.getString(VpnConnectMessages.TRAFFIC_EXCEEDED))
+      return
+    }
     if (profile.profile.password.isBlank()) {
       failConnect(context.getString(VpnConnectMessages.NO_CREDENTIALS))
       return
