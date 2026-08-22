@@ -7,6 +7,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.demar.vpn.ui.components.StaticSheetDragHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -15,7 +16,7 @@ fun LoginBottomSheet(onDismiss: () -> Unit, onSignedIn: () -> Unit) {
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
-    dragHandle = null,
+    dragHandle = { StaticSheetDragHandle() },
   ) {
     LoginPanel(
       onSuccess = onSignedIn,

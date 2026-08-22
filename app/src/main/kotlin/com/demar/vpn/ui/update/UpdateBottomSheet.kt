@@ -41,7 +41,7 @@ fun UpdateBottomSheet(
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
-    dragHandle = null,
+    dragHandle = { StaticSheetDragHandle() },
   ) {
     Column(
       Modifier
@@ -50,7 +50,6 @@ fun UpdateBottomSheet(
         .padding(bottom = 28.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      StaticSheetDragHandle()
       Text(
         stringResource(R.string.update_title),
         style = MaterialTheme.typography.titleLarge,

@@ -16,5 +16,4 @@ object VpnConnectMessages {
   @StringRes val OTHER_VPN = R.string.vpn_other_vpn
   @StringRes val PERMISSION_DENIED = R.string.vpn_permission_denied
   @StringRes val NO_CREDENTIALS = R.string.vpn_no_credentials
-  @StringRes val TRAFFIC_EXCEEDED = R.string.vpn_traffic_exceeded
 }

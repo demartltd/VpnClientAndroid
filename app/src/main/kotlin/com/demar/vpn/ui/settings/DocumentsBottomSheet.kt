@@ -9,7 +9,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -28,13 +27,9 @@ fun DocumentsBottomSheet(
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
-    dragHandle = null,
+    dragHandle = { StaticSheetDragHandle() },
   ) {
-    Column(
-      Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      StaticSheetDragHandle()
+    Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
       SettingsGroup {
         SettingsActionButton(
           Icons.Filled.Description,

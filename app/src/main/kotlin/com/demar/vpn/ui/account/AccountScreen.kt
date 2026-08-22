@@ -43,6 +43,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +82,8 @@ import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.mainTabPadding
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -100,8 +103,18 @@ fun AccountScreen(
   signingOut: Boolean,
   snackbarHost: SnackbarHostState,
   onSignOut: () -> Unit,
+  openTrafficEvents: Flow<Unit> = emptyFlow(),
   modifier: Modifier = Modifier,
 ) {
+  var showTraffic by rememberSaveable { mutableStateOf(false) }
+
+  LaunchedEffect(openTrafficEvents) {
+    openTrafficEvents.collect { showTraffic = true }
+  }
+  LaunchedEffect(active) {
+    if (!active) showTraffic = false
+  }
+
   ActiveTabContent(active, modifier) {
     val user = session ?: return@ActiveTabContent
     val context = LocalContext.current
@@ -113,7 +126,6 @@ fun AccountScreen(
     val loading by AccountStore.loading.collectAsStateWithLifecycle()
     var notifyBusy by remember { mutableStateOf(false) }
     var showNotify by rememberSaveable { mutableStateOf(false) }
-    var showTraffic by rememberSaveable { mutableStateOf(false) }
     var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
     val notifyFailed = stringResource(R.string.account_notify_failed)
     val idCopied = stringResource(R.string.account_id_copied)
@@ -283,6 +295,8 @@ fun AccountScreen(
         traffic = traffic,
         loading = loading,
         otherLabel = otherLabel,
+        accountId = user.userId,
+        onIncreaseLimits = soon,
         onDismiss = { showTraffic = false },
       )
     }
@@ -516,12 +530,12 @@ private fun NotifySheet(
   onSetNotify: (news: Boolean?, important: Boolean?) -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = null) {
-    Column(
-      Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      StaticSheetDragHandle()
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    sheetState = sheetState,
+    dragHandle = { StaticSheetDragHandle() },
+  ) {
+    Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp)) {
       when {
         account == null && loading -> Text(
           stringResource(R.string.loading),
@@ -554,18 +568,23 @@ private fun TrafficSheet(
   traffic: VpnTraffic?,
   loading: Boolean,
   otherLabel: String,
+  accountId: String,
+  onIncreaseLimits: () -> Unit,
   onDismiss: () -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, dragHandle = null) {
+  ModalBottomSheet(
+    onDismissRequest = onDismiss,
+    sheetState = sheetState,
+    dragHandle = { StaticSheetDragHandle() },
+  ) {
     Column(
       Modifier
         .fillMaxWidth()
         .padding(horizontal = 24.dp)
         .padding(bottom = 24.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-      StaticSheetDragHandle()
       when {
         traffic == null && loading -> Text(
           stringResource(R.string.loading),
@@ -577,11 +596,33 @@ private fun TrafficSheet(
           style = MaterialTheme.typography.bodySmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        else -> TrafficPieChart(
-          servers = traffic.servers,
-          otherLabel = otherLabel,
-          centerPrimary = VpnAccountApi.formatBytes(traffic.total),
-        )
+        else -> {
+          Text(
+            stringResource(
+              R.string.account_traffic_remaining,
+              VpnAccountApi.formatBytes((traffic.limitBytes - traffic.total).coerceAtLeast(0L)),
+            ),
+            style = MaterialTheme.typography.headlineMedium,
+          )
+          TrafficPieChart(
+            servers = traffic.servers,
+            otherLabel = otherLabel,
+            centerPrimary = VpnAccountApi.formatBytes(traffic.total),
+            accountId = accountId,
+          )
+          Button(
+            onClick = onIncreaseLimits,
+            modifier = Modifier
+              .fillMaxWidth()
+              .height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+          ) {
+            Text(
+              stringResource(R.string.account_increase_limits),
+              style = MaterialTheme.typography.titleMedium,
+            )
+          }
+        }
       }
     }
   }

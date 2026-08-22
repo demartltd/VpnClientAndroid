@@ -57,6 +57,14 @@ class VpnController(private val context: Context) {
   private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
   val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
+  /** Open Account traffic sheet (e.g. connect blocked by monthly limit). */
+  private val _openTrafficSheetEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+  val openTrafficSheetEvents: SharedFlow<Unit> = _openTrafficSheetEvents.asSharedFlow()
+
+  fun requestOpenTrafficSheet() {
+    _openTrafficSheetEvents.tryEmit(Unit)
+  }
+
   private val _selectedProfile = MutableStateFlow<ServerProfile?>(null)
   val selectedProfile: StateFlow<ServerProfile?> = _selectedProfile.asStateFlow()
 
@@ -469,7 +477,8 @@ class VpnController(private val context: Context) {
   private fun startConnect() {
     val profile = _selectedProfile.value ?: return
     if (isTrafficConnectBlocked()) {
-      failConnect(context.getString(VpnConnectMessages.TRAFFIC_EXCEEDED))
+      AppLog.append("[vpn] connect blocked: traffic limit")
+      requestOpenTrafficSheet()
       return
     }
     if (profile.profile.password.isBlank()) {

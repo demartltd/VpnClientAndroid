@@ -128,11 +128,10 @@
     <string name="account_notify_failed">Could not update notifications</string>
     <string name="account_traffic_title">Traffic this month</string>
     <string name="account_traffic_preview">%1$s / %2$s · %3$d%%</string>
-    <string name="account_traffic_usage">%1$s / %2$s</string>
-    <string name="account_traffic_month">%1$d-%2$02d (UTC)</string>
-    <string name="account_traffic_empty">No usage yet this month</string>
     <string name="account_traffic_other">Other</string>
     <string name="account_traffic_unavailable">Traffic unavailable</string>
+    <string name="account_traffic_remaining">Traffic remaining: %1$s</string>
+    <string name="account_increase_limits">Increase limits</string>
     <string name="account_family_title">Add loved ones to family</string>
     <string name="account_family_sub">Your subscription can be used by four people</string>
     <string name="account_family_free">1 free spot</string>
@@ -157,7 +156,6 @@
     <string name="server_status_degraded">Server limited</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Could not connect</string>
-    <string name="vpn_traffic_exceeded">Monthly traffic limit reached. Upgrade your subscription to continue.</string>
     <string name="vpn_server_unreachable">Server unavailable</string>
     <string name="vpn_other_vpn">Disconnect the other app\'s VPN</string>
     <string name="vpn_permission_denied">VPN permission denied</string>

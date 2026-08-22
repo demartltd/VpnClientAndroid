@@ -31,6 +31,12 @@ class DemarNavigationTest {
   }
 
   @Test
+  fun parseIncomingRoute_readsSettingsTraffic() {
+    val route = parseIncomingRoute("demarvpn://settings/traffic") as IncomingRoute.Settings
+    assertEquals(SettingsRoute.Traffic, route.route)
+  }
+
+  @Test
   fun parseIncomingRoute_rejectsUnknownLinks() {
     assertNull(parseIncomingRoute("demarvpn://settings/unknown"))
     assertNull(parseIncomingRoute("https://account.demar.cc/auth/app/complete"))
