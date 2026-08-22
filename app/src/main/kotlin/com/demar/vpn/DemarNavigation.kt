@@ -23,6 +23,7 @@ sealed interface SupportRoute {
 sealed interface SettingsRoute {
   data object AppSettings : SettingsRoute
   data object ServiceMenu : SettingsRoute
+  data object Traffic : SettingsRoute
   data class Support(val route: SupportRoute? = null) : SettingsRoute
   data class Document(val document: LegalDocument) : SettingsRoute
 }
@@ -76,6 +77,7 @@ private fun parseSettingsRoute(link: ParsedLink): SettingsRoute? {
   return when {
     parts == listOf("settings", "app") -> SettingsRoute.AppSettings
     parts == listOf("settings", "service") -> SettingsRoute.ServiceMenu
+    parts == listOf("settings", "traffic") -> SettingsRoute.Traffic
     parts == listOf("settings", "support") -> SettingsRoute.Support()
     parts.size == 4 && parts[0] == "settings" && parts[1] == "support" && parts[2] == "ticket" ->
       parts[3].takeIf(String::isNotEmpty)?.let { SettingsRoute.Support(SupportRoute.Chat(it)) }
@@ -94,6 +96,7 @@ fun SettingsRoute.requiresAuth(): Boolean = this is SettingsRoute.Support
 fun SettingsRoute.toNavRoute(): String = when (this) {
   SettingsRoute.AppSettings -> AppNavRoute.AppSettings.pattern
   SettingsRoute.ServiceMenu -> AppNavRoute.ServiceMenu.pattern
+  SettingsRoute.Traffic -> error("SettingsRoute.Traffic opens Account sheet, not a nav destination")
   is SettingsRoute.Support -> when (val nested = route) {
     null -> AppNavRoute.support()
     is SupportRoute.Chat -> AppNavRoute.support(ticketId = nested.ticketId)

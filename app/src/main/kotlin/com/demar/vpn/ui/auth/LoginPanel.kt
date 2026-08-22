@@ -46,7 +46,6 @@ import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.EmailConfirmResult
 import com.demar.vpn.data.auth.ReviewAuth
 import com.demar.vpn.ui.components.IconLinkChip
-import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.openAuthUrl
 import kotlinx.coroutines.launch
 
@@ -137,7 +136,6 @@ fun LoginPanel(onSuccess: () -> Unit, modifier: Modifier = Modifier) {
   }
 
   Column(modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-    StaticSheetDragHandle()
     Text(
       title,
       modifier = Modifier.fillMaxWidth(),

@@ -130,11 +130,10 @@
     <string name="account_notify_failed">Не удалось обновить уведомления</string>
     <string name="account_traffic_title">Трафик за месяц</string>
     <string name="account_traffic_preview">%1$s / %2$s · %3$d%%</string>
-    <string name="account_traffic_usage">%1$s / %2$s</string>
-    <string name="account_traffic_month">%1$d-%2$02d (UTC)</string>
-    <string name="account_traffic_empty">Пока нет расхода в этом месяце</string>
     <string name="account_traffic_other">Другое</string>
     <string name="account_traffic_unavailable">Трафик недоступен</string>
+    <string name="account_traffic_remaining">Осталось трафика: %1$s</string>
+    <string name="account_increase_limits">Увеличить лимиты</string>
     <string name="account_family_title">Добавьте близких в семейную подписку</string>
     <string name="account_family_sub">Вашей подпиской можно пользоваться вчетвером</string>
     <string name="account_family_free">Есть 1 свободное место</string>
@@ -159,7 +158,6 @@
     <string name="server_status_degraded">Сервер с ограничениями</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Не удалось подключиться</string>
-    <string name="vpn_traffic_exceeded">Лимит трафика исчерпан. Оформите подписку для продолжения.</string>
     <string name="vpn_server_unreachable">Сервер недоступен</string>
     <string name="vpn_other_vpn">Отключите VPN другого приложения</string>
     <string name="vpn_permission_denied">Нет разрешения VPN</string>

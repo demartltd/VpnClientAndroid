@@ -77,6 +77,10 @@ fun AppScaffold(
   }
 
   fun openSettingsRoute(route: SettingsRoute) {
+    if (route is SettingsRoute.Traffic) {
+      vpnController.requestOpenTrafficSheet()
+      return
+    }
     tab = 2
     if (route.requiresAuth() && !signedIn) {
       deferredSettingsRoute = route
@@ -91,6 +95,13 @@ fun AppScaffold(
     if (openHomeTick == 0) return@LaunchedEffect
     tab = 0
     showLoginSheet = false
+  }
+
+  LaunchedEffect(Unit) {
+    vpnController.openTrafficSheetEvents.collect {
+      tab = 3
+      if (!signedIn) openLogin(3)
+    }
   }
 
   LaunchedEffect(signedIn) {
@@ -158,6 +169,7 @@ fun AppScaffold(
           session = session,
           signingOut = signingOut,
           snackbarHost = snackbarHost,
+          openTrafficEvents = vpnController.openTrafficSheetEvents,
           onSignOut = {
             if (!signingOut) {
               scope.launch {
