@@ -88,8 +88,15 @@ object AppUpdate {
     }
 
     _state.value = AppUpdateState.Available(release)
-    download(app, release)
+    UpdateDownloadService.start(app, release)
   }
+
+  /** Called from [UpdateDownloadService]. Returns true when APK is ready. */
+  suspend fun downloadFromService(
+    context: Context,
+    release: AndroidRelease,
+    onProgress: (Int) -> Unit = {},
+  ): Boolean = download(context.applicationContext, release, onProgress)
 
   fun install(activity: Activity): Boolean {
     val ready = _state.value as? AppUpdateState.Ready ?: return false
@@ -124,7 +131,6 @@ object AppUpdate {
 
   private fun stampFile(dir: File, asset: String) = File(dir, "$asset.sha256")
 
-  /** Valid completed APK for this release, or null. */
   private fun cachedApk(context: Context, release: AndroidRelease): File? {
     val dir = updateDir(context)
     val target = File(dir, release.asset)
@@ -146,22 +152,26 @@ object AppUpdate {
     }
   }
 
-  private suspend fun download(context: Context, release: AndroidRelease) = withContext(Dispatchers.IO) {
+  private suspend fun download(
+    context: Context,
+    release: AndroidRelease,
+    onProgress: (Int) -> Unit,
+  ): Boolean = withContext(Dispatchers.IO) {
     val dir = updateDir(context)
     val target = File(dir, release.asset)
     val partial = File(dir, "${release.asset}.partial")
     try {
-      // Drop stale completed file for a different digest.
       if (target.isFile && cachedApk(context, release) == null) {
         target.delete()
         stampFile(dir, release.asset).delete()
       }
 
       var offset = partial.takeIf { it.isFile }?.length() ?: 0L
-      _state.value = AppUpdateState.Downloading(
-        release,
-        if (offset > 0) 1 else 0, // non-zero hint until Content-Range known
-      )
+      fun setProgress(pct: Int) {
+        _state.value = AppUpdateState.Downloading(release, pct)
+        onProgress(pct)
+      }
+      setProgress(if (offset > 0) 1 else 0)
 
       val conn = (URL(release.downloadUrl).openConnection() as HttpURLConnection).apply {
         instanceFollowRedirects = true
@@ -175,9 +185,8 @@ object AppUpdate {
       try {
         val code = conn.responseCode
         when (code) {
-          206 -> Unit // resume
+          206 -> Unit
           in 200..299 -> {
-            // Full body — restart partial.
             offset = 0L
             if (partial.exists()) partial.delete()
           }
@@ -200,7 +209,7 @@ object AppUpdate {
               out.write(buf, 0, n)
               read += n
               val pct = if (total > 0) ((read * 100) / total).toInt().coerceIn(0, 99) else 0
-              _state.value = AppUpdateState.Downloading(release, pct)
+              setProgress(pct)
             }
           }
         }
@@ -215,7 +224,7 @@ object AppUpdate {
         AppLog.append("update: sha256 mismatch")
         _errors.tryEmit(R.string.update_hash_mismatch)
         _state.value = AppUpdateState.Idle
-        return@withContext
+        return@withContext false
       }
       if (target.exists()) target.delete()
       if (!partial.renameTo(target)) {
@@ -225,16 +234,16 @@ object AppUpdate {
       writeStamp(dir, release.asset, release.sha256)
       _state.value = AppUpdateState.Ready(release, target)
       AppLog.append("update: ready ${release.version} (cached)")
+      true
     } catch (e: Exception) {
-      // Keep .partial for resume on next launch.
       AppLog.append("update: download failed — ${e.message}")
       _errors.tryEmit(R.string.update_failed)
       _state.value = AppUpdateState.Idle
+      false
     }
   }
 
   private fun contentRangeTotal(header: String?): Long? {
-    // bytes 100-199/12345
     val slash = header?.substringAfter('/', "") ?: return null
     return slash.toLongOrNull()?.takeIf { it > 0 }
   }

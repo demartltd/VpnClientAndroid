@@ -72,6 +72,8 @@
     <string name="update_downloading">Downloading update %1$s… %2$d%%</string>
     <string name="update_hash_mismatch">Update file failed integrity check. Try again later.</string>
     <string name="update_failed">Could not download the update. Try again later.</string>
+    <string name="update_notification_channel">App updates</string>
+    <string name="update_notification_ready">Update %1$s ready to install</string>
     <string name="service_singbox">Sing-box</string>
     <string name="service_snack_bar">Snack bar</string>
     <string name="service_internet">Internet</string>
