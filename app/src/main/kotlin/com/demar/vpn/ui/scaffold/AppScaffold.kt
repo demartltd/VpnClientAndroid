@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -22,15 +23,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demar.vpn.AccountSheet
 import com.demar.vpn.R
 import com.demar.vpn.SettingsRoute
-import com.demar.vpn.requiresAuth
+import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.data.update.AppUpdateState
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.VpnState
+import com.demar.vpn.requiresAuth
 import com.demar.vpn.ui.account.AccountScreen
+import com.demar.vpn.ui.account.CheckoutIntent
+import com.demar.vpn.ui.account.PayResultSheet
+import com.demar.vpn.ui.account.PlanCompareSheet
+import com.demar.vpn.ui.account.SubscriptionCheckoutSheet
 import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.AppFloatingToolbar
 import com.demar.vpn.ui.components.AppFloatingToolbarExtent
@@ -39,6 +46,7 @@ import com.demar.vpn.ui.home.HomeScreen
 import com.demar.vpn.ui.servers.ServersScreen
 import com.demar.vpn.ui.settings.SettingsScreen
 import com.demar.vpn.ui.update.UpdateFab
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -54,6 +62,12 @@ fun AppScaffold(
   authCallbackTick: Int = 0,
   pendingSettingsRoute: SettingsRoute? = null,
   settingsRouteRequestTick: Int = 0,
+  pendingAccountSheet: AccountSheet? = null,
+  accountRouteRequestTick: Int = 0,
+  onConsumePendingAccountSheet: () -> Unit = {},
+  pendingPayReturn: Boolean? = null,
+  payReturnRequestTick: Int = 0,
+  onConsumePendingPayReturn: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -63,6 +77,7 @@ fun AppScaffold(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
   val session by AuthRepository.session.collectAsStateWithLifecycle()
+  val account by AccountStore.account.collectAsStateWithLifecycle()
   val signedIn = session != null
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
@@ -70,10 +85,58 @@ fun AppScaffold(
   val signOutFailed = stringResource(R.string.sign_out_failed)
   var wasSignedIn by remember { mutableStateOf<Boolean?>(null) }
   var deferredSettingsRoute by remember { mutableStateOf<SettingsRoute?>(null) }
+  var deferredAccountSheet by remember { mutableStateOf<AccountSheet?>(null) }
+
+  var checkoutIntent by remember { mutableStateOf<CheckoutIntent?>(null) }
+  var showPlanCompare by remember { mutableStateOf(false) }
+  var payResult by remember { mutableStateOf<Boolean?>(null) }
+  var lastPayRefreshAt by remember { mutableLongStateOf(0L) }
 
   fun openLogin(returnTab: Int) {
     loginReturnTab = returnTab
     showLoginSheet = true
+  }
+
+  fun openCheckout(intent: CheckoutIntent) {
+    if (!signedIn) return
+    showPlanCompare = false
+    checkoutIntent = intent
+  }
+
+  fun openPlanCompare() {
+    checkoutIntent = null
+    showPlanCompare = true
+  }
+
+  fun handlePayReturn(success: Boolean) {
+    checkoutIntent = null
+    showPlanCompare = false
+    tab = 3
+    payResult = success
+    if (!success) return
+    val now = System.currentTimeMillis()
+    if (now - lastPayRefreshAt < 5_000L) return
+    lastPayRefreshAt = now
+    scope.launch { vpnController.refreshSessionData() }
+  }
+
+  fun presentAccountSheet(sheet: AccountSheet) {
+    tab = 3
+    when (sheet) {
+      AccountSheet.Traffic -> vpnController.requestOpenTrafficSheet()
+      AccountSheet.Buy -> openCheckout(CheckoutIntent.Buy)
+      AccountSheet.Plans -> openPlanCompare()
+    }
+  }
+
+  fun openAccountSheet(sheet: AccountSheet) {
+    tab = 3
+    if (!signedIn) {
+      deferredAccountSheet = sheet
+      openLogin(3)
+      return
+    }
+    presentAccountSheet(sheet)
   }
 
   fun openSettingsRoute(route: SettingsRoute) {
@@ -113,8 +176,15 @@ fun AppScaffold(
         scope.launch { vpnController.refreshSessionData() }
       }
       deferredSettingsRoute?.let(::openSettingsRoute)
+      deferredAccountSheet?.let {
+        deferredAccountSheet = null
+        presentAccountSheet(it)
+      }
     } else {
       tab = 0
+      checkoutIntent = null
+      showPlanCompare = false
+      deferredAccountSheet = null
     }
   }
 
@@ -128,6 +198,22 @@ fun AppScaffold(
     pendingSettingsRoute?.let {
       onConsumePendingSettingsRoute()
       openSettingsRoute(it)
+    }
+  }
+
+  LaunchedEffect(accountRouteRequestTick, pendingAccountSheet, signedIn) {
+    if (accountRouteRequestTick == 0) return@LaunchedEffect
+    pendingAccountSheet?.let {
+      onConsumePendingAccountSheet()
+      openAccountSheet(it)
+    }
+  }
+
+  LaunchedEffect(payReturnRequestTick, pendingPayReturn) {
+    if (payReturnRequestTick == 0) return@LaunchedEffect
+    pendingPayReturn?.let {
+      onConsumePendingPayReturn()
+      handlePayReturn(it)
     }
   }
 
@@ -170,6 +256,15 @@ fun AppScaffold(
           signingOut = signingOut,
           snackbarHost = snackbarHost,
           openTrafficEvents = vpnController.openTrafficSheetEvents,
+          onPurchase = { free ->
+            openCheckout(if (free) CheckoutIntent.Buy else CheckoutIntent.Renew)
+          },
+          onIncreaseLimits = {
+            scope.launch {
+              delay(400)
+              openCheckout(CheckoutIntent.UpgradeTraffic)
+            }
+          },
           onSignOut = {
             if (!signingOut) {
               scope.launch {
@@ -218,6 +313,30 @@ fun AppScaffold(
           showLoginSheet = false
           tab = loginReturnTab
         },
+      )
+    }
+    val auth = session
+    val intent = checkoutIntent
+    if (auth != null && intent != null) {
+      SubscriptionCheckoutSheet(
+        intent = intent,
+        session = auth,
+        currentPlan = account?.vpnSubscription ?: auth.vpnSubscription,
+        snackbarHost = snackbarHost,
+        onCompare = ::openPlanCompare,
+        onDismiss = { checkoutIntent = null },
+      )
+    }
+    if (showPlanCompare) {
+      PlanCompareSheet(
+        onBuy = { openCheckout(CheckoutIntent.Buy) },
+        onDismiss = { showPlanCompare = false },
+      )
+    }
+    payResult?.let { success ->
+      PayResultSheet(
+        success = success,
+        onDismiss = { payResult = null },
       )
     }
   }

@@ -44,6 +44,14 @@ class MainActivity : ComponentActivity() {
   private val pendingSettingsRoute: StateFlow<SettingsRoute?> = _pendingSettingsRoute.asStateFlow()
   private val _settingsRouteRequestTick = MutableStateFlow(0)
   private val settingsRouteRequestTick: StateFlow<Int> = _settingsRouteRequestTick.asStateFlow()
+  private val _pendingAccountSheet = MutableStateFlow<AccountSheet?>(null)
+  private val pendingAccountSheet: StateFlow<AccountSheet?> = _pendingAccountSheet.asStateFlow()
+  private val _accountRouteRequestTick = MutableStateFlow(0)
+  private val accountRouteRequestTick: StateFlow<Int> = _accountRouteRequestTick.asStateFlow()
+  private val _pendingPayReturn = MutableStateFlow<Boolean?>(null)
+  private val pendingPayReturn: StateFlow<Boolean?> = _pendingPayReturn.asStateFlow()
+  private val _payReturnRequestTick = MutableStateFlow(0)
+  private val payReturnRequestTick: StateFlow<Int> = _payReturnRequestTick.asStateFlow()
 
   override fun onCreate(savedInstanceState: Bundle?) {
     DemarAppContextHolder.init(this)
@@ -75,6 +83,10 @@ class MainActivity : ComponentActivity() {
       val authTick by authCallbackTick.collectAsStateWithLifecycle()
       val settingsRoute by pendingSettingsRoute.collectAsStateWithLifecycle()
       val settingsTick by settingsRouteRequestTick.collectAsStateWithLifecycle()
+      val accountSheet by pendingAccountSheet.collectAsStateWithLifecycle()
+      val accountTick by accountRouteRequestTick.collectAsStateWithLifecycle()
+      val payReturn by pendingPayReturn.collectAsStateWithLifecycle()
+      val payTick by payReturnRequestTick.collectAsStateWithLifecycle()
       LaunchedEffect(Unit) {
         AuthRepository.refreshSession(this@MainActivity)
       }
@@ -87,6 +99,12 @@ class MainActivity : ComponentActivity() {
           pendingSettingsRoute = settingsRoute,
           settingsRouteRequestTick = settingsTick,
           onConsumePendingSettingsRoute = { _pendingSettingsRoute.value = null },
+          pendingAccountSheet = accountSheet,
+          accountRouteRequestTick = accountTick,
+          onConsumePendingAccountSheet = { _pendingAccountSheet.value = null },
+          pendingPayReturn = payReturn,
+          payReturnRequestTick = payTick,
+          onConsumePendingPayReturn = { _pendingPayReturn.value = null },
         )
       }
     }
@@ -118,6 +136,14 @@ class MainActivity : ComponentActivity() {
       is IncomingRoute.Settings -> {
         _pendingSettingsRoute.value = incoming.route
         _settingsRouteRequestTick.value++
+      }
+      is IncomingRoute.Account -> {
+        _pendingAccountSheet.value = incoming.sheet
+        _accountRouteRequestTick.value++
+      }
+      is IncomingRoute.PayReturn -> {
+        _pendingPayReturn.value = incoming.success
+        _payReturnRequestTick.value++
       }
     }
   }

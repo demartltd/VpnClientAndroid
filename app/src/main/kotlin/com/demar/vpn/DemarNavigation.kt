@@ -28,9 +28,17 @@ sealed interface SettingsRoute {
   data class Document(val document: LegalDocument) : SettingsRoute
 }
 
+enum class AccountSheet {
+  Traffic,
+  Buy,
+  Plans,
+}
+
 sealed interface IncomingRoute {
   data class Auth(val handoff: AuthHandoff) : IncomingRoute
   data class Settings(val route: SettingsRoute) : IncomingRoute
+  data class Account(val sheet: AccountSheet) : IncomingRoute
+  data class PayReturn(val success: Boolean) : IncomingRoute
 }
 
 fun parseIncomingRoute(uri: Uri?): IncomingRoute? {
@@ -41,6 +49,8 @@ fun parseIncomingRoute(uri: Uri?): IncomingRoute? {
 internal fun parseIncomingRoute(raw: String): IncomingRoute? {
   val link = ParsedLink.parse(raw) ?: return null
   parseAuthHandoff(link)?.let { return IncomingRoute.Auth(it) }
+  parsePayReturn(link)?.let { return it }
+  parseAccountSheet(link)?.let { return IncomingRoute.Account(it) }
   parseSettingsRoute(link)?.let { return IncomingRoute.Settings(it) }
   return null
 }
@@ -67,12 +77,38 @@ fun parseSettingsRoute(uri: Uri): SettingsRoute? {
   return parseSettingsRoute(ParsedLink.parse(uri.toString()) ?: return null)
 }
 
-private fun parseSettingsRoute(link: ParsedLink): SettingsRoute? {
+private fun parsePayReturn(link: ParsedLink): IncomingRoute.PayReturn? {
   if (!link.isDemarScheme()) return null
-  val parts = buildList {
+  val parts = demarPathParts(link)
+  if (parts.size != 2 || parts[0] != "pay") return null
+  return when (parts[1]) {
+    "ok" -> IncomingRoute.PayReturn(success = true)
+    "fail" -> IncomingRoute.PayReturn(success = false)
+    else -> null
+  }
+}
+
+private fun parseAccountSheet(link: ParsedLink): AccountSheet? {
+  if (!link.isDemarScheme()) return null
+  val parts = demarPathParts(link)
+  if (parts.size != 2 || parts[0] != "account") return null
+  return when (parts[1]) {
+    "buy" -> AccountSheet.Buy
+    "plans" -> AccountSheet.Plans
+    "traffic" -> AccountSheet.Traffic
+    else -> null
+  }
+}
+
+private fun demarPathParts(link: ParsedLink): List<String> =
+  buildList {
     link.host?.trim()?.takeIf(String::isNotEmpty)?.takeUnless { it == "auth" }?.let(::add)
     addAll(link.pathSegments.filter(String::isNotBlank))
   }.dropWhile { it == "open" }
+
+private fun parseSettingsRoute(link: ParsedLink): SettingsRoute? {
+  if (!link.isDemarScheme()) return null
+  val parts = demarPathParts(link)
   if (parts.isEmpty()) return null
   return when {
     parts == listOf("settings", "app") -> SettingsRoute.AppSettings

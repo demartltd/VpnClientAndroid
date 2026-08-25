@@ -103,6 +103,8 @@ fun AccountScreen(
   signingOut: Boolean,
   snackbarHost: SnackbarHostState,
   onSignOut: () -> Unit,
+  onPurchase: (isFree: Boolean) -> Unit = {},
+  onIncreaseLimits: () -> Unit = {},
   openTrafficEvents: Flow<Unit> = emptyFlow(),
   modifier: Modifier = Modifier,
 ) {
@@ -242,7 +244,7 @@ fun AccountScreen(
           expires = if (isFree) null else expires,
           isFree = isFree,
           loading = loading && account == null,
-          onPurchase = soon,
+          onPurchase = { onPurchase(isFree) },
         )
         val progress = trafficProgress
         val trafficFull = progress != null && progress >= 1f
@@ -296,7 +298,10 @@ fun AccountScreen(
         loading = loading,
         otherLabel = otherLabel,
         accountId = user.userId,
-        onIncreaseLimits = soon,
+        onIncreaseLimits = {
+          showTraffic = false
+          onIncreaseLimits()
+        },
         onDismiss = { showTraffic = false },
       )
     }

@@ -37,9 +37,41 @@ class DemarNavigationTest {
   }
 
   @Test
+  fun parseIncomingRoute_readsAccountBuy() {
+    val route = parseIncomingRoute("demarvpn://account/buy") as IncomingRoute.Account
+    assertEquals(AccountSheet.Buy, route.sheet)
+  }
+
+  @Test
+  fun parseIncomingRoute_readsAccountPlans() {
+    val route = parseIncomingRoute("demarvpn://account/plans") as IncomingRoute.Account
+    assertEquals(AccountSheet.Plans, route.sheet)
+  }
+
+  @Test
+  fun parseIncomingRoute_readsAccountTraffic() {
+    val route = parseIncomingRoute("demarvpn://account/traffic") as IncomingRoute.Account
+    assertEquals(AccountSheet.Traffic, route.sheet)
+  }
+
+  @Test
+  fun parseIncomingRoute_readsPayOk() {
+    val route = parseIncomingRoute("demarvpn://pay/ok") as IncomingRoute.PayReturn
+    assertEquals(true, route.success)
+  }
+
+  @Test
+  fun parseIncomingRoute_readsPayFail() {
+    val route = parseIncomingRoute("demarvpn://pay/fail") as IncomingRoute.PayReturn
+    assertEquals(false, route.success)
+  }
+
+  @Test
   fun parseIncomingRoute_rejectsUnknownLinks() {
     assertNull(parseIncomingRoute("demarvpn://settings/unknown"))
     assertNull(parseIncomingRoute("https://account.example.invalid/auth/app/complete"))
     assertNull(parseIncomingRoute("demar://auth/callback?code=xyz"))
+    assertNull(parseIncomingRoute("demarvpn://pay/unknown"))
+    assertNull(parseIncomingRoute("demarvpn://account/unknown"))
   }
 }
