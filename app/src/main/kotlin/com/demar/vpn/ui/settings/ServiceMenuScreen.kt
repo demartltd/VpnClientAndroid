@@ -17,7 +17,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.BuildConfig
@@ -34,14 +33,7 @@ fun ServiceMenuScreen(
   onBack: () -> Unit,
   snackbarHost: SnackbarHostState,
 ) {
-  val context = LocalContext.current
-  val appName = remember(context) {
-    runCatching {
-      context.packageManager.getApplicationLabel(
-        context.packageManager.getApplicationInfo(BuildConfig.APPLICATION_ID, 0),
-      ).toString()
-    }.getOrElse { context.getString(R.string.app_name) }
-  }
+  val appName = stringResource(R.string.app_name)
   var latestVersion by remember { mutableStateOf("…") }
   LaunchedEffect(Unit) {
     latestVersion = AndroidReleaseApi.fetch(UpdateChannelStore.enabled.value)?.version ?: "—"

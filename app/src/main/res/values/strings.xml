@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Demar VPN</string>
-    <string name="home_title">Demar VPN</string>
+    <string name="app_name">Demar Proxy</string>
     <string name="vpn_connected">Connected</string>
     <string name="server_not_selected">Not selected</string>
-    <string name="account_title">Account</string>
-    <string name="account_sign_in_hint">Sign in to manage your subscription and profile</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_out">Sign out</string>
     <string name="sign_out_sub">End session on this device</string>
@@ -36,12 +33,10 @@
     <string name="settings_tun">TUN settings</string>
     <string name="settings_tun_sub">Apps excluded from the VPN tunnel</string>
     <string name="settings_tun_title">TUN settings</string>
-    <string name="settings_tun_apps_hint">Excluded apps use the normal network and skip the VPN tunnel.</string>
     <string name="settings_tun_apps_add">Add app</string>
     <string name="settings_tun_apps_add_sub">Choose an installed app to exclude</string>
     <string name="settings_tun_apps_empty">No excluded apps</string>
     <string name="settings_tun_apps_search">Search apps</string>
-    <string name="settings_tun_apps_picker_title">Select app</string>
     <string name="settings_tun_apps_remove">Remove</string>
     <string name="settings_tun_custom_title">Custom apps</string>
     <string name="settings_tun_custom_free_sub">Available with a paid subscription</string>
@@ -59,14 +54,11 @@
     <string name="journal_title">Journal</string>
     <string name="journal_subtitle">App and VPN core messages</string>
     <string name="journal_empty">Empty so far</string>
-    <string name="journal_expand">Show journal</string>
     <string name="journal_clear">Clear</string>
     <string name="journal_share">Share</string>
     <string name="journal_cleared">Journal cleared.</string>
     <string name="journal_share_empty">Journal is empty — nothing to share.</string>
     <string name="journal_share_failed">Could not share journal: %s</string>
-    <string name="share_app_subject">Demar VPN</string>
-    <string name="share_app_pitch">Demar VPN — Hysteria2 / sing-box client.\n\nDetails in the project repository.</string>
     <string name="service_menu_title">Service menu</string>
     <string name="service_about">About</string>
     <string name="service_name">Name</string>
@@ -90,7 +82,6 @@
     <string name="login_sheet_title">Sign in / Register</string>
     <string name="login_email_hint">Email</string>
     <string name="login_continue">Continue</string>
-    <string name="login_sending">Sending…</string>
     <string name="login_more_methods">More login methods</string>
     <string name="login_otp_sent">Sent to</string>
     <string name="login_resend">Resend code</string>
@@ -102,7 +93,6 @@
     <string name="login_create_account_message">Create a new account for %1$s?</string>
     <string name="login_create_account_confirm">Create account</string>
     <string name="login_create_account_fix_email">Fix email</string>
-    <string name="account_signed_in">Session active</string>
     <string name="account_id">ID: %1$s</string>
     <string name="account_id_copied">ID copied</string>
     <string name="account_subscription">Subscription</string>
@@ -116,10 +106,7 @@
     <string name="account_expires_today">today</string>
     <string name="account_buy">Buy subscription</string>
     <string name="account_extend">Renew subscription</string>
-    <string name="account_vpn_plan">VPN: %1$s</string>
-    <string name="account_vpn_expires">Until %1$s</string>
     <string name="account_vpn_unknown">—</string>
-    <string name="account_load_failed">Could not load account</string>
     <string name="account_notify_title">Notifications</string>
     <string name="account_notify_sub">Notification settings</string>
     <string name="account_notify_news">News</string>
@@ -188,7 +175,6 @@
     <string name="vpn_permission_denied">VPN permission denied</string>
     <string name="vpn_no_credentials">Connection unavailable for Review account</string>
     <string name="vpn_start_failed">Failed to start VPN service</string>
-    <string name="vpn_notification_title">Demar VPN</string>
     <string name="vpn_notification_running">VPN is running</string>
     <string name="tile_connected">Connected</string>
     <string name="tile_connecting">Connecting</string>

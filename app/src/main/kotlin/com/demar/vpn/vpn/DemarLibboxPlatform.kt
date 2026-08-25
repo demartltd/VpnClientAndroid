@@ -13,6 +13,7 @@ import android.os.Process
 import android.system.OsConstants
 import android.util.Base64
 import androidx.annotation.RequiresApi
+import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
 import io.nekohasekai.libbox.ConnectionOwner
 import io.nekohasekai.libbox.InterfaceUpdateListener
@@ -80,7 +81,7 @@ class DemarLibboxPlatform(
   private fun openTunOnMain(options: TunOptions): Int {
     val builder =
       service.Builder()
-        .setSession("Demar VPN")
+        .setSession(service.getString(R.string.app_name))
         .setMtu(options.mtu)
         .addDisallowedApplication(service.packageName)
 

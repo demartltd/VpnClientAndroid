@@ -1,11 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Demar VPN</string>
-    <string name="home_title">Demar VPN</string>
+    <string name="app_name">Demar Proxy</string>
     <string name="vpn_connected">Подключено</string>
     <string name="server_not_selected">Не выбран</string>
-    <string name="account_title">Аккаунт</string>
-    <string name="account_sign_in_hint">Войдите, чтобы управлять подпиской и профилем</string>
     <string name="sign_in">Войти</string>
     <string name="sign_out">Выйти</string>
     <string name="sign_out_sub">Завершить сессию на этом устройстве</string>
@@ -36,12 +33,10 @@
     <string name="settings_tun">Настройки TUN</string>
     <string name="settings_tun_sub">Приложения вне VPN-туннеля</string>
     <string name="settings_tun_title">Настройки TUN</string>
-    <string name="settings_tun_apps_hint">Исключённые приложения ходят в сеть напрямую, минуя VPN.</string>
     <string name="settings_tun_apps_add">Добавить приложение</string>
     <string name="settings_tun_apps_add_sub">Выберите установленное приложение</string>
     <string name="settings_tun_apps_empty">Нет исключённых приложений</string>
     <string name="settings_tun_apps_search">Поиск приложений</string>
-    <string name="settings_tun_apps_picker_title">Выбор приложения</string>
     <string name="settings_tun_apps_remove">Удалить</string>
     <string name="settings_tun_custom_title">Свои приложения</string>
     <string name="settings_tun_custom_free_sub">Доступно на платной подписке</string>
@@ -59,14 +54,11 @@
     <string name="journal_title">Журнал</string>
     <string name="journal_subtitle">Сообщения приложения и ядра VPN</string>
     <string name="journal_empty">Пока пусто</string>
-    <string name="journal_expand">Показать журнал</string>
     <string name="journal_clear">Очистить</string>
     <string name="journal_share">Поделиться</string>
     <string name="journal_cleared">Журнал очищен.</string>
     <string name="journal_share_empty">Журнал пуст — нечего отправить.</string>
     <string name="journal_share_failed">Не удалось поделиться журналом: %s</string>
-    <string name="share_app_subject">Demar VPN</string>
-    <string name="share_app_pitch">Demar VPN — клиент Hysteria2 / sing-box.\n\nПодробности в репозитории проекта.</string>
     <string name="service_menu_title">Сервисное меню</string>
     <string name="service_about">О приложении</string>
     <string name="service_name">Имя</string>
@@ -90,7 +82,6 @@
     <string name="login_sheet_title">Вход/Регистрация</string>
     <string name="login_email_hint">Email</string>
     <string name="login_continue">Продолжить</string>
-    <string name="login_sending">Отправка…</string>
     <string name="login_more_methods">Другие способы входа</string>
     <string name="login_otp_sent">Отправлено на</string>
     <string name="login_resend">Отправить код снова</string>
@@ -102,7 +93,6 @@
     <string name="login_create_account_message">Создать новый аккаунт для %1$s?</string>
     <string name="login_create_account_confirm">Создать аккаунт</string>
     <string name="login_create_account_fix_email">Исправить почту</string>
-    <string name="account_signed_in">Сессия активна</string>
     <string name="account_id">ID: %1$s</string>
     <string name="account_id_copied">ID скопирован</string>
     <string name="account_subscription">Подписка</string>
@@ -118,10 +108,7 @@
     <string name="account_expires_today">сегодня</string>
     <string name="account_buy">Купить подписку</string>
     <string name="account_extend">Продлить подписку</string>
-    <string name="account_vpn_plan">VPN: %1$s</string>
-    <string name="account_vpn_expires">До %1$s</string>
     <string name="account_vpn_unknown">—</string>
-    <string name="account_load_failed">Не удалось загрузить аккаунт</string>
     <string name="account_notify_title">Уведомления</string>
     <string name="account_notify_sub">Настройка уведомлений</string>
     <string name="account_notify_news">Новости</string>
@@ -190,7 +177,6 @@
     <string name="vpn_permission_denied">Нет разрешения VPN</string>
     <string name="vpn_no_credentials">Подключение недоступно для Review аккаунта</string>
     <string name="vpn_start_failed">Не удалось запустить VPN-сервис</string>
-    <string name="vpn_notification_title">Demar VPN</string>
     <string name="vpn_notification_running">VPN работает</string>
     <string name="tile_connected">Подключено</string>
     <string name="tile_connecting">Подключение</string>

@@ -120,7 +120,7 @@ fun SettingsScreen(
     Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
       Icon(Icons.Outlined.ShieldMoon, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
       Spacer(Modifier.height(16.dp))
-      Text(stringResource(R.string.home_title), style = MaterialTheme.typography.headlineMedium)
+      Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium)
       Spacer(Modifier.height(8.dp))
       Text(
         stringResource(R.string.settings_header_subtitle),
@@ -249,7 +249,7 @@ private fun SettingsVersionFooter(versionName: String, singBoxLabel: String, onT
       color = Color.Transparent,
     ) {
       Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Text("Demar VPN - $versionName - ${stringResource(R.string.platform_android)}", style = style, textAlign = TextAlign.Center)
+        Text("${stringResource(R.string.app_name)} - $versionName - ${stringResource(R.string.platform_android)}", style = style, textAlign = TextAlign.Center)
         Spacer(Modifier.height(2.dp))
         Text(singBoxLabel, style = style, textAlign = TextAlign.Center)
       }

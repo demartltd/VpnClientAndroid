@@ -1,4 +1,4 @@
-# Ядро VPN: Sing-box (Hysteria2) — Demar VPN Android
+# Ядро VPN: Sing-box (Hysteria2) — Demar Proxy Android
 
 Целевая версия core: **sing-box 1.13.14**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
