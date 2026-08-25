@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
 import com.demar.vpn.BuildConfig
+import com.demar.vpn.R
 import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.device.DeviceIdentityCollector
@@ -344,7 +345,7 @@ object SupportApi {
         withTimeout(3_000L) { AndroidReleaseApi.fetch(UpdateChannelStore.enabled.value) }
       }.getOrNull()
       val deviceText = buildString {
-        appendLine("Demar VPN ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        appendLine("${context.getString(R.string.app_name)} ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
         appendLine("Latest: ${latest?.version ?: "—"}")
         appendLine("UA: ${AuthApi.UserAgent}")
         appendLine("--- device ---")

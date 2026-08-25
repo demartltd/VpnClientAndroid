@@ -47,16 +47,6 @@ object AppLog {
     importPendingNativeDiag(app)
   }
 
-  fun exportMirrorPath(context: Context): String? =
-    context.getExternalFilesDir("demar")?.resolve("demar_app.log")?.absolutePath
-
-  fun syncExportMirror(context: Context) = synchronized(lock) {
-    exportMirror = exportMirror ?: context.applicationContext.getExternalFilesDir("demar")
-      ?.apply { mkdirs() }
-      ?.resolve("demar_app.log")
-    writeMirrorUnlocked()
-  }
-
   fun append(line: String) {
     val t = line.trim()
     if (t.isEmpty() || isVpnTrafficAccessNoise(t)) return

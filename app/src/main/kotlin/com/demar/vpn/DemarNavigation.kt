@@ -55,10 +55,6 @@ internal fun parseIncomingRoute(raw: String): IncomingRoute? {
   return null
 }
 
-fun parseAuthHandoff(uri: Uri): AuthHandoff? {
-  return parseAuthHandoff(ParsedLink.parse(uri.toString()) ?: return null)
-}
-
 private fun parseAuthHandoff(link: ParsedLink): AuthHandoff? {
   if (!link.isDemarScheme()) return null
   if (link.host != "auth") return null
@@ -71,10 +67,6 @@ private fun parseAuthHandoff(link: ParsedLink): AuthHandoff? {
     return AuthHandoff.ExchangeCode(it)
   }
   return null
-}
-
-fun parseSettingsRoute(uri: Uri): SettingsRoute? {
-  return parseSettingsRoute(ParsedLink.parse(uri.toString()) ?: return null)
 }
 
 private fun parsePayReturn(link: ParsedLink): IncomingRoute.PayReturn? {

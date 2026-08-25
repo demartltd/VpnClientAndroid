@@ -392,7 +392,9 @@ class DemarVpnService :
   private fun buildNotification(): Notification {
     val channelId = "demar_vpn"
     val mgr = getSystemService(NotificationManager::class.java)
-    mgr.createNotificationChannel(NotificationChannel(channelId, "Demar VPN", NotificationManager.IMPORTANCE_LOW))
+    mgr.createNotificationChannel(
+      NotificationChannel(channelId, getString(R.string.app_name), NotificationManager.IMPORTANCE_LOW),
+    )
     val pending =
       PendingIntent.getActivity(
         this,
@@ -401,7 +403,7 @@ class DemarVpnService :
         PendingIntent.FLAG_IMMUTABLE,
       )
     return NotificationCompat.Builder(this, channelId)
-      .setContentTitle(getString(R.string.vpn_notification_title))
+      .setContentTitle(getString(R.string.app_name))
       .setContentText(getString(R.string.vpn_notification_running))
       .setSmallIcon(android.R.drawable.ic_dialog_info)
       .setContentIntent(pending)

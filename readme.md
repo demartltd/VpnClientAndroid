@@ -1,4 +1,4 @@
-**Demar VPN Android** — нативный VPN-клиент на Kotlin + Jetpack Compose
+**Demar Proxy Android** — нативный VPN-клиент на Kotlin + Jetpack Compose
 
 Платформа: **Android only**.
 

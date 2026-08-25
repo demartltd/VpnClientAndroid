@@ -61,7 +61,7 @@ fun HomeScreen(
       .mainTabPadding(top = 16.dp),
   ) {
     Text(
-      stringResource(R.string.home_title),
+      stringResource(R.string.app_name),
       modifier = Modifier.fillMaxWidth(),
       textAlign = TextAlign.Center,
       style = MaterialTheme.typography.titleLarge,
