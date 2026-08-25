@@ -72,6 +72,8 @@
     <string name="update_downloading">Загружается обновление %1$s… %2$d%%</string>
     <string name="update_hash_mismatch">Файл обновления не прошёл проверку целостности. Попробуйте позже.</string>
     <string name="update_failed">Не удалось скачать обновление. Попробуйте позже.</string>
+    <string name="update_notification_channel">Обновления приложения</string>
+    <string name="update_notification_ready">Обновление %1$s готово к установке</string>
     <string name="service_singbox">Sing-box</string>
     <string name="service_snack_bar">Snack bar</string>
     <string name="service_internet">Интернет</string>

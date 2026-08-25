@@ -75,12 +75,27 @@ fun AppRoot(
   val updateState by AppUpdate.state.collectAsStateWithLifecycle()
   val authSession by AuthRepository.session.collectAsStateWithLifecycle()
   var showUpdateSheet by remember { mutableStateOf(false) }
-  var autoPromptedVersion by remember { mutableStateOf<String?>(null) }
+  var shownUpdateToken by remember { mutableStateOf<String?>(null) }
+
+  fun presentUpdateSheetIfNeeded(state: AppUpdateState) {
+    val ready = state as? AppUpdateState.Ready ?: return
+    if (shownUpdateToken == ready.release.version) return
+    shownUpdateToken = ready.release.version
+    showUpdateSheet = true
+  }
 
   DisposableEffect(lifecycleOwner) {
     val observer = LifecycleEventObserver { _, event ->
-      if (event == Lifecycle.Event.ON_RESUME) {
-        scope.launch { AppUpdate.checkAndDownload(context) }
+      when (event) {
+        Lifecycle.Event.ON_RESUME -> {
+          presentUpdateSheetIfNeeded(AppUpdate.state.value)
+          scope.launch { AppUpdate.checkAndDownload(context) }
+        }
+        Lifecycle.Event.ON_STOP -> {
+          shownUpdateToken = null
+          showUpdateSheet = false
+        }
+        else -> Unit
       }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
@@ -94,11 +109,7 @@ fun AppRoot(
   }
 
   LaunchedEffect(updateState) {
-    val ready = updateState as? AppUpdateState.Ready ?: return@LaunchedEffect
-    if (autoPromptedVersion != ready.release.version) {
-      autoPromptedVersion = ready.release.version
-      showUpdateSheet = true
-    }
+    presentUpdateSheetIfNeeded(updateState)
   }
 
   Box(Modifier.fillMaxSize()) {
