@@ -21,14 +21,18 @@ data class VpnAccount(
 
 data class VpnNotify(val notifyNews: Boolean, val notifyImportant: Boolean)
 
-data class PromoActivateResult(
+data class PromoResult(
   val result: String,
   val message: String,
   val subscription: String?,
   val expiresAt: String?,
+  val discountPercent: Int? = null,
 ) {
   val isActivated: Boolean get() = result == "activated"
+  val isApplied: Boolean get() = result == "applied"
 }
+
+typealias PromoActivateResult = PromoResult
 
 data class VpnTrafficServer(val name: String, val bytes: Long)
 
@@ -71,18 +75,29 @@ object VpnAccountApi {
       parseTraffic(post("/vpn/traffic", sessionBody(userId, loginAt)))
     }
 
-  suspend fun activatePromo(userId: String, loginAt: String, code: String): PromoActivateResult =
+  suspend fun activatePromo(userId: String, loginAt: String, code: String): PromoResult =
     withContext(Dispatchers.IO) {
-      val body = sessionBody(userId, loginAt)
-      body.put("code", code.trim().uppercase(Locale.ROOT))
-      val json = post("/vpn/promo/activate", body)
-      PromoActivateResult(
-        result = json.optString("result").ifBlank { "not_found" },
-        message = json.optString("message"),
-        subscription = json.optString("subscription").takeIf { it.isNotBlank() && it != "null" },
-        expiresAt = json.optString("expiresAt").takeIf { it.isNotBlank() && it != "null" },
-      )
+      postPromo("/vpn/promo/activate", userId, loginAt, code)
     }
+
+  /** Discount preview for checkout (does not consume the code). */
+  suspend fun applyPromo(userId: String, loginAt: String, code: String): PromoResult =
+    withContext(Dispatchers.IO) {
+      postPromo("/vpn/promo/apply", userId, loginAt, code)
+    }
+
+  private fun postPromo(path: String, userId: String, loginAt: String, code: String): PromoResult {
+    val body = sessionBody(userId, loginAt)
+    body.put("code", code.trim().uppercase(Locale.ROOT))
+    val json = post(path, body)
+    return PromoResult(
+      result = json.optString("result").ifBlank { "not_found" },
+      message = json.optString("message"),
+      subscription = json.optString("subscription").takeIf { it.isNotBlank() && it != "null" },
+      expiresAt = json.optString("expiresAt").takeIf { it.isNotBlank() && it != "null" },
+      discountPercent = json.optInt("discountPercent").takeIf { json.has("discountPercent") },
+    )
+  }
 
   fun parseAccount(json: JSONObject): VpnAccount = VpnAccount(
     notifyNews = json.optBoolean("notifyNews", true),

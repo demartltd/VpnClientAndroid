@@ -26,6 +26,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.demar.vpn.AccountSheet
 import com.demar.vpn.AppNavRoute
 import com.demar.vpn.SettingsRoute
 import com.demar.vpn.SupportRoute
@@ -56,6 +57,12 @@ fun AppRoot(
   pendingSettingsRoute: SettingsRoute? = null,
   settingsRouteRequestTick: Int = 0,
   onConsumePendingSettingsRoute: () -> Unit = {},
+  pendingAccountSheet: AccountSheet? = null,
+  accountRouteRequestTick: Int = 0,
+  onConsumePendingAccountSheet: () -> Unit = {},
+  pendingPayReturn: Boolean? = null,
+  payReturnRequestTick: Int = 0,
+  onConsumePendingPayReturn: () -> Unit = {},
 ) {
   val navController = rememberNavController()
   val snackbarHost = remember { SnackbarHostState() }
@@ -106,6 +113,12 @@ fun AppRoot(
           pendingSettingsRoute = pendingSettingsRoute,
           settingsRouteRequestTick = settingsRouteRequestTick,
           onConsumePendingSettingsRoute = onConsumePendingSettingsRoute,
+          pendingAccountSheet = pendingAccountSheet,
+          accountRouteRequestTick = accountRouteRequestTick,
+          onConsumePendingAccountSheet = onConsumePendingAccountSheet,
+          pendingPayReturn = pendingPayReturn,
+          payReturnRequestTick = payReturnRequestTick,
+          onConsumePendingPayReturn = onConsumePendingPayReturn,
           updateState = updateState,
           onOpenUpdateSheet = { showUpdateSheet = true },
           onOpenSettingsRoute = { navController.openOverlay(it.toNavRoute()) },

@@ -17,7 +17,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore, TunGroupsApi
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
-│   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic)
+│   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic, promo); PayApi (/vpn/pay/plans, create)
 │   ├── support/                 # SupportApi + cache/unread; csapi.demar.cc (channel android, sourceId=2; album ≤10 WebP)
 │   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
 │   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateChannelStore (stable/beta)
@@ -29,14 +29,14 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── AppRoot.kt
 │   ├── SingBoxVersion.kt
 │   ├── theme/
-│   ├── scaffold/AppScaffold.kt
+│   ├── scaffold/AppScaffold.kt  # tabs + pay flow sheets (checkout / compare / result)
 │   ├── components/              # SettingsActionButton, DemarSnackbar, …
 │   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
 │   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
 │   ├── settings/                # App settings, TunSettings, Documents, Service menu
 │   │   └── support/             # SupportScreen, ChatPane, Composer, Bubble, Attach, UiUtils
-│   ├── account/                 # AccountScreen + TrafficPieChart
+│   ├── account/                 # AccountScreen + checkout/compare/pay result + TrafficPieChart
 │   └── auth/                    # LoginBottomSheet, LoginPanel, OtpInput
 └── vpn/                         # Libbox (из demar_vpn)
 ```
@@ -48,6 +48,7 @@ app/src/test/kotlin/com/demar/vpn/VpnPipelineTest.kt
 app/src/test/kotlin/com/demar/vpn/TunGroupsParseTest.kt
 app/src/test/kotlin/com/demar/vpn/ServersApiParseTest.kt
 app/src/test/kotlin/com/demar/vpn/VpnAccountApiTest.kt
+app/src/test/kotlin/com/demar/vpn/PayApiParseTest.kt
 app/src/test/kotlin/com/demar/vpn/AppUpdateTest.kt
 ```
 
