@@ -43,6 +43,15 @@ def cmd_connected(nodes: list[ET.Element]) -> None:
     print("1" if ("Подключено" in texts or "Connected" in texts) else "0")
 
 
+def cmd_signed_in(nodes: list[ET.Element]) -> None:
+    for node in nodes:
+        text = (node.attrib.get("text") or node.attrib.get("content-desc") or "").lower()
+        if text in ("sign out", "выйти"):
+            print("1")
+            return
+    print("0")
+
+
 def cmd_permission(nodes: list[ET.Element]) -> None:
     for node in nodes:
         text = (node.attrib.get("text") or "").lower()
@@ -201,7 +210,7 @@ def cmd_server_names(nodes: list[ET.Element]) -> None:
 def main() -> None:
     if len(sys.argv) < 2:
         print(
-            "usage: ui_parse.py <connected|permission|toggle|tab|server|server_names|label> [arg]",
+            "usage: ui_parse.py <connected|signed_in|permission|toggle|tab|server|server_names|label> [arg]",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -215,6 +224,8 @@ def main() -> None:
     walk(root, nodes)
     if cmd == "connected":
         cmd_connected(nodes)
+    elif cmd == "signed_in":
+        cmd_signed_in(nodes)
     elif cmd == "permission":
         cmd_permission(nodes)
     elif cmd == "toggle":

@@ -39,6 +39,7 @@ key.properties
 # Python tooling
 .venv/
 scripts/build/
+scripts/logo_android_512.png
 
 # Docs (generated screenshots)
 docs/

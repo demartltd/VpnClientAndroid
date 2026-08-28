@@ -23,7 +23,7 @@ Usage: screenshots.sh [-s serial] [-o dir] [--no-build] [--keep-emulator] [-h]
 
   -s  ADB device serial
   -o  Output directory (default: docs/screenshots)
-  --no-build         Skip gradlew installDebug
+  --no-build         Skip gradlew installDebug (still installs if this script started the emulator)
   --keep-emulator    Do not kill emulator started by this script
 EOF
   exit "${1:-0}"
@@ -40,10 +40,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if ! command -v adb &>/dev/null; then
-  echo "Error: adb not found." >&2
-  exit 1
-fi
+command -v adb &>/dev/null || { echo "Error: adb not found." >&2; exit 1; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
@@ -60,23 +57,28 @@ ui_dump() {
 ui_query() {
   local xml
   xml="$(ui_dump)"
-  [[ -n "$xml" ]] || { echo ""; return; }
+  [[ -n "$xml" ]] || { echo ""; return 0; }
   printf '%s' "$xml" | python3 "$UI_PARSE" "$@"
 }
-
-tap_xy() { "${ADB[@]}" shell input tap "$1" "$2"; }
 
 tap_query() {
   local pos="$1"
   [[ -n "$pos" ]] || return 1
   IFS=',' read -r x y <<<"$pos"
-  tap_xy "$x" "$y"
+  "${ADB[@]}" shell input tap "$x" "$y"
 }
 
 tap_tab() {
-  local idx="$1" pos
-  pos="$(ui_query tab "$idx")"
-  tap_query "$pos" || return 1
+  local idx="$1" tries=0 pos
+  while (( tries < 20 )); do
+    pos="$(ui_query tab "$idx")"
+    if [[ -n "$pos" ]]; then
+      tap_query "$pos" && return 0
+    fi
+    sleep_ms 500
+    tries=$((tries + 1))
+  done
+  return 1
 }
 
 tap_toggle() {
@@ -84,13 +86,16 @@ tap_toggle() {
   raw="$(ui_query toggle)" || return 1
   [[ -n "$raw" ]] || return 1
   IFS=',' read -r cx cy _ <<<"$raw"
-  tap_xy "$cx" "$cy"
+  "${ADB[@]}" shell input tap "$cx" "$cy"
 }
 
 dismiss_vpn_permission() {
   local pos
   pos="$(ui_query permission)"
-  [[ -n "$pos" ]] && tap_query "$pos" && sleep_ms 1500
+  if [[ -n "$pos" ]]; then
+    tap_query "$pos"
+    sleep_ms 1500
+  fi
 }
 
 wait_connected() {
@@ -121,16 +126,14 @@ ensure_device() {
   if "${ADB[@]}" get-state 2>/dev/null | grep -q '^device$'; then
     return 0
   fi
-  if [[ ! -x "$EMULATOR" ]]; then
-    echo "Error: no device and emulator not found at $EMULATOR" >&2
-    exit 1
-  fi
+  [[ -x "$EMULATOR" ]] || { echo "Error: no device and no emulator at $EMULATOR" >&2; exit 1; }
   echo "Starting emulator ${AVD}..."
   "$EMULATOR" -avd "$AVD" -no-snapshot-load -no-boot-anim -gpu host >/dev/null 2>&1 &
   STARTED_EMU=1
   adb wait-for-device
   _adb_common_init
   wait_boot
+  echo "Emulator ready — will install latest build."
 }
 
 prepare_device() {
@@ -140,69 +143,36 @@ prepare_device() {
   done
 }
 
-ensure_local_properties() {
+build_and_install() {
   local props="$REPO_ROOT/local.properties"
   [[ -f "$props" ]] || printf 'sdk.dir=%s\n' "$SDK" >"$props"
-}
-
-build_and_install() {
-  ensure_local_properties
-  pushd "$REPO_ROOT" >/dev/null
-  ./gradlew :app:installDebug
-  popd >/dev/null
+  echo "Building and installing debug APK..."
+  (cd "$REPO_ROOT" && ./gradlew :app:installDebug)
 }
 
 launch_app() {
   "${ADB[@]}" shell am force-stop "$PACKAGE" >/dev/null 2>&1 || true
-  "${ADB[@]}" shell am start -n "$ACTIVITY" >/dev/null
+  "${ADB[@]}" shell am start -n "$ACTIVITY" >/dev/null 2>&1 || true
   sleep_ms 2000
-  local pos
-  pos="$(ui_query permission)"
-  if [[ -n "$pos" ]]; then
-    tap_query "$pos"
-    sleep_ms 1500
-  fi
+  dismiss_vpn_permission
 }
 
 capture() {
-  local file="$1"
-  mkdir -p "$(dirname "$file")"
-  "${ADB[@]}" exec-out screencap -p >"$file"
+  mkdir -p "$(dirname "$1")"
+  "${ADB[@]}" exec-out screencap -p >"$1"
 }
 
-send_digits() {
-  local code="$1" i d
-  for (( i=0; i<${#code}; i++ )); do
-    d="${code:i:1}"
-    "${ADB[@]}" shell input keyevent $((7 + d))
-    sleep_ms 80
-  done
-}
-
-wait_for_label() {
-  local label="$1" tries=0
-  while (( tries < 25 )); do
-    [[ -n "$(ui_query label "$label")" ]] && return 0
-    sleep_ms 300
-    tries=$((tries + 1))
-  done
-  return 1
-}
-
-mock_login() {
-  tap_tab 3 || return 1
-  sleep_ms 1000
-  tap_query "$(ui_query label Email)" || tap_xy 540 1100
-  sleep_ms 400
-  "${ADB[@]}" shell input text 'demo@demar.test' >/dev/null
-  sleep_ms 400
-  tap_query "$(ui_query label Продолжить)" || return 1
-  sleep_ms 1000
-  send_digits 123456
-  sleep_ms 1200
-  send_digits 123456
-  sleep_ms 1000
-  wait_for_label demo_user
+try_vpn_connected() {
+  local out="$1"
+  tap_toggle || { echo "Skip $out (toggle not found)"; return 0; }
+  dismiss_vpn_permission
+  if wait_connected; then
+    sleep_ms 1500
+    capture "$out"
+    echo "OK $out"
+  else
+    echo "Skip $out (VPN connect failed)"
+  fi
 }
 
 cleanup() {
@@ -214,24 +184,13 @@ trap cleanup EXIT
 ensure_device
 adb_require_device
 prepare_device
-[[ "$DO_BUILD" == 1 ]] && build_and_install
+if [[ "$DO_BUILD" == 1 || -n "$STARTED_EMU" ]]; then
+  build_and_install
+fi
 launch_app
-
 mkdir -p "$OUT_DIR"
 
-mock_login || { echo "Error: mock login failed." >&2; exit 1; }
-tap_xy 540 350
-sleep_ms 500
-capture "$OUT_DIR/04-account.png"
-echo "OK $OUT_DIR/04-account.png"
-
-declare -a SHOTS=(
-  "01-home:0"
-  "02-servers:1"
-  "03-settings:2"
-)
-
-for entry in "${SHOTS[@]}"; do
+for entry in "04-account:3" "01-home:0" "02-servers:1" "03-settings:2"; do
   name="${entry%%:*}"
   tab="${entry##*:}"
   tap_tab "$tab"
@@ -239,15 +198,7 @@ for entry in "${SHOTS[@]}"; do
   out="$OUT_DIR/${name}.png"
   capture "$out"
   echo "OK $out"
-  if [[ "$name" == "01-home" ]]; then
-    tap_toggle || { echo "Error: VPN toggle not found." >&2; exit 1; }
-    dismiss_vpn_permission
-    wait_connected || { echo "Error: VPN connect failed." >&2; exit 1; }
-    sleep_ms 1500
-    out="$OUT_DIR/05-home-connected.png"
-    capture "$out"
-    echo "OK $out"
-  fi
+  [[ "$name" == "01-home" ]] && try_vpn_connected "$OUT_DIR/05-home-connected.png"
 done
 
 echo ""
