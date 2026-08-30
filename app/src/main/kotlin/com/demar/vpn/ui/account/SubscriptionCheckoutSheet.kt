@@ -1,11 +1,8 @@
 package com.demar.vpn.ui.account
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,15 +41,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -68,6 +62,8 @@ import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSession
 import com.demar.vpn.ui.components.DemarSnackbar
+import com.demar.vpn.ui.components.SegmentBar
+import com.demar.vpn.ui.components.SegmentOption
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.openAuthUrl
 import kotlinx.coroutines.launch
@@ -210,7 +206,13 @@ fun SubscriptionCheckoutSheet(
         CurrencyCircles(currency) { currency = it }
       }
       Spacer(Modifier.height(14.dp))
-      TierSegmentBar(tier) { tier = it }
+      SegmentBar(
+        options = listOf(SegmentOption("plus", "Plus"), SegmentOption("vip", "VIP")),
+        selectedId = tier,
+        onSelect = { tier = it },
+        height = 40.dp,
+        shape = MaterialTheme.shapes.small,
+      )
       Spacer(Modifier.height(14.dp))
       Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Periods.forEach { p ->
@@ -367,68 +369,6 @@ private fun CurrencyCircles(selected: String, onSelect: (String) -> Unit) {
           label,
           style = MaterialTheme.typography.titleMedium,
           color = if (on) cs.onPrimary else cs.onSurfaceVariant,
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun TierSegmentBar(selected: String, onSelect: (String) -> Unit) {
-  val cs = MaterialTheme.colorScheme
-  val shape = MaterialTheme.shapes.small
-  val view = LocalView.current
-  val options = remember { listOf("plus" to "Plus", "vip" to "VIP") }
-  val optionIds = remember(options) { options.map { it.first } }
-  val selectedState = rememberUpdatedState(selected)
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .height(40.dp)
-      .clip(shape)
-      .background(cs.surfaceContainerHighest)
-      .border(1.dp, cs.outline.copy(alpha = 0.2f), shape)
-      .pointerInput(optionIds) {
-        // iOS CheckoutSegmentBar: DragGesture(minimumDistance: 0)
-        awaitEachGesture {
-          val down = awaitFirstDown()
-          var lastId: String? = null
-          fun pick(x: Float) {
-            val w = size.width.toFloat()
-            if (w <= 0f || optionIds.isEmpty()) return
-            val index = ((x / w) * optionIds.size).toInt().coerceIn(0, optionIds.lastIndex)
-            val id = optionIds[index]
-            if (id == lastId) return
-            lastId = id
-            if (id == selectedState.value) return
-            onSelect(id)
-            view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-          }
-          pick(down.position.x)
-          while (true) {
-            val event = awaitPointerEvent()
-            val change = event.changes.firstOrNull { it.id == down.id } ?: break
-            if (!change.pressed) break
-            pick(change.position.x)
-            change.consume()
-          }
-        }
-      },
-  ) {
-    options.forEach { (id, title) ->
-      val on = selected == id
-      Box(
-        Modifier
-          .weight(1f)
-          .fillMaxSize()
-          .background(if (on) cs.primary.copy(alpha = 0.18f) else Color.Transparent),
-        contentAlignment = Alignment.Center,
-      ) {
-        Text(
-          title,
-          style = MaterialTheme.typography.titleSmall,
-          color = if (on) cs.onSurface else cs.onSurfaceVariant,
-          textAlign = TextAlign.Center,
         )
       }
     }
