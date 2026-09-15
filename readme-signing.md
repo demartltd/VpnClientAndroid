@@ -32,6 +32,8 @@ cp key.properties.example key.properties
 
 ## Сборка
 
+Release: **R8 minify + resource shrink** (`isMinifyEnabled` / `isShrinkResources`). Mapping: `app/build/outputs/mapping/release/`.
+
 ```bash
 ./gradlew :app:assembleRelease
 # или
