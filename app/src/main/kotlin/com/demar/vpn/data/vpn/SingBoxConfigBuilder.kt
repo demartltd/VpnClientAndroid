@@ -40,7 +40,8 @@ object SingBoxConfigBuilder {
       "clash_api" to jObj(
         "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
       ),
-    ).also { if (ruleSets.isNotEmpty()) it.put("cache_file", jObj("enabled" to true)) }
+      "cache_file" to jObj("enabled" to true, "store_dns" to true),
+    )
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
       "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets),
@@ -59,7 +60,13 @@ object SingBoxConfigBuilder {
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
       ),
       "experimental" to experimental,
-    )
+    ).also { cfg ->
+      if (ruleSets.isEmpty()) return@also
+      cfg.put(
+        "http_clients",
+        jArr(jObj("tag" to SingBoxTags.HTTP_RS_DL, "detour" to SingBoxTags.PROXY)),
+      )
+    }
   }
 
   private fun makeDns(
@@ -85,6 +92,7 @@ object SingBoxConfigBuilder {
     ),
     "final" to dnsFinal,
     "strategy" to "ipv4_only",
+    "optimistic" to true,
   )
 
   private fun makeRoute(
@@ -112,6 +120,7 @@ object SingBoxConfigBuilder {
     ),
   ).also { route ->
     if (ruleSets.isEmpty()) return@also
+    route.put("default_http_client", SingBoxTags.HTTP_RS_DL)
     route.put(
       "rule_set",
       jArr(*ruleSets.map { remoteRuleSet(it.tag, it.url) }.toTypedArray()),
@@ -123,7 +132,6 @@ object SingBoxConfigBuilder {
     "type" to "remote",
     "format" to "binary",
     "url" to url,
-    "download_detour" to SingBoxTags.PROXY,
   )
 
   private fun makeTunInbound(

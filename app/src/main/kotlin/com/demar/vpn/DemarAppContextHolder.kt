@@ -38,7 +38,6 @@ internal object DemarAppContextHolder {
     options.debug = false
     Libbox.setLocale(Locale.getDefault().toLanguageTag().replace("-", "_"))
     Libbox.setup(options)
-    Libbox.redirectStderr(File(work, "stderr.log").absolutePath)
     workingDir = work
     libboxReady = true
   }

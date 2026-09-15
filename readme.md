@@ -4,7 +4,7 @@
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
 
-Ядро: **sing-box 1.13.14** (**Hysteria2**). Документация: https://sing-box.sagernet.org/
+Ядро: **sing-box 1.14.1** (**Hysteria2**). Документация: https://sing-box.sagernet.org/
 
 **UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot`.
 

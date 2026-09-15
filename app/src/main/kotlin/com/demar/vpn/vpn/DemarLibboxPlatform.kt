@@ -11,17 +11,21 @@ import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.system.OsConstants
-import android.util.Base64
 import androidx.annotation.RequiresApi
 import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
+import io.nekohasekai.libbox.BridgeOptions
+import io.nekohasekai.libbox.BridgeSession
 import io.nekohasekai.libbox.ConnectionOwner
 import io.nekohasekai.libbox.InterfaceUpdateListener
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.LocalDNSTransport
+import io.nekohasekai.libbox.NeighborUpdateListener
 import io.nekohasekai.libbox.NetworkInterfaceIterator
 import io.nekohasekai.libbox.Notification
 import io.nekohasekai.libbox.PlatformInterface
+import io.nekohasekai.libbox.PlatformUser
+import io.nekohasekai.libbox.ShellSession
 import io.nekohasekai.libbox.StringIterator
 import io.nekohasekai.libbox.TunOptions
 import io.nekohasekai.libbox.WIFIState
@@ -29,7 +33,6 @@ import java.net.Inet6Address
 import java.net.InetSocketAddress
 import java.net.InterfaceAddress
 import java.net.NetworkInterface
-import java.security.KeyStore
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import io.nekohasekai.libbox.NetworkInterface as LibboxNetworkInterface
@@ -111,7 +114,10 @@ class DemarLibboxPlatform(
     }
 
     if (options.autoRoute) {
-      builder.addDnsServer(options.dnsServerAddress.value)
+      if (options.dnsMode.value != Libbox.DNSModeDisabled) {
+        val dns = options.dnsServerAddress
+        while (dns.hasNext()) builder.addDnsServer(dns.next())
+      }
 
       val inet4Route = options.inet4RouteAddress
       if (inet4Route.hasNext()) {
@@ -210,6 +216,15 @@ class DemarLibboxPlatform(
         }
       item.metered = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
       item.dnsServer = StringArray(link.dnsServers.mapNotNull { it.hostAddress }.iterator())
+      item.gateway =
+        StringArray(
+          link.routes
+            .filter { it.destination.prefixLength == 0 }
+            .mapNotNull { it.gateway }
+            .filterNot { it.isAnyLocalAddress }
+            .mapNotNull { it.hostAddress }
+            .iterator(),
+        )
       item.addresses =
         StringArray(sys.interfaceAddresses.map { it.toPrefix() }.iterator())
       var flags = 0
@@ -235,25 +250,41 @@ class DemarLibboxPlatform(
 
   override fun localDNSTransport(): LocalDNSTransport? = LocalResolver
 
-  override fun systemCertificates(): StringIterator {
-    val certificates = mutableListOf<String>()
-    runCatching {
-      val keyStore = KeyStore.getInstance("AndroidCAStore")
-      keyStore.load(null, null)
-      val aliases = keyStore.aliases()
-      while (aliases.hasMoreElements()) {
-        val cert = keyStore.getCertificate(aliases.nextElement())
-        certificates.add(
-          "-----BEGIN CERTIFICATE-----\n" +
-            Base64.encodeToString(cert.encoded, Base64.NO_WRAP) +
-            "\n-----END CERTIFICATE-----",
-        )
-      }
-    }
-    return StringArray(certificates.iterator())
-  }
-
   override fun sendNotification(notification: Notification) {}
+
+  override fun cancelNotification(identifier: String, typeID: Int) {}
+
+  override fun startNeighborMonitor(listener: NeighborUpdateListener) {}
+
+  override fun closeNeighborMonitor(listener: NeighborUpdateListener) {}
+
+  override fun registerMyInterface(name: String) {}
+
+  override fun usePlatformShell(): Boolean = false
+
+  override fun checkPlatformShell(): Unit = error("not supported")
+
+  override fun openShellSession(
+    user: PlatformUser,
+    command: String,
+    environ: StringIterator,
+    term: String,
+    rows: Int,
+    cols: Int,
+  ): ShellSession = error("not supported")
+
+  override fun lookupUser(username: String): PlatformUser = error("not supported")
+
+  override fun lookupSFTPServer(): String = error("not supported")
+
+  override fun readSystemSSHHostKey(): String = error("not supported")
+
+  override fun tailscaleHostname(): String =
+    listOf(Build.MANUFACTURER, Build.MODEL).filter { it.isNotBlank() }.joinToString(" ").ifBlank { "android" }
+
+  override fun usePlatformBridge(): Boolean = false
+
+  override fun createBridge(options: BridgeOptions): BridgeSession = error("not supported")
 
   class StringArray(private val iterator: Iterator<String>) : StringIterator {
     override fun len(): Int = 0
