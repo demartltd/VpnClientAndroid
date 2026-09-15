@@ -14,8 +14,6 @@ object TunSettingsStore {
   private const val KeyDisabledGroups = "tun_disabled_groups"
   private const val KeyRulesEnabled = "tun_rules_enabled"
   private const val KeyGroupsJson = "tun_groups_json"
-  private const val KeyTunnelFingerprint = "tunnel_tun_fingerprint"
-  private const val KeyPendingTunnelRefresh = "pending_tunnel_refresh"
 
   private val _settings = MutableStateFlow(TunSettings())
   val settings: StateFlow<TunSettings> = _settings.asStateFlow()
@@ -110,24 +108,6 @@ object TunSettingsStore {
     val tun = load(context)
     val groups = if (_groups.value.isEmpty()) loadCachedGroups(context) else _groups.value
     return tun.effectivePackages(groups, isFree)
-  }
-
-  fun setTunnelFingerprint(context: Context, fingerprint: String) {
-    prefs(context).edit().putString(KeyTunnelFingerprint, fingerprint).apply()
-  }
-
-  fun tunnelFingerprint(context: Context): String? =
-    prefs(context).getString(KeyTunnelFingerprint, null)?.takeIf { it.isNotEmpty() }
-
-  fun markPendingTunnelRefresh(context: Context) {
-    prefs(context).edit().putBoolean(KeyPendingTunnelRefresh, true).apply()
-  }
-
-  fun consumePendingTunnelRefresh(context: Context): Boolean {
-    val prefs = prefs(context)
-    if (!prefs.getBoolean(KeyPendingTunnelRefresh, false)) return false
-    prefs.edit().putBoolean(KeyPendingTunnelRefresh, false).apply()
-    return true
   }
 
   private fun prefs(context: Context) =
