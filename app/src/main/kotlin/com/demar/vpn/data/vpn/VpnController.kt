@@ -144,34 +144,29 @@ class VpnController(private val context: Context) {
     if (isFreeSubscription()) return
     TunSettingsStore.addPackage(context, packageName)
     AppLog.append("tun_apps=add $packageName")
-    reconnectForTunChange()
   }
 
   fun setBypassPackages(packages: List<String>) {
     if (isFreeSubscription()) return
     TunSettingsStore.setPackages(context, packages)
     AppLog.append("tun_apps=${tunFingerprint()}")
-    reconnectForTunChange()
   }
 
   fun removeBypassPackage(packageName: String) {
     TunSettingsStore.removePackage(context, packageName)
     AppLog.append("tun_apps=remove $packageName")
-    reconnectForTunChange()
   }
 
   fun setTunGroupEnabled(groupId: String, enabled: Boolean) {
     if (isFreeSubscription()) return
     TunSettingsStore.setGroupEnabled(context, groupId, enabled)
     AppLog.append("tun_groups=${if (enabled) "on" else "off"} $groupId")
-    reconnectForTunChange()
   }
 
   fun setTunRulesEnabled(enabled: Boolean) {
     if (isFreeSubscription()) return
     TunSettingsStore.setRulesEnabled(context, enabled)
     AppLog.append("tun_rules=${if (enabled) "on" else "off"}")
-    reconnectForTunChange()
   }
 
   fun refreshTunGroups() {
@@ -179,26 +174,6 @@ class VpnController(private val context: Context) {
       val payload = TunGroupsApi.fetch() ?: return@launch
       TunSettingsStore.cacheGroups(context, payload.groups, payload.raw)
       AppLog.append("tun_groups: loaded ${payload.groups.size}")
-      syncTunSettings()
-    }
-  }
-
-  fun onTunSettingsChanged() {
-    reconnectForTunChange()
-  }
-
-  /** Cold start / resume: reconnect if tunnel fingerprint stale. */
-  fun syncTunSettings() {
-    val pending = TunSettingsStore.consumePendingTunnelRefresh(context)
-    val tunnelFp = TunSettingsStore.tunnelFingerprint(context)
-    val wantFp = tunnelFingerprint(_selectedProfile.value)
-    if (!pending && (tunnelFp == null || tunnelFp == wantFp)) return
-    when (_state.value) {
-      VpnState.Connected, VpnState.Connecting -> {
-        AppLog.append("tun_settings sync fingerprint changed")
-        reconnectForTunChange()
-      }
-      else -> TunSettingsStore.setTunnelFingerprint(context, wantFp)
     }
   }
 
@@ -213,24 +188,9 @@ class VpnController(private val context: Context) {
     return tun.fingerprint(groups, isFreeSubscription())
   }
 
-  private fun tunnelFingerprint(profile: ServerProfile?): String {
-    val rs = profile?.connectPlan?.bypassFingerprint().orEmpty()
-    return "${tunFingerprint()};$rs"
-  }
-
   private fun effectiveTunSettings(): TunSettings {
     val packages = TunSettingsStore.effectiveBypassPackages(context, isFreeSubscription())
     return TunSettings(bypassPackages = packages)
-  }
-
-  private fun reconnectForTunChange() {
-    when (_state.value) {
-      VpnState.Connected, VpnState.Connecting -> {
-        reconnectAfterDisconnect = true
-        stopVpn(clearReconnect = false)
-      }
-      else -> Unit
-    }
   }
 
   fun clearServers() {
@@ -377,22 +337,15 @@ class VpnController(private val context: Context) {
   }
 
   fun syncPlatformState() {
-    if (connectJob?.isActive == true) {
-      syncTunSettings()
-      return
-    }
+    if (connectJob?.isActive == true) return
     when (_state.value) {
-      VpnState.Connecting, VpnState.Disconnecting -> {
-        syncTunSettings()
-        return
-      }
+      VpnState.Connecting, VpnState.Disconnecting -> return
       else -> Unit
     }
     val snap = VpnEventStream.vpnStateSnapshot(context)
     if (snap != null) {
       parseVpnStateEvent(snap)?.let { applyStateEvent(it) }
     }
-    syncTunSettings()
   }
 
   /** Home toggle: tap while connecting cancels; tap while connected disconnects. */
@@ -523,7 +476,6 @@ class VpnController(private val context: Context) {
       TunGroupsApi.fetch()?.let { TunSettingsStore.cacheGroups(context, it.groups, it.raw) }
       val tun = effectiveTunSettings()
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
-      TunSettingsStore.setTunnelFingerprint(context, tunnelFingerprint(profile))
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
