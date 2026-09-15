@@ -343,6 +343,12 @@ class DemarVpnService :
     }
   }
 
+  override fun connectSSHAgent(): Int = -1
+
+  override fun triggerNativeCrash() {
+    error("not supported")
+  }
+
   private fun emitLogLine(line: String) {
     VpnEventStream.emit(mapOf("type" to "log", "line" to line))
   }

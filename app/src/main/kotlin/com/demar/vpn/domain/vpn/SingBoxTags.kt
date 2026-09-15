@@ -11,4 +11,6 @@ object SingBoxTags {
   const val DIRECT = "direct"
   const val DNS_DIRECT = "dns-direct"
   const val DNS_REMOTE = "dns-remote"
+  /** Shared HTTP client for remote rule-set downloads (sing-box 1.14+). */
+  const val HTTP_RS_DL = "rs-dl"
 }

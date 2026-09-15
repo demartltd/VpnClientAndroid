@@ -1,12 +1,13 @@
 # Ядро VPN: Sing-box (Hysteria2) — Demar Proxy Android
 
-Целевая версия core: **sing-box 1.13.14**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
+Целевая версия core: **sing-box 1.14.1**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 
 - [Hysteria2 outbound](https://sing-box.sagernet.org/configuration/outbound/hysteria2/)
 - [DNS rule action](https://sing-box.sagernet.org/configuration/dns/rule_action/) (since 1.11.0)
 - [Dial Fields](https://sing-box.sagernet.org/configuration/shared/dial/) — `domain_resolver`
+- [HTTP Client](https://sing-box.sagernet.org/configuration/shared/http-client/) — remote rule-set download (since 1.14.0)
 
 Платформа: **Android only** (нативный Kotlin).
 
@@ -62,7 +63,11 @@ Uplink preflight: DNS-only (QUIC/UDP).
 | `dns-direct` | `type: local` | bootstrap, domain resolver |
 | `dns-remote` | HTTPS `1.1.1.1` | DoH через proxy |
 
-Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `final: dns-remote`, `strategy: ipv4_only`.
+Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `final: dns-remote`, `strategy: ipv4_only`, `optimistic: true` (1.14+).
+
+`experimental.cache_file`: всегда `enabled` + `store_dns` — DNS-кэш переживает reconnect.
+
+Hysteria2: Chrome QUIC parrot **включён по умолчанию** в 1.14 (поле в JSON не нужно). Серверы с Ed25519-сертификатом сломают handshake → тогда `disable_chrome_parrot` (сейчас не используем).
 
 ---
 
@@ -80,7 +85,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 - geosite → DNS `dns-direct` + route `direct`
 - geoip → route `direct`
 - **не** эмитить TUN `route_exclude_address_set` (VpnService / DeadSystemException)
-- `download_detour` → `proxy`
+- download: top-level `http_clients` (`rs-dl` → `detour: proxy`) + `route.default_http_client` (не `download_detour`)
 
 ### TunSettings (локально)
 

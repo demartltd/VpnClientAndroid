@@ -316,17 +316,30 @@ class VpnPipelineTest {
       assertTrue(rs.tag, json.contains(rs.tag))
       assertTrue(rs.url, json.contains(rs.url))
     }
-    assertTrue(json.contains("\"cache_file\""))
     assertFalse(json.contains("route_exclude_address_set"))
-    assertTrue(JSONObject(json).getJSONObject("route").has("rule_set"))
+    assertFalse(json.contains("download_detour"))
+    val cfg = JSONObject(json)
+    assertTrue(cfg.getJSONObject("dns").optBoolean("optimistic"))
+    val cache = cfg.getJSONObject("experimental").getJSONObject("cache_file")
+    assertTrue(cache.getBoolean("enabled"))
+    assertTrue(cache.getBoolean("store_dns"))
+    assertTrue(cfg.has("http_clients"))
+    assertEquals(SingBoxTags.HTTP_RS_DL, cfg.getJSONObject("route").getString("default_http_client"))
+    assertTrue(cfg.getJSONObject("route").has("rule_set"))
   }
 
   @Test
   fun tunSettings_emptyRuleSets_hasNoRuleSets() {
     val json = SingBoxConfigBuilder.buildTunConfigJson(fixtureServers[0].connectPlan)
     assertFalse(json.contains("geoip-ru"))
-    assertFalse(json.contains("\"cache_file\""))
-    assertFalse(JSONObject(json).getJSONObject("route").has("rule_set"))
+    assertFalse(json.contains("http_clients"))
+    val cfg = JSONObject(json)
+    assertTrue(cfg.getJSONObject("dns").optBoolean("optimistic"))
+    val cache = cfg.getJSONObject("experimental").getJSONObject("cache_file")
+    assertTrue(cache.getBoolean("enabled"))
+    assertTrue(cache.getBoolean("store_dns"))
+    assertFalse(cfg.getJSONObject("route").has("rule_set"))
+    assertFalse(cfg.getJSONObject("route").has("default_http_client"))
   }
 
   @Test
