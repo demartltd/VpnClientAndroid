@@ -113,7 +113,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 Mixed `127.0.0.1:10808` (`SingBoxTags.diagInbound`):
 
-- Post-connect: `VpnTunnelProbe` — HTTP сразу после diag TCP (adaptive backoff, без fixed settle)
+- Post-connect: `VpnTunnelProbe` — HTTP сразу после diag TCP (`generate_204` → CF trace, timeout 1.5s, adaptive backoff)
 - Egress: `NetworkDiagnostics` (roadmap)
 - Native snapshot: `getEgressRouteSnapshot` (`osVpnActive`, `demarConnected`, `diagProxyReady`)
 

@@ -17,7 +17,7 @@ internal object VpnTunnelProbe {
 
   val probeBootstrapDomains = listOf(PROBE_HOST, FALLBACK_HOST_GOOGLE)
 
-  private val PROBE_URLS = listOf(PROBE_URL, FALLBACK_URL_GOOGLE)
+  private val PROBE_URLS = listOf(FALLBACK_URL_GOOGLE, PROBE_URL)
 
   private const val READY_POLL_MS = 100L
   private const val TCP_PROBE_MS = 500
@@ -25,7 +25,7 @@ internal object VpnTunnelProbe {
   private const val HTTP_WARMUP_MS = 1_200L
   private val HTTP_BACKOFF_MS = longArrayOf(0L, 50L, 100L, 200L, 300L)
 
-  const val TIMEOUT_MS = 5_000
+  const val TIMEOUT_MS = 1_500
 
   enum class ReadyResult { Ok, TcpFail, HttpFail }
 
