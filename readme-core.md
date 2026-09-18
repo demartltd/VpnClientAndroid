@@ -86,6 +86,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 - geoip → route `direct`
 - **не** эмитить TUN `route_exclude_address_set` (VpnService / DeadSystemException)
 - download: top-level `http_clients` (`rs-dl` → `detour: proxy`) + `route.default_http_client` (не `download_detour`)
+- cold start: `RuleSetPrefetch` скачивает `.srs` до TUN → remote `initial_path` (sing-box 1.14); фон — через `rs-dl`
 
 ### TunSettings (локально)
 

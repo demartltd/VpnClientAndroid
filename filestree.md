@@ -14,7 +14,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   │   └── tun/                 # TunSettings, TunGroup, effectivePackages
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, TunSettingsStore, TunGroupsApi
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, RuleSetPrefetch, TunSettingsStore, TunGroupsApi
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic, promo); PayApi (/vpn/pay/plans, create)
