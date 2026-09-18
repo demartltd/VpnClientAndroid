@@ -123,15 +123,16 @@ object SingBoxConfigBuilder {
     route.put("default_http_client", SingBoxTags.HTTP_RS_DL)
     route.put(
       "rule_set",
-      jArr(*ruleSets.map { remoteRuleSet(it.tag, it.url) }.toTypedArray()),
+      jArr(*ruleSets.map { remoteRuleSet(it) }.toTypedArray()),
     )
   }
 
-  private fun remoteRuleSet(tag: String, url: String) = jObj(
-    "tag" to tag,
+  private fun remoteRuleSet(rs: ApiBypassRuleSet) = jObj(
+    "tag" to rs.tag,
     "type" to "remote",
     "format" to "binary",
-    "url" to url,
+    "url" to rs.url,
+    "initial_path" to rs.initialPath?.trim()?.takeIf { it.isNotEmpty() },
   )
 
   private fun makeTunInbound(
@@ -177,7 +178,7 @@ object SingBoxConfigBuilder {
     domains.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
 
   private fun jObj(vararg pairs: Pair<String, Any?>) = JSONObject().apply {
-    pairs.forEach { (k, v) -> put(k, toJson(v)) }
+    pairs.forEach { (k, v) -> if (v != null) put(k, toJson(v)) }
   }
 
   private fun jArr(vararg items: Any?) = JSONArray().apply { items.forEach { put(toJson(it)) } }

@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class VpnController(private val context: Context) {
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -474,6 +475,17 @@ class VpnController(private val context: Context) {
 
       val dialServer = plan.proxyOutbound["server"]
       TunGroupsApi.fetch()?.let { TunSettingsStore.cacheGroups(context, it.groups, it.raw) }
+      plan = runCatching {
+        plan.copy(bypassRuleSets = withContext(Dispatchers.IO) {
+          RuleSetPrefetch.ensure(context, plan.bypassRuleSets)
+        })
+      }.getOrElse { t ->
+        AppLog.append("[app] rule-set prefetch failed: ${t.message}")
+        if (generation != connectGeneration.get()) return@launch
+        failConnect(context.getString(VpnConnectMessages.FAILED))
+        return@launch
+      }
+      if (generation != connectGeneration.get()) return@launch
       val tun = effectiveTunSettings()
       val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
       val uplinkHost = plan.uplinkHost

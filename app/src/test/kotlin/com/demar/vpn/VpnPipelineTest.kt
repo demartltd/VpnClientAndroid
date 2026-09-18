@@ -334,6 +334,29 @@ class VpnPipelineTest {
     assertTrue(cfg.has("http_clients"))
     assertEquals(SingBoxTags.HTTP_RS_DL, cfg.getJSONObject("route").getString("default_http_client"))
     assertTrue(cfg.getJSONObject("route").has("rule_set"))
+    val rsArr = cfg.getJSONObject("route").getJSONArray("rule_set")
+    assertFalse(rsArr.getJSONObject(0).has("initial_path"))
+  }
+
+  @Test
+  fun tunSettings_ruleSets_emitInitialPathWhenPresent() {
+    val path = "/data/data/com.demar.vpn/files/rule-sets/geoip-ru.srs"
+    val plan = SingBoxConnectPlan.hysteria2(
+      fixtureServers[0].profile,
+      bypassRuleSets = listOf(
+        ApiBypassRuleSet(
+          "geoip-ru",
+          "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs",
+          initialPath = path,
+        ),
+      ),
+    )
+    val rs = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(plan))
+      .getJSONObject("route")
+      .getJSONArray("rule_set")
+      .getJSONObject(0)
+    assertEquals(path, rs.getString("initial_path"))
+    assertEquals("remote", rs.getString("type"))
   }
 
   @Test
