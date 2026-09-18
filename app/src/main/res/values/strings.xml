@@ -145,6 +145,7 @@
     <string name="pay_period_month">Month</string>
     <string name="pay_period_quarter">3 months</string>
     <string name="pay_period_year">Year</string>
+    <string name="pay_compare">Compare</string>
     <string name="pay_compare_plans">Compare plans</string>
     <string name="pay_compare_speed">Speed</string>
     <string name="pay_compare_traffic">Traffic</string>
@@ -155,7 +156,7 @@
     <string name="pay_compare_speed_free">10 Mbps</string>
     <string name="pay_compare_speed_plus">100 Mbps</string>
     <string name="pay_compare_speed_vip">300 Mbps</string>
-    <string name="pay_compare_traffic_free">20 GB</string>
+    <string name="pay_compare_traffic_free">5 GB</string>
     <string name="pay_compare_traffic_plus">500 GB</string>
     <string name="pay_compare_traffic_vip">3000 GB</string>
     <string name="pay_compare_footnote">*Not available yet.</string>

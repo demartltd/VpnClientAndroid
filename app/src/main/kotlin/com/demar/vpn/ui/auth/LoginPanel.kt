@@ -9,12 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -283,20 +281,12 @@ private fun RegisterAccountDialog(
           enabled = !busy,
           shape = RoundedCornerShape(16.dp),
         ) {
-          if (busy) {
-            CircularProgressIndicator(
-              modifier = Modifier.size(22.dp),
-              strokeWidth = 2.dp,
-              color = MaterialTheme.colorScheme.onPrimary,
-            )
-          } else {
-            Text(
-              stringResource(R.string.login_create_account_confirm),
-              modifier = Modifier.fillMaxWidth(),
-              textAlign = TextAlign.Center,
-              style = MaterialTheme.typography.titleMedium,
-            )
-          }
+          Text(
+            stringResource(R.string.login_create_account_confirm),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.titleMedium,
+          )
         }
         Spacer(Modifier.height(10.dp))
         OutlinedButton(
@@ -350,8 +340,7 @@ private fun EmailStep(
     )
     Spacer(Modifier.height(4.dp))
     Button(onClick = onSubmit, modifier = Modifier.fillMaxWidth(), enabled = !busy) {
-      if (busy) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-      else Text(stringResource(R.string.login_continue))
+      Text(stringResource(R.string.login_continue))
     }
   }
 }
@@ -384,14 +373,6 @@ private fun OtpStep(
       color = MaterialTheme.colorScheme.error,
       minLines = 1,
     )
-    if (busy) {
-      CircularProgressIndicator(
-        modifier = Modifier
-          .align(Alignment.CenterHorizontally)
-          .padding(bottom = 8.dp),
-        strokeWidth = 2.dp,
-      )
-    }
     if (onResend != null) {
       TextButton(onClick = onResend, modifier = Modifier.align(Alignment.CenterHorizontally), enabled = !busy) {
         Text(stringResource(R.string.login_resend))

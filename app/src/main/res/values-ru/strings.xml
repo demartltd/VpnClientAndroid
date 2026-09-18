@@ -147,6 +147,7 @@
     <string name="pay_period_month">Месяц</string>
     <string name="pay_period_quarter">3 месяца</string>
     <string name="pay_period_year">Год</string>
+    <string name="pay_compare">Сравнить</string>
     <string name="pay_compare_plans">Сравнить планы</string>
     <string name="pay_compare_speed">Скорость</string>
     <string name="pay_compare_traffic">Трафик</string>
@@ -157,7 +158,7 @@
     <string name="pay_compare_speed_free">10 Мбит/с</string>
     <string name="pay_compare_speed_plus">100 Мбит/с</string>
     <string name="pay_compare_speed_vip">300 Мбит/с</string>
-    <string name="pay_compare_traffic_free">20 ГБ</string>
+    <string name="pay_compare_traffic_free">5 ГБ</string>
     <string name="pay_compare_traffic_plus">500 ГБ</string>
     <string name="pay_compare_traffic_vip">3000 ГБ</string>
     <string name="pay_compare_footnote">*Пока недоступно.</string>

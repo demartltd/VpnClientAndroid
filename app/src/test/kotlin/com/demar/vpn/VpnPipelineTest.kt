@@ -241,6 +241,14 @@ class VpnPipelineTest {
   }
 
   @Test
+  fun serverTier_requiresUpgrade() {
+    assertTrue(ServerTier.Plus.requiresUpgrade("free"))
+    assertTrue(ServerTier.Vip.requiresUpgrade("plus"))
+    assertFalse(ServerTier.Plus.requiresUpgrade("vip"))
+    assertFalse(ServerTier.Free.requiresUpgrade(null))
+  }
+
+  @Test
   fun byTier_sortsByDisplayName() {
     val free = fixtureServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
     assertEquals(listOf("FI-FREE-89"), free)
