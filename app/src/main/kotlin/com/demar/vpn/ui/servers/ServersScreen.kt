@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
+import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -80,6 +81,7 @@ fun ServersScreen(
   snackbarHost: SnackbarHostState,
   vpnController: VpnController,
   onNeedSignIn: () -> Unit = {},
+  onNeedUpgrade: () -> Unit = {},
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
@@ -88,6 +90,7 @@ fun ServersScreen(
     val loading by vpnController.serversLoading.collectAsStateWithLifecycle()
     val error by vpnController.serversError.collectAsStateWithLifecycle()
     val session by AuthRepository.session.collectAsStateWithLifecycle()
+    val account by AccountStore.account.collectAsStateWithLifecycle()
     val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
     val selectedMsg = stringResource(R.string.server_selected)
     val scope = rememberCoroutineScope()
@@ -101,6 +104,7 @@ fun ServersScreen(
     val list = remember(profiles, protocol, tierFilter) {
       profiles.filterServers(protocol, tierFilter)
     }
+    val subscription = account?.vpnSubscription ?: session?.vpnSubscription
 
     DisposableEffect(active) {
       vpnController.setServersTabActive(active)
@@ -160,7 +164,12 @@ fun ServersScreen(
         },
         selectedId = tierFilter?.label ?: "ALL",
         onSelect = { id ->
-          tierFilter = if (id == "ALL") null else ServerTier.entries.firstOrNull { it.label == id }
+          val next = if (id == "ALL") null else ServerTier.entries.firstOrNull { it.label == id }
+          if (next != null && next.requiresUpgrade(subscription)) {
+            onNeedUpgrade()
+            return@SegmentBar
+          }
+          tierFilter = next
         },
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
       )

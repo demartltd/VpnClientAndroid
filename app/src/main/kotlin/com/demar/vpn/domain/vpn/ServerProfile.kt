@@ -9,7 +9,25 @@ enum class ServerTier(val label: String) {
   Plus("PLUS"),
   Vip("VIP");
 
+  val paywallRank: Int
+    get() = when (this) {
+      Free -> 0
+      Tester -> 1
+      Plus -> 2
+      Vip, Dev -> 3
+    }
+
+  fun requiresUpgrade(subscription: String?): Boolean =
+    subscriptionRank(subscription) < paywallRank
+
   companion object {
+    fun subscriptionRank(raw: String?): Int = when ((raw ?: "free").lowercase(Locale.ROOT)) {
+      "tester" -> 1
+      "plus" -> 2
+      "vip", "dev" -> 3
+      else -> 0
+    }
+
     fun fromTag(tag: String): ServerTier {
       val mid = tag.split('-').getOrNull(1)?.uppercase(Locale.ROOT) ?: return Free
       return entries.firstOrNull { it.label == mid } ?: Free
