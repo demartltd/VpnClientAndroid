@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.horizontalDrag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -29,8 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.demar.vpn.ui.window.LocalFoldWide
 
 val AppFloatingToolbarExtent = 88.dp
+val ToolbarMainWidth = 420.dp // 140 × 3 tabs
 
 @Composable
 fun AppFloatingToolbar(
@@ -38,6 +41,7 @@ fun AppFloatingToolbar(
   onDestinationSelected: (Int) -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val wide = LocalFoldWide.current
   val cs = MaterialTheme.colorScheme
   val shape = RoundedCornerShape(28.dp)
   val mainTabs = listOf(
@@ -46,13 +50,10 @@ fun AppFloatingToolbar(
     Triple(Icons.Outlined.Settings, Icons.Filled.Settings, 2),
   )
 
-  Row(
-    modifier.fillMaxWidth(),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
+  Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
     Surface(
       modifier = Modifier
-        .weight(1f)
+        .then(if (wide) Modifier.width(ToolbarMainWidth) else Modifier.weight(1f))
         .height(64.dp)
         .scrubMainTabs(onDestinationSelected),
       shape = shape,
@@ -69,7 +70,7 @@ fun AppFloatingToolbar(
         }
       }
     }
-    Box(Modifier.width(12.dp))
+    Spacer(if (wide) Modifier.weight(1f) else Modifier.width(12.dp))
     Surface(
       modifier = Modifier.width(64.dp).height(64.dp),
       shape = shape,
@@ -114,12 +115,11 @@ private fun ToolbarSlot(
   onClick: (() -> Unit)? = null,
 ) {
   val cs = MaterialTheme.colorScheme
-  val color = if (selected) cs.secondaryContainer else cs.surfaceContainerHigh.copy(alpha = 0f)
   Surface(
     onClick = { onClick?.invoke() },
     enabled = onClick != null,
     modifier = modifier.fillMaxHeight(),
-    color = color,
+    color = if (selected) cs.secondaryContainer else cs.surfaceContainerHigh.copy(alpha = 0f),
   ) {
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
       Icon(
