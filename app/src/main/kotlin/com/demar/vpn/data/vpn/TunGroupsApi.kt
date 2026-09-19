@@ -4,6 +4,8 @@ import com.demar.vpn.data.auth.AuthApi
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.tun.TunAppRef
 import com.demar.vpn.domain.vpn.tun.TunGroup
+import com.demar.vpn.domain.vpn.tun.TunSiteGroup
+import com.demar.vpn.domain.vpn.tun.TunSiteRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -16,7 +18,9 @@ object TunGroupsApi {
   private const val ReadTimeoutMs = 15_000
   private const val MaxBytes = 2 * 1024 * 1024
 
-  data class Payload(val raw: String, val groups: List<TunGroup>)
+  data class Catalog(val appGroups: List<TunGroup>, val siteGroups: List<TunSiteGroup>)
+
+  data class Payload(val raw: String, val appGroups: List<TunGroup>, val siteGroups: List<TunSiteGroup>)
 
   suspend fun fetch(): Payload? = withContext(Dispatchers.IO) {
     val conn = (URL("${AuthApi.VPN_API_BASE_URL}/tun").openConnection() as HttpURLConnection).apply {
@@ -39,7 +43,8 @@ object TunGroupsApi {
         AppLog.append("tun_groups: HTTP $code")
         return@withContext null
       }
-      Payload(raw = raw, groups = parse(raw))
+      val catalog = parse(raw)
+      Payload(raw = raw, appGroups = catalog.appGroups, siteGroups = catalog.siteGroups)
     } catch (e: Exception) {
       AppLog.append("tun_groups: fetch failed — ${e.message}")
       null
@@ -48,23 +53,48 @@ object TunGroupsApi {
     }
   }
 
-  /** Visible for tests. */
-  fun parse(raw: String): List<TunGroup> {
-    val android = JSONObject(raw.ifBlank { "{}" }).optJSONArray("android") ?: return emptyList()
-    return parseAndroid(android)
+  fun parse(raw: String): Catalog {
+    val root = JSONObject(raw.ifBlank { "{}" })
+    return Catalog(
+      appGroups = root.optJSONArray("android")?.let(::parseAndroid).orEmpty(),
+      siteGroups = root.optJSONArray("sites")?.let(::parseSites).orEmpty(),
+    )
   }
 
   private fun parseAndroid(arr: JSONArray): List<TunGroup> =
     (0 until arr.length()).mapNotNull { i ->
       val obj = arr.optJSONObject(i) ?: return@mapNotNull null
       val name = obj.optString("name").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-      val appsArr = obj.optJSONArray("apps") ?: JSONArray()
-      val apps =
-        (0 until appsArr.length()).mapNotNull { j ->
-          val a = appsArr.optJSONObject(j) ?: return@mapNotNull null
-          val id = a.optString("id").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-          TunAppRef(id = id, name = a.optString("name").trim().ifEmpty { id })
-        }
-      TunGroup(id = TunGroup.idFor(name), name = name, apps = apps)
+      val apps = obj.optJSONArray("apps").orEmpty().mapNotNull { a ->
+        val id = a.optString("id").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+        TunAppRef(id = id, name = a.optString("name").trim().ifEmpty { id })
+      }
+      TunGroup(
+        id = TunGroup.idFor(name),
+        name = name,
+        apps = apps,
+        enabledByDefault = obj.optBoolean("enabledByDefault", true),
+      )
     }
+
+  private fun parseSites(arr: JSONArray): List<TunSiteGroup> =
+    (0 until arr.length()).mapNotNull { i ->
+      val obj = arr.optJSONObject(i) ?: return@mapNotNull null
+      val name = obj.optString("name").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+      val sites = obj.optJSONArray("sites").orEmpty().mapNotNull { s ->
+        val host = s.optString("host").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+        TunSiteRef(host = host, name = s.optString("name").trim().ifEmpty { host })
+      }
+      TunSiteGroup(
+        id = TunSiteGroup.idFor(name),
+        name = name,
+        sites = sites,
+        enabledByDefault = obj.optBoolean("enabledByDefault", true),
+      )
+    }
+
+  private fun JSONArray?.orEmpty(): List<JSONObject> {
+    if (this == null) return emptyList()
+    return (0 until length()).mapNotNull { optJSONObject(it) }
+  }
 }

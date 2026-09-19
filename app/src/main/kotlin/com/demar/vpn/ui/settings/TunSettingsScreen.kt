@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.Button
@@ -65,7 +66,9 @@ import com.demar.vpn.data.device.InstalledAppsQuery
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.tun.TunAppRef
 import com.demar.vpn.domain.vpn.tun.TunGroup
+import com.demar.vpn.domain.vpn.tun.TunSiteGroup
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
+import com.demar.vpn.domain.vpn.tun.isSiteGroupEnabled
 import com.demar.vpn.ui.account.CheckoutIntent
 import com.demar.vpn.ui.account.PlanCompareSheet
 import com.demar.vpn.ui.account.SubscriptionCheckoutSheet
@@ -86,6 +89,7 @@ fun TunSettingsScreen(
   val context = LocalContext.current
   val stored by vpnController.tunSettings.collectAsState()
   val groups by vpnController.tunGroups.collectAsState()
+  val siteGroups by vpnController.tunSiteGroups.collectAsState()
   val session by AuthSessionStore.session.collectAsState()
   val account by AccountStore.account.collectAsStateWithLifecycle()
   val isFree =
@@ -218,23 +222,15 @@ fun TunSettingsScreen(
           )
           AnimatedVisibility(customExpanded && rulesOn) {
             Column(Modifier.fillMaxWidth()) {
-              if (!isFree) {
-                SettingsActionButton(
-                  Icons.Filled.Add,
-                  stringResource(R.string.settings_tun_apps_add),
-                  stringResource(R.string.settings_tun_apps_add_sub),
-                  onClick = { showPicker = true },
-                )
+              SettingsActionButton(
+                Icons.Filled.Add,
+                stringResource(R.string.settings_tun_apps_add),
+                stringResource(R.string.settings_tun_apps_add_sub),
+                onClick = if (!isFree) ({ showPicker = true }) else null,
+                modifier = Modifier.alpha(if (isFree) 0.4f else 1f),
+              )
+              if (selected.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-              }
-              if (selected.isEmpty()) {
-                Text(
-                  stringResource(R.string.settings_tun_apps_empty),
-                  style = MaterialTheme.typography.bodyMedium,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
-                )
-              } else {
                 selected.forEach { app ->
                   ExcludedAppRow(
                     app = app,
@@ -246,31 +242,55 @@ fun TunSettingsScreen(
           }
         }
 
-        if (groups.isNotEmpty()) {
-          Spacer(Modifier.height(24.dp))
-          Text(
-            stringResource(R.string.settings_tun_groups_title),
-            style = MaterialTheme.typography.titleMedium,
-          )
-          if (isFree) {
-            Spacer(Modifier.height(4.dp))
-            Text(
-              stringResource(R.string.settings_tun_groups_free_hint),
-              style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-          }
-          Spacer(Modifier.height(12.dp))
-          SettingsGroup {
-            groups.forEach { group ->
-              TunGroupBlock(
-                group = group,
-                enabled = stored.isGroupEnabled(group.id, isFree),
-                switchEnabled = !isFree && rulesOn,
-                interactive = rulesOn,
-                onToggle = { vpnController.setTunGroupEnabled(group.id, it) },
+        TunGroupsSection(
+          titleRes = R.string.settings_tun_groups_title,
+          groups = groups,
+        ) { group ->
+          ExpandableGroupHeader(
+            icon = Icons.Filled.Apps,
+            title = "${group.name} (${group.apps.size})",
+            enabled = stored.isGroupEnabled(group, isFree),
+            switchEnabled = !isFree && rulesOn,
+            interactive = rulesOn,
+            onToggle = { vpnController.setTunGroupEnabled(group.id, it) },
+          ) {
+            val context = LocalContext.current
+            val rows = remember(group, context) { sortGroupApps(context, group.apps) }
+            rows.forEach { row ->
+              TunLineRow(
+                title = row.installed?.label ?: row.name,
+                subtitle = row.packageId,
+                leading = {
+                  val installed = row.installed
+                  if (installed != null) AppIcon(installed.icon, Modifier.size(36.dp))
+                  else PlaceholderIcon(Icons.Filled.Apps)
+                },
               )
             }
+          }
+        }
+
+        TunGroupsSection(
+          titleRes = R.string.settings_tun_site_groups_title,
+          groups = siteGroups,
+        ) { group ->
+          ExpandableGroupHeader(
+            icon = Icons.Filled.Language,
+            title = "${group.name} (${group.sites.size})",
+            enabled = stored.isSiteGroupEnabled(group, isFree),
+            switchEnabled = !isFree && rulesOn,
+            interactive = rulesOn,
+            onToggle = { vpnController.setTunSiteGroupEnabled(group.id, it) },
+          ) {
+            group.sites
+              .sortedBy { (it.name.ifBlank { it.host }).lowercase() }
+              .forEach { site ->
+                TunLineRow(
+                  title = site.name.trim().ifEmpty { site.host },
+                  subtitle = site.host,
+                  leading = { PlaceholderIcon(Icons.Filled.Language) },
+                )
+              }
           }
         }
       }
@@ -279,20 +299,32 @@ fun TunSettingsScreen(
 }
 
 @Composable
-private fun TunGroupBlock(
-  group: TunGroup,
+private fun <T> TunGroupsSection(
+  titleRes: Int,
+  groups: List<T>,
+  item: @Composable (T) -> Unit,
+) {
+  if (groups.isEmpty()) return
+  Spacer(Modifier.height(24.dp))
+  Text(stringResource(titleRes), style = MaterialTheme.typography.titleMedium)
+  Spacer(Modifier.height(12.dp))
+  SettingsGroup { groups.forEach { item(it) } }
+}
+
+@Composable
+private fun ExpandableGroupHeader(
+  icon: androidx.compose.ui.graphics.vector.ImageVector,
+  title: String,
   enabled: Boolean,
   switchEnabled: Boolean,
   interactive: Boolean,
   onToggle: (Boolean) -> Unit,
+  content: @Composable () -> Unit,
 ) {
-  val context = LocalContext.current
-  var expanded by remember(group.id) { mutableStateOf(false) }
-  val rows = remember(group, context) { sortGroupApps(context, group.apps) }
-  val title = "${group.name} (${group.apps.size})"
+  var expanded by remember(title) { mutableStateOf(false) }
   Column(Modifier.fillMaxWidth()) {
     SettingsActionButton(
-      Icons.Filled.Apps,
+      icon,
       title,
       stringResource(R.string.settings_tun_group_sub),
       onClick = if (interactive) ({ expanded = !expanded }) else null,
@@ -302,10 +334,37 @@ private fun TunGroupBlock(
       },
     )
     AnimatedVisibility(expanded && interactive) {
-      Column(Modifier.padding(top = 4.dp)) {
-        rows.forEach { row -> GroupAppRow(row) }
-      }
+      Column(Modifier.padding(top = 4.dp), content = { content() })
     }
+  }
+}
+
+@Composable
+private fun TunLineRow(
+  title: String,
+  subtitle: String,
+  leading: @Composable () -> Unit,
+  trailing: (@Composable () -> Unit)? = null,
+) {
+  Row(
+    Modifier
+      .fillMaxWidth()
+      .padding(vertical = 6.dp, horizontal = 4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    leading()
+    Spacer(Modifier.width(12.dp))
+    Column(Modifier.weight(1f)) {
+      Text(title, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Text(
+        subtitle,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+    }
+    trailing?.invoke()
   }
 }
 
@@ -315,78 +374,28 @@ private data class GroupAppRowModel(
   val installed: InstalledApp?,
 )
 
-private fun sortGroupApps(context: android.content.Context, apps: List<TunAppRef>): List<GroupAppRowModel> {
-  val resolved =
-    apps.map { ref ->
-      GroupAppRowModel(
-        name = ref.name,
-        packageId = ref.id,
-        installed = InstalledAppsQuery.resolve(context, ref.id),
-      )
+private fun sortGroupApps(context: android.content.Context, apps: List<TunAppRef>): List<GroupAppRowModel> =
+  apps
+    .map { ref ->
+      GroupAppRowModel(ref.name, ref.id, InstalledAppsQuery.resolve(context, ref.id))
     }
-  return resolved.sortedWith(
-    compareByDescending<GroupAppRowModel> { it.installed != null }
-      .thenBy { (it.installed?.label ?: it.name).lowercase() },
-  )
-}
-
-@Composable
-private fun GroupAppRow(row: GroupAppRowModel) {
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .padding(vertical = 6.dp, horizontal = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    val installed = row.installed
-    if (installed != null) {
-      AppIcon(installed.icon, Modifier.size(36.dp))
-    } else {
-      PlaceholderIcon(Modifier.size(36.dp))
-    }
-    Spacer(Modifier.width(12.dp))
-    Column(Modifier.weight(1f)) {
-      Text(
-        installed?.label ?: row.name,
-        style = MaterialTheme.typography.bodyMedium,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-      Text(
-        row.packageId,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
-  }
-}
+    .sortedWith(
+      compareByDescending<GroupAppRowModel> { it.installed != null }
+        .thenBy { (it.installed?.label ?: it.name).lowercase() },
+    )
 
 @Composable
 private fun ExcludedAppRow(app: InstalledApp, onRemove: () -> Unit) {
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .padding(vertical = 6.dp, horizontal = 4.dp),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    AppIcon(app.icon, Modifier.size(40.dp))
-    Spacer(Modifier.width(12.dp))
-    Column(Modifier.weight(1f)) {
-      Text(app.label, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-      Text(
-        app.packageName,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-      )
-    }
-    IconButton(onClick = onRemove) {
-      Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.settings_tun_apps_remove))
-    }
-  }
+  TunLineRow(
+    title = app.label,
+    subtitle = app.packageName,
+    leading = { AppIcon(app.icon, Modifier.size(40.dp)) },
+    trailing = {
+      IconButton(onClick = onRemove) {
+        Icon(Icons.Filled.Close, contentDescription = stringResource(R.string.settings_tun_apps_remove))
+      }
+    },
+  )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -446,28 +455,21 @@ private fun AppPickerSheet(
 }
 
 @Composable
-private fun PlaceholderIcon(modifier: Modifier = Modifier) {
+private fun PlaceholderIcon(icon: androidx.compose.ui.graphics.vector.ImageVector) {
   Box(
-    modifier
+    Modifier
+      .size(36.dp)
       .clip(CircleShape)
       .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.12f)),
     contentAlignment = Alignment.Center,
   ) {
-    Icon(
-      Icons.Filled.Apps,
-      contentDescription = null,
-      modifier = Modifier.size(18.dp),
-      tint = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+    Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
   }
 }
 
 @Composable
 private fun AppIcon(drawable: Drawable, modifier: Modifier = Modifier) {
   val bitmap = remember(drawable) { drawable.toBitmap() }
-  Image(
-    bitmap = bitmap.asImageBitmap(),
-    contentDescription = null,
-    modifier = modifier.clip(CircleShape),
-  )
+  Image(bitmap = bitmap.asImageBitmap(), contentDescription = null, modifier = modifier.clip(CircleShape))
 }
+
