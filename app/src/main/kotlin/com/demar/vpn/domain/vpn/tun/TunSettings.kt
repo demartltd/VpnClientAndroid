@@ -2,20 +2,24 @@ package com.demar.vpn.domain.vpn.tun
 
 data class TunSettings(
   val bypassPackages: List<String> = emptyList(),
-  val disabledGroupIds: Set<String> = emptySet(),
-  /** Paid only: when false, no per-app exclude rules (except self). Free always treats as true. */
+  /** Collapsed effective hosts for sing-box build only; store keeps this empty. */
+  val bypassHosts: List<String> = emptyList(),
+  val appGroupOverrides: Map<String, Boolean> = emptyMap(),
+  val siteGroupOverrides: Map<String, Boolean> = emptyMap(),
+  /** Paid only: when false, no exclude rules (except self). Free always treats as true. */
   val rulesEnabled: Boolean = true,
 ) {
-  fun fingerprint(groups: List<TunGroup> = emptyList(), isFree: Boolean = true): String {
+  fun fingerprint(
+    groups: List<TunGroup> = emptyList(),
+    siteGroups: List<TunSiteGroup> = emptyList(),
+    isFree: Boolean = true,
+  ): String {
     val packages = effectivePackages(groups, isFree).joinToString()
+    val hosts = effectiveHosts(siteGroups, isFree).joinToString()
     val groupsFp =
-      groups
-        .asSequence()
-        .filter { isGroupEnabled(it.id, isFree) }
-        .map { it.id }
-        .sorted()
-        .joinToString()
-    val on = isRulesEnabled(isFree)
-    return "p=$packages;g=$groupsFp;r=$on"
+      groups.filter { isGroupEnabled(it, isFree) }.map { it.id }.sorted().joinToString()
+    val sitesFp =
+      siteGroups.filter { isSiteGroupEnabled(it, isFree) }.map { it.id }.sorted().joinToString()
+    return "p=$packages;h=$hosts;g=$groupsFp;s=$sitesFp;r=${isRulesEnabled(isFree)}"
   }
 }

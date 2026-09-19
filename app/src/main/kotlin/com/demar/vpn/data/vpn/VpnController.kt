@@ -26,6 +26,7 @@ import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSettings
+import com.demar.vpn.domain.vpn.tun.TunSiteGroup
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
@@ -140,6 +141,7 @@ class VpnController(private val context: Context) {
 
   val tunSettings: StateFlow<TunSettings> get() = TunSettingsStore.settings
   val tunGroups: StateFlow<List<TunGroup>> get() = TunSettingsStore.groups
+  val tunSiteGroups: StateFlow<List<TunSiteGroup>> get() = TunSettingsStore.siteGroups
 
   fun addBypassPackage(packageName: String) {
     if (isFreeSubscription()) return
@@ -160,8 +162,16 @@ class VpnController(private val context: Context) {
 
   fun setTunGroupEnabled(groupId: String, enabled: Boolean) {
     if (isFreeSubscription()) return
-    TunSettingsStore.setGroupEnabled(context, groupId, enabled)
+    val defaultOn = TunSettingsStore.groups.value.find { it.id == groupId }?.enabledByDefault ?: true
+    TunSettingsStore.setGroupEnabled(context, groupId, enabled, defaultOn)
     AppLog.append("tun_groups=${if (enabled) "on" else "off"} $groupId")
+  }
+
+  fun setTunSiteGroupEnabled(groupId: String, enabled: Boolean) {
+    if (isFreeSubscription()) return
+    val defaultOn = TunSettingsStore.siteGroups.value.find { it.id == groupId }?.enabledByDefault ?: true
+    TunSettingsStore.setSiteGroupEnabled(context, groupId, enabled, defaultOn)
+    AppLog.append("tun_sites=${if (enabled) "on" else "off"} $groupId")
   }
 
   fun setTunRulesEnabled(enabled: Boolean) {
@@ -173,8 +183,10 @@ class VpnController(private val context: Context) {
   fun refreshTunGroups() {
     scope.launch(Dispatchers.IO) {
       val payload = TunGroupsApi.fetch() ?: return@launch
-      TunSettingsStore.cacheGroups(context, payload.groups, payload.raw)
-      AppLog.append("tun_groups: loaded ${payload.groups.size}")
+      TunSettingsStore.cacheGroups(context, payload.appGroups, payload.siteGroups, payload.raw)
+      AppLog.append(
+        "tun_groups: loaded ${payload.appGroups.size} app + ${payload.siteGroups.size} site",
+      )
     }
   }
 
@@ -185,13 +197,19 @@ class VpnController(private val context: Context) {
 
   private fun tunFingerprint(): String {
     val tun = TunSettingsStore.settings.value
-    val groups = TunSettingsStore.groups.value
-    return tun.fingerprint(groups, isFreeSubscription())
+    return tun.fingerprint(
+      TunSettingsStore.groups.value,
+      TunSettingsStore.siteGroups.value,
+      isFreeSubscription(),
+    )
   }
 
   private fun effectiveTunSettings(): TunSettings {
-    val packages = TunSettingsStore.effectiveBypassPackages(context, isFreeSubscription())
-    return TunSettings(bypassPackages = packages)
+    val isFree = isFreeSubscription()
+    return TunSettings(
+      bypassPackages = TunSettingsStore.effectiveBypassPackages(context, isFree),
+      bypassHosts = TunSettingsStore.effectiveBypassHosts(context, isFree),
+    )
   }
 
   fun clearServers() {
@@ -474,7 +492,9 @@ class VpnController(private val context: Context) {
       }
 
       val dialServer = plan.proxyOutbound["server"]
-      TunGroupsApi.fetch()?.let { TunSettingsStore.cacheGroups(context, it.groups, it.raw) }
+      TunGroupsApi.fetch()?.let {
+        TunSettingsStore.cacheGroups(context, it.appGroups, it.siteGroups, it.raw)
+      }
       plan = runCatching {
         plan.copy(bypassRuleSets = withContext(Dispatchers.IO) {
           RuleSetPrefetch.ensure(context, plan.bypassRuleSets)

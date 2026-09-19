@@ -4,6 +4,7 @@ import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.SingBoxConnectPlan
 import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.tun.TunSettings
+import com.demar.vpn.domain.vpn.tun.cleanedDomain
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
 import org.json.JSONObject
@@ -36,6 +37,7 @@ object SingBoxConfigBuilder {
         .map { it.trim() }
         .filter { it.isNotEmpty() }
         .distinct()
+    val bypassHosts = cleanDomains(tun.bypassHosts)
     val experimental = jObj(
       "clash_api" to jObj(
         "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
@@ -44,7 +46,7 @@ object SingBoxConfigBuilder {
     )
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
-      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets),
+      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets, bypassHosts),
       "inbounds" to jArr(
         makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute, packages),
         jObj(
@@ -54,7 +56,7 @@ object SingBoxConfigBuilder {
           "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
         ),
       ),
-      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets),
+      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets, bypassHosts),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
@@ -73,6 +75,7 @@ object SingBoxConfigBuilder {
     dnsFinal: String,
     bootstrapDomains: List<String>,
     ruleSets: List<ApiBypassRuleSet>,
+    bypassHosts: List<String>,
   ) = jObj(
     "servers" to jArr(
       jObj("type" to "local", "tag" to SingBoxTags.DNS_DIRECT),
@@ -86,6 +89,7 @@ object SingBoxConfigBuilder {
     "rules" to jArr(
       jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
       *domainDnsRules(bootstrapDomains, "route", "server" to SingBoxTags.DNS_DIRECT),
+      *suffixDnsRules(bypassHosts),
       *ruleSets.filter { it.isGeosite }.map { rs ->
         jObj("rule_set" to jArr(rs.tag), "action" to "route", "server" to SingBoxTags.DNS_DIRECT)
       }.toTypedArray(),
@@ -99,6 +103,7 @@ object SingBoxConfigBuilder {
     directIPs: List<String>,
     bootstrapDomains: List<String>,
     ruleSets: List<ApiBypassRuleSet>,
+    bypassHosts: List<String>,
   ) = jObj(
     "auto_detect_interface" to true,
     "override_android_vpn" to true,
@@ -114,6 +119,7 @@ object SingBoxConfigBuilder {
       }.toTypedArray(),
       *directIpRules(directIPs),
       *domainRouteRules(bootstrapDomains, SingBoxTags.DIRECT),
+      *suffixRouteRules(bypassHosts),
       jObj("ip_version" to 6, "action" to "reject"),
       jObj("inbound" to jArr(SingBoxTags.DIAG_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
@@ -169,13 +175,33 @@ object SingBoxConfigBuilder {
       jObj("domain" to jArr(domain), "action" to "route", "outbound" to outbound)
     }.toTypedArray()
 
+  private fun suffixDnsRules(hosts: List<String>) =
+    if (hosts.isEmpty()) emptyArray()
+    else arrayOf(
+      jObj(
+        "domain_suffix" to jArr(*hosts.toTypedArray()),
+        "action" to "route",
+        "server" to SingBoxTags.DNS_DIRECT,
+      ),
+    )
+
+  private fun suffixRouteRules(hosts: List<String>) =
+    if (hosts.isEmpty()) emptyArray()
+    else arrayOf(
+      jObj(
+        "domain_suffix" to jArr(*hosts.toTypedArray()),
+        "action" to "route",
+        "outbound" to SingBoxTags.DIRECT,
+      ),
+    )
+
   private fun directIpRules(ips: List<String>) =
     ips.map { ip ->
       jObj("ip_cidr" to jArr("$ip/32"), "action" to "route", "outbound" to SingBoxTags.DIRECT)
     }.toTypedArray()
 
   private fun cleanDomains(domains: List<String>) =
-    domains.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+    domains.mapNotNull { cleanedDomain(it) }.distinct()
 
   private fun jObj(vararg pairs: Pair<String, Any?>) = JSONObject().apply {
     pairs.forEach { (k, v) -> if (v != null) put(k, toJson(v)) }
