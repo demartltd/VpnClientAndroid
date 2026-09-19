@@ -241,7 +241,7 @@ fun AppScaffold(
           snackbarHost = snackbarHost,
           vpnController = vpnController,
           onNeedSignIn = { openLogin(1) },
-          onNeedUpgrade = { openCheckout(CheckoutIntent.Buy) },
+          onNeedUpgrade = { openAccountSheet(AccountSheet.Buy) },
         )
         SettingsScreen(
           active = tab == 2,
