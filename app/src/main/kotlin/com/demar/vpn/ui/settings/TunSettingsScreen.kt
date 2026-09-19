@@ -45,7 +45,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +56,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
+import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthSessionStore
 import com.demar.vpn.data.device.InstalledApp
 import com.demar.vpn.data.device.InstalledAppsQuery
@@ -65,12 +66,14 @@ import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.tun.TunAppRef
 import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
-import com.demar.vpn.ui.components.DemarSnackbar
+import com.demar.vpn.ui.account.CheckoutIntent
+import com.demar.vpn.ui.account.PlanCompareSheet
+import com.demar.vpn.ui.account.SubscriptionCheckoutSheet
+import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,15 +84,18 @@ fun TunSettingsScreen(
   snackbarHost: SnackbarHostState,
 ) {
   val context = LocalContext.current
-  val scope = rememberCoroutineScope()
   val stored by vpnController.tunSettings.collectAsState()
   val groups by vpnController.tunGroups.collectAsState()
   val session by AuthSessionStore.session.collectAsState()
+  val account by AccountStore.account.collectAsStateWithLifecycle()
   val isFree =
     session?.vpnSubscription == null ||
       session?.vpnSubscription.equals("free", ignoreCase = true) == true
   var showPicker by remember { mutableStateOf(false) }
   var customExpanded by remember { mutableStateOf(false) }
+  var showLogin by remember { mutableStateOf(false) }
+  var checkoutIntent by remember { mutableStateOf<CheckoutIntent?>(null) }
+  var showPlanCompare by remember { mutableStateOf(false) }
   var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
   val selected = remember(stored.bypassPackages, context) {
     stored.bypassPackages.map { pkg ->
@@ -101,7 +107,10 @@ fun TunSettingsScreen(
     if (selected.isEmpty()) base else "$base (${selected.size})"
   }
   val rulesOn = isFree || stored.rulesEnabled
-  val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
+
+  fun openBuy() {
+    if (session == null) showLogin = true else checkoutIntent = CheckoutIntent.Buy
+  }
 
   LaunchedEffect(Unit) {
     vpnController.refreshTunGroups()
@@ -118,6 +127,37 @@ fun TunSettingsScreen(
         vpnController.addBypassPackage(pkg)
         showPicker = false
       },
+    )
+  }
+
+  if (showLogin) {
+    LoginBottomSheet(
+      onDismiss = { showLogin = false },
+      onSignedIn = { showLogin = false },
+    )
+  }
+  val auth = session
+  val intent = checkoutIntent
+  if (auth != null && intent != null) {
+    SubscriptionCheckoutSheet(
+      intent = intent,
+      session = auth,
+      currentPlan = account?.vpnSubscription ?: auth.vpnSubscription,
+      snackbarHost = snackbarHost,
+      onCompare = {
+        checkoutIntent = null
+        showPlanCompare = true
+      },
+      onDismiss = { checkoutIntent = null },
+    )
+  }
+  if (showPlanCompare) {
+    PlanCompareSheet(
+      onBuy = {
+        showPlanCompare = false
+        checkoutIntent = CheckoutIntent.Buy
+      },
+      onDismiss = { showPlanCompare = false },
     )
   }
 
@@ -152,7 +192,7 @@ fun TunSettingsScreen(
       ) {
         if (isFree) {
           Button(
-            onClick = soon,
+            onClick = { openBuy() },
             enabled = rulesOn,
             modifier = Modifier
               .fillMaxWidth()
