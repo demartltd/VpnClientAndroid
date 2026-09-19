@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -46,6 +47,8 @@ import com.demar.vpn.ui.settings.ServiceMenuScreen
 import com.demar.vpn.ui.settings.TunSettingsScreen
 import com.demar.vpn.ui.settings.support.SupportScreen
 import com.demar.vpn.ui.update.UpdateBottomSheet
+import com.demar.vpn.ui.window.LocalFoldWide
+import com.demar.vpn.ui.window.rememberIsFoldOpen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -112,8 +115,9 @@ fun AppRoot(
     presentUpdateSheetIfNeeded(updateState)
   }
 
-  Box(Modifier.fillMaxSize()) {
-    NavHost(navController, startDestination = AppNavRoute.Main.pattern, Modifier.fillMaxSize()) {
+  CompositionLocalProvider(LocalFoldWide provides rememberIsFoldOpen()) {
+    Box(Modifier.fillMaxSize()) {
+      NavHost(navController, startDestination = AppNavRoute.Main.pattern, Modifier.fillMaxSize()) {
       composable(AppNavRoute.Main.pattern) {
         AppScaffold(
           singBoxLabel = singBoxLabel,
@@ -137,7 +141,7 @@ fun AppRoot(
       }
       composable(AppNavRoute.AppSettings.pattern) {
         AppSettingsScreen(
-          onBack = { navController.popBackStack() },
+          onBack = { navController.popOverlay() },
           onTunSettings = { navController.openOverlay(AppNavRoute.TunSettings.pattern) },
           snackbarHost = snackbarHost,
         )
@@ -159,7 +163,7 @@ fun AppRoot(
       ) { entry ->
         val session = authSession
         if (session == null) {
-          LaunchedEffect(Unit) { navController.popBackStack() }
+          LaunchedEffect(Unit) { navController.popOverlay() }
         } else {
           val initialRoute = when {
             !entry.arguments?.getString("ticketId").isNullOrBlank() ->
@@ -171,7 +175,7 @@ fun AppRoot(
           SupportScreen(
             session = session,
             snackbarHost = snackbarHost,
-            onBack = { navController.popBackStack() },
+            onBack = { navController.popOverlay() },
             initialRoute = initialRoute,
           )
         }
@@ -179,14 +183,14 @@ fun AppRoot(
       composable(AppNavRoute.TunSettings.pattern) {
         TunSettingsScreen(
           vpnController = vpnController,
-          onBack = { navController.popBackStack() },
+          onBack = { navController.popOverlay() },
           snackbarHost = snackbarHost,
         )
       }
       composable(AppNavRoute.ServiceMenu.pattern) {
         ServiceMenuScreen(
           singBoxLabel = singBoxLabel,
-          onBack = { navController.popBackStack() },
+          onBack = { navController.popOverlay() },
           snackbarHost = snackbarHost,
         )
       }
@@ -197,9 +201,9 @@ fun AppRoot(
         val kind = entry.arguments?.getString("kind")
           ?.let { runCatching { LegalDocument.valueOf(it) }.getOrNull() }
         if (kind == null) {
-          LaunchedEffect(Unit) { navController.popBackStack() }
+          LaunchedEffect(Unit) { navController.popOverlay() }
         } else {
-          DocumentScreen(document = kind, onBack = { navController.popBackStack() })
+          DocumentScreen(document = kind, onBack = { navController.popOverlay() })
         }
       }
     }
@@ -218,6 +222,7 @@ fun AppRoot(
         },
       )
     }
+    }
   }
 }
 
@@ -226,4 +231,8 @@ private fun NavController.openOverlay(route: String) {
     launchSingleTop = true
     restoreState = true
   }
+}
+
+private fun NavController.popOverlay() {
+  if (previousBackStackEntry != null) popBackStack()
 }
