@@ -28,6 +28,10 @@ data class TunSiteGroup(
 
 fun TunSettings.isRulesEnabled(isFree: Boolean): Boolean = isFree || rulesEnabled
 
+/** Free: always off. Paid: stored override else default on. */
+fun TunSettings.isAdBlockEnabled(isFree: Boolean): Boolean =
+  !isFree && (adBlockEnabled ?: true)
+
 /** Free: catalog default only. Paid: user override else catalog default. */
 fun resolveGroupEnabled(
   isFree: Boolean,

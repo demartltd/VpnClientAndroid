@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.VpnLock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +68,7 @@ import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.tun.TunAppRef
 import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSiteGroup
+import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
 import com.demar.vpn.domain.vpn.tun.isSiteGroupEnabled
 import com.demar.vpn.ui.account.CheckoutIntent
@@ -111,6 +113,7 @@ fun TunSettingsScreen(
     if (selected.isEmpty()) base else "$base (${selected.size})"
   }
   val rulesOn = isFree || stored.rulesEnabled
+  val adBlockOn = stored.isAdBlockEnabled(isFree)
 
   fun openBuy() {
     if (session == null) showLogin = true else checkoutIntent = CheckoutIntent.Buy
@@ -121,6 +124,9 @@ fun TunSettingsScreen(
     installedApps = withContext(Dispatchers.Default) {
       InstalledAppsQuery.launchableApps(context)
     }
+  }
+  LaunchedEffect(isFree) {
+    if (isFree) vpnController.setAdBlockEnabled(null)
   }
 
   if (showPicker && !isFree && rulesOn) {
@@ -175,6 +181,20 @@ fun TunSettingsScreen(
         .verticalScroll(rememberScrollState())
         .padding(16.dp),
     ) {
+      SettingsActionButton(
+        Icons.Outlined.Block,
+        stringResource(R.string.settings_tun_adblock_title),
+        stringResource(R.string.settings_tun_adblock_sub),
+        trailingIcon = null,
+        trailing = {
+          Switch(
+            checked = adBlockOn,
+            onCheckedChange = { vpnController.setAdBlockEnabled(it) },
+            enabled = !isFree,
+          )
+        },
+      )
+      Spacer(Modifier.height(12.dp))
       SettingsActionButton(
         Icons.Outlined.VpnLock,
         stringResource(R.string.settings_tun_rules_title),

@@ -13,7 +13,13 @@ object SingBoxConfigBuilder {
   private const val DNS_UPSTREAM = "1.1.1.1"
   /** Always exclude own UID from TUN (mirrors VpnService.addDisallowedApplication). */
   const val SELF_PACKAGE = "com.demar.vpn"
+  const val ADS_RULE_SET_TAG = "geosite-category-ads"
+  const val ADS_RULE_SET_URL =
+    "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads.srs"
   private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
+
+  fun adsRuleSet(initialPath: String? = null) =
+    ApiBypassRuleSet(ADS_RULE_SET_TAG, ADS_RULE_SET_URL, initialPath)
 
   fun buildTunConfigJson(
     plan: SingBoxConnectPlan,
@@ -21,15 +27,8 @@ object SingBoxConfigBuilder {
     tunName: String = "tun0",
     mtu: Int = 1492,
     logLevel: String = "warning",
-  ): String = buildTunConfig(plan, tun, tunName, mtu, logLevel).toString(2)
-
-  private fun buildTunConfig(
-    plan: SingBoxConnectPlan,
-    tun: TunSettings,
-    tunName: String,
-    mtu: Int,
-    logLevel: String,
-  ): JSONObject {
+    ads: ApiBypassRuleSet? = null,
+  ): String {
     val bootstrap = (plan.tun.bootstrapDomains + VpnTunnelProbe.probeBootstrapDomains).distinct()
     val ruleSets = plan.bypassRuleSets.distinctBy { it.tag }
     val packages =
@@ -38,15 +37,10 @@ object SingBoxConfigBuilder {
         .filter { it.isNotEmpty() }
         .distinct()
     val bypassHosts = cleanDomains(tun.bypassHosts)
-    val experimental = jObj(
-      "clash_api" to jObj(
-        "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
-      ),
-      "cache_file" to jObj("enabled" to true, "store_dns" to true),
-    )
+    val registered = if (ads != null) ruleSets + ads else ruleSets
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
-      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets, bypassHosts),
+      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets, bypassHosts, ads),
       "inbounds" to jArr(
         makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute, packages),
         jObj(
@@ -56,19 +50,21 @@ object SingBoxConfigBuilder {
           "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
         ),
       ),
-      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets, bypassHosts),
+      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets, bypassHosts, registered),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
       ),
-      "experimental" to experimental,
+      "experimental" to jObj(
+        "clash_api" to jObj(
+          "external_controller" to "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
+        ),
+        "cache_file" to jObj("enabled" to true, "store_dns" to true),
+      ),
     ).also { cfg ->
-      if (ruleSets.isEmpty()) return@also
-      cfg.put(
-        "http_clients",
-        jArr(jObj("tag" to SingBoxTags.HTTP_RS_DL, "detour" to SingBoxTags.PROXY)),
-      )
-    }
+      if (registered.isEmpty()) return@also
+      cfg.put("http_clients", jArr(jObj("tag" to SingBoxTags.HTTP_RS_DL, "detour" to SingBoxTags.PROXY)))
+    }.toString(2)
   }
 
   private fun makeDns(
@@ -76,6 +72,7 @@ object SingBoxConfigBuilder {
     bootstrapDomains: List<String>,
     ruleSets: List<ApiBypassRuleSet>,
     bypassHosts: List<String>,
+    ads: ApiBypassRuleSet?,
   ) = jObj(
     "servers" to jArr(
       jObj("type" to "local", "tag" to SingBoxTags.DNS_DIRECT),
@@ -90,6 +87,7 @@ object SingBoxConfigBuilder {
       jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
       *domainDnsRules(bootstrapDomains, "route", "server" to SingBoxTags.DNS_DIRECT),
       *suffixDnsRules(bypassHosts),
+      *listOfNotNull(ads?.let { jObj("rule_set" to jArr(it.tag), "action" to "reject") }).toTypedArray(),
       *ruleSets.filter { it.isGeosite }.map { rs ->
         jObj("rule_set" to jArr(rs.tag), "action" to "route", "server" to SingBoxTags.DNS_DIRECT)
       }.toTypedArray(),
@@ -104,6 +102,7 @@ object SingBoxConfigBuilder {
     bootstrapDomains: List<String>,
     ruleSets: List<ApiBypassRuleSet>,
     bypassHosts: List<String>,
+    registered: List<ApiBypassRuleSet>,
   ) = jObj(
     "auto_detect_interface" to true,
     "override_android_vpn" to true,
@@ -125,12 +124,9 @@ object SingBoxConfigBuilder {
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
     ),
   ).also { route ->
-    if (ruleSets.isEmpty()) return@also
+    if (registered.isEmpty()) return@also
     route.put("default_http_client", SingBoxTags.HTTP_RS_DL)
-    route.put(
-      "rule_set",
-      jArr(*ruleSets.map { remoteRuleSet(it) }.toTypedArray()),
-    )
+    route.put("rule_set", jArr(*registered.map { remoteRuleSet(it) }.toTypedArray()))
   }
 
   private fun remoteRuleSet(rs: ApiBypassRuleSet) = jObj(

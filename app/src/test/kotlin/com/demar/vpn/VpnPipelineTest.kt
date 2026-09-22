@@ -429,4 +429,62 @@ class VpnPipelineTest {
     assertTrue(json.contains("\"up_mbps\": 10"))
     assertTrue(json.contains("\"down_mbps\": 10"))
   }
+
+  @Test
+  fun adBlock_dnsRejectRuleSetAndNotRouteDirect() {
+    assertFalse(
+      SingBoxConfigBuilder.buildTunConfigJson(fixtureServers[0].connectPlan)
+        .contains(SingBoxConfigBuilder.ADS_RULE_SET_TAG),
+    )
+    val path = "/data/data/com.demar.vpn/files/rule-sets/geosite-category-ads.srs"
+    val ads = SingBoxConfigBuilder.adsRuleSet(path)
+    val cfg = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(fixtureServers[0].connectPlan, ads = ads))
+    assertTrue(cfg.has("http_clients"))
+    val rs = cfg.getJSONObject("route").getJSONArray("rule_set").getJSONObject(0)
+    assertEquals(SingBoxConfigBuilder.ADS_RULE_SET_TAG, rs.getString("tag"))
+    assertEquals(SingBoxConfigBuilder.ADS_RULE_SET_URL, rs.getString("url"))
+    assertEquals(path, rs.getString("initial_path"))
+    assertTrue(dnsHas(cfg, SingBoxConfigBuilder.ADS_RULE_SET_TAG, "reject"))
+    assertFalse(routeHasRuleSet(cfg, SingBoxConfigBuilder.ADS_RULE_SET_TAG))
+
+    val geo = ApiBypassRuleSet(
+      "geosite-category-ru",
+      "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs",
+    )
+    val withGeo = JSONObject(
+      SingBoxConfigBuilder.buildTunConfigJson(
+        SingBoxConnectPlan.hysteria2(fixtureServers[0].profile, bypassRuleSets = listOf(geo)),
+        ads = SingBoxConfigBuilder.adsRuleSet("/tmp/ads.srs"),
+      ),
+    )
+    val tags = (0 until withGeo.getJSONObject("route").getJSONArray("rule_set").length()).map {
+      withGeo.getJSONObject("route").getJSONArray("rule_set").getJSONObject(it).getString("tag")
+    }
+    assertEquals(setOf("geosite-category-ru", SingBoxConfigBuilder.ADS_RULE_SET_TAG), tags.toSet())
+    assertTrue(dnsHas(withGeo, SingBoxConfigBuilder.ADS_RULE_SET_TAG, "reject"))
+    assertTrue(dnsHas(withGeo, "geosite-category-ru", "route", SingBoxTags.DNS_DIRECT))
+  }
+
+  private fun dnsHas(cfg: JSONObject, tag: String, action: String, server: String? = null): Boolean {
+    val rules = cfg.getJSONObject("dns").getJSONArray("rules")
+    for (i in 0 until rules.length()) {
+      val rule = rules.getJSONObject(i)
+      val rs = rule.optJSONArray("rule_set") ?: continue
+      if (rs.length() != 1 || rs.getString(0) != tag) continue
+      if (rule.getString("action") != action) continue
+      if (server != null && rule.optString("server") != server) continue
+      if (server == null && rule.has("server")) continue
+      return true
+    }
+    return false
+  }
+
+  private fun routeHasRuleSet(cfg: JSONObject, tag: String): Boolean {
+    val rules = cfg.getJSONObject("route").getJSONArray("rules")
+    for (i in 0 until rules.length()) {
+      val rs = rules.getJSONObject(i).optJSONArray("rule_set") ?: continue
+      for (j in 0 until rs.length()) if (rs.getString(j) == tag) return true
+    }
+    return false
+  }
 }

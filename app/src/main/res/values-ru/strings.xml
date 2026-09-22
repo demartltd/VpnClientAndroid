@@ -41,6 +41,8 @@
     <string name="settings_tun_custom_free_sub">Доступно на платной подписке</string>
     <string name="settings_tun_rules_title">Правила TUN</string>
     <string name="settings_tun_rules_sub">Исключает выбранные приложения и сайты из VPN</string>
+    <string name="settings_tun_adblock_title">Ad block</string>
+    <string name="settings_tun_adblock_sub">Блокировка рекламы через DNS</string>
     <string name="settings_tun_group_sub">Вне VPN-туннеля</string>
     <string name="settings_tun_groups_title">Системные группы приложений</string>
     <string name="settings_tun_site_groups_title">Готовые группы сайтов</string>
@@ -151,7 +153,7 @@
     <string name="pay_compare_speed">Скорость</string>
     <string name="pay_compare_traffic">Трафик</string>
     <string name="pay_compare_family">Семейные приглашения*</string>
-    <string name="pay_compare_ads">Блокировка рекламы*</string>
+    <string name="pay_compare_ads">Блокировка рекламы</string>
     <string name="pay_compare_tun">Настройки TUN</string>
     <string name="pay_compare_ip">Выделенный IP*</string>
     <string name="pay_compare_speed_free">10 Мбит/с</string>

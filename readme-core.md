@@ -90,14 +90,18 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 ### TunSettings (локально)
 
-Модель: `domain/vpn/tun/TunSettings` — `bypassPackages` + `disabledGroupIds` + `rulesEnabled`.
+Модель: `domain/vpn/tun/TunSettings` — `bypassPackages` + group overrides + `rulesEnabled` + `adBlockEnabled`.
 
 - `com.demar.vpn` всегда в TUN `exclude_package` + `VpnService.addDisallowedApplication` (control-plane мимо TUN)
 - Эффективный exclude = ручные пакеты ∪ пакеты **включённых** preset-групп (если `rulesEnabled`; на Free master всегда ON)
 - Preset-группы: `GET https://vpn.example.invalid/tun` → `android[]` (`TunGroupsApi`); кэш prefs `tun_groups_json`
 - Free: все группы forced ON (Switch locked); кастомные apps недоступны; Plus/Vip — master Switch + тоггл группы + кастом
-- UI: App settings → TUN → (paid) master rules → ручные apps → системные группы
-- Persist: SharedPreferences `bypass_packages`, `tun_disabled_groups`, `tun_rules_enabled`
+- UI: App settings → TUN → Ad block → (paid) master rules → ручные apps → системные группы
+- Persist: SharedPreferences `bypass_packages`, `tun_*_overrides`, `tun_rules_enabled`, `tun_ad_block_enabled`
+
+### Ad block (DNS)
+
+Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: remote `geosite-category-ads` + DNS `action: reject`. Prefetch `.srs` через `RuleSetPrefetch` + `initial_path` (как API geo RS). **Не** флипает `dns-direct`. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
 
 ---
 
