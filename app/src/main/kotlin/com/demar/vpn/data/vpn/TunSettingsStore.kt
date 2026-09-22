@@ -19,6 +19,7 @@ object TunSettingsStore {
   private const val KeyAppOverrides = "tun_app_group_overrides"
   private const val KeySiteOverrides = "tun_site_group_overrides"
   private const val KeyRulesEnabled = "tun_rules_enabled"
+  private const val KeyAdBlockEnabled = "tun_ad_block_enabled"
   private const val KeyGroupsJson = "tun_groups_json"
 
   private val _settings = MutableStateFlow(TunSettings())
@@ -57,6 +58,7 @@ object TunSettingsStore {
         appGroupOverrides = loadOverrides(p, KeyAppOverrides, KeyDisabledGroups),
         siteGroupOverrides = loadOverrides(p, KeySiteOverrides, KeyDisabledSiteGroups),
         rulesEnabled = p.getBoolean(KeyRulesEnabled, true),
+        adBlockEnabled = if (p.contains(KeyAdBlockEnabled)) p.getBoolean(KeyAdBlockEnabled, true) else null,
       )
     if (_settings.value != next) _settings.value = next
     return next
@@ -65,6 +67,15 @@ object TunSettingsStore {
   fun setRulesEnabled(context: Context, enabled: Boolean) {
     prefs(context).edit().putBoolean(KeyRulesEnabled, enabled).apply()
     _settings.value = _settings.value.copy(rulesEnabled = enabled)
+  }
+
+  /** null clears override (paid default on). */
+  fun setAdBlockEnabled(context: Context, enabled: Boolean?) {
+    if (_settings.value.adBlockEnabled == enabled) return
+    val e = prefs(context).edit()
+    if (enabled == null) e.remove(KeyAdBlockEnabled) else e.putBoolean(KeyAdBlockEnabled, enabled)
+    e.apply()
+    _settings.value = _settings.value.copy(adBlockEnabled = enabled)
   }
 
   fun setPackages(context: Context, packages: List<String>) {

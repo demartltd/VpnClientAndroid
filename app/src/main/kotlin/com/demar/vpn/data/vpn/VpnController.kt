@@ -27,6 +27,7 @@ import com.demar.vpn.domain.vpn.parseVpnStateEvent
 import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.tun.TunSiteGroup
+import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
@@ -178,6 +179,12 @@ class VpnController(private val context: Context) {
     if (isFreeSubscription()) return
     TunSettingsStore.setRulesEnabled(context, enabled)
     AppLog.append("tun_rules=${if (enabled) "on" else "off"}")
+  }
+
+  fun setAdBlockEnabled(enabled: Boolean?) {
+    if (enabled != null && isFreeSubscription()) return
+    TunSettingsStore.setAdBlockEnabled(context, enabled)
+    if (enabled != null) AppLog.append("adblock=${if (enabled) "on" else "off"}")
   }
 
   fun refreshTunGroups() {
@@ -495,26 +502,35 @@ class VpnController(private val context: Context) {
       TunGroupsApi.fetch()?.let {
         TunSettingsStore.cacheGroups(context, it.appGroups, it.siteGroups, it.raw)
       }
-      plan = runCatching {
-        plan.copy(bypassRuleSets = withContext(Dispatchers.IO) {
-          RuleSetPrefetch.ensure(context, plan.bypassRuleSets)
-        })
+      val adBlock = TunSettingsStore.settings.value.isAdBlockEnabled(isFreeSubscription())
+      val prefetched = runCatching {
+        withContext(Dispatchers.IO) {
+          val geo = RuleSetPrefetch.ensure(context, plan.bypassRuleSets)
+          val ads =
+            if (adBlock) {
+              RuleSetPrefetch.ensure(context, listOf(SingBoxConfigBuilder.adsRuleSet())).firstOrNull()
+            } else {
+              null
+            }
+          geo to ads
+        }
       }.getOrElse { t ->
         AppLog.append("[app] rule-set prefetch failed: ${t.message}")
         if (generation != connectGeneration.get()) return@launch
         failConnect(context.getString(VpnConnectMessages.FAILED))
         return@launch
       }
+      plan = plan.copy(bypassRuleSets = prefetched.first)
       if (generation != connectGeneration.get()) return@launch
-      val tun = effectiveTunSettings()
-      val configJson = SingBoxConfigBuilder.buildTunConfigJson(plan, tun)
+      val configJson =
+        SingBoxConfigBuilder.buildTunConfigJson(plan, effectiveTunSettings(), ads = prefetched.second)
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
       AppLog.append(
         "connect uplinkHost=$uplinkHost dialServer=$dialServer uplinkPort=$uplinkPort " +
           "resolved=${resolved.joinToString()} tun=${tunFingerprint()} " +
-          "rs=${plan.bypassRuleSets.size}",
+          "rs=${plan.bypassRuleSets.size} adblock=${if (adBlock) "on" else "off"}",
       )
       VpnControlStateStore.saveLastProfileId(context, profile.id)
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)

@@ -8,6 +8,8 @@ data class TunSettings(
   val siteGroupOverrides: Map<String, Boolean> = emptyMap(),
   /** Paid only: when false, no exclude rules (except self). Free always treats as true. */
   val rulesEnabled: Boolean = true,
+  /** Paid: null = default on. Free always off via [isAdBlockEnabled]. */
+  val adBlockEnabled: Boolean? = null,
 ) {
   fun fingerprint(
     groups: List<TunGroup> = emptyList(),

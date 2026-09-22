@@ -41,6 +41,8 @@
     <string name="settings_tun_custom_free_sub">Available with a paid subscription</string>
     <string name="settings_tun_rules_title">TUN settings</string>
     <string name="settings_tun_rules_sub">Exclude selected apps and sites from the VPN</string>
+    <string name="settings_tun_adblock_title">Ad block</string>
+    <string name="settings_tun_adblock_sub">Block ads via DNS</string>
     <string name="settings_tun_group_sub">Excluded from the VPN tunnel</string>
     <string name="settings_tun_groups_title">Preset app groups</string>
     <string name="settings_tun_site_groups_title">Preset site groups</string>
@@ -149,7 +151,7 @@
     <string name="pay_compare_speed">Speed</string>
     <string name="pay_compare_traffic">Traffic</string>
     <string name="pay_compare_family">Family invites*</string>
-    <string name="pay_compare_ads">Ad blocking*</string>
+    <string name="pay_compare_ads">Ad blocking</string>
     <string name="pay_compare_tun">TUN settings</string>
     <string name="pay_compare_ip">Dedicated IP*</string>
     <string name="pay_compare_speed_free">10 Mbps</string>

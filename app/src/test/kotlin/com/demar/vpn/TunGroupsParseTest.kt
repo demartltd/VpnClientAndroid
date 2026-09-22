@@ -8,11 +8,13 @@ import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.tun.cleanedDomain
 import com.demar.vpn.domain.vpn.tun.effectiveHosts
 import com.demar.vpn.domain.vpn.tun.effectivePackages
+import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
 import com.demar.vpn.domain.vpn.tun.isSiteGroupEnabled
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -175,5 +177,15 @@ class TunGroupsParseTest {
     }
     assertTrue(hasSuffix(json.getJSONObject("dns").getJSONArray("rules")))
     assertTrue(hasSuffix(json.getJSONObject("route").getJSONArray("rules")))
+  }
+
+  @Test
+  fun adBlock_defaultOffAndFreeForcedOff() {
+    assertNull(TunSettings().adBlockEnabled)
+    assertFalse(TunSettings().isAdBlockEnabled(true))
+    assertTrue(TunSettings().isAdBlockEnabled(false))
+    assertFalse(TunSettings(adBlockEnabled = false).isAdBlockEnabled(false))
+    assertTrue(TunSettings(adBlockEnabled = true).isAdBlockEnabled(false))
+    assertFalse(TunSettings(adBlockEnabled = true).isAdBlockEnabled(true))
   }
 }
