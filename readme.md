@@ -35,7 +35,7 @@ pwsh scripts/build_android.ps1
 | Servers | SegmentBar: Hysteria2 + All/Free/Plus/Vip (+ Dev/Tester если есть в списке); список с `fastapi.demar.cc` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csapi.demar.cc`, channel `android`, `sourceId=2`, альбом до 10 фото WebP) |
 | Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `api.demar.cc`; VPN profile/notify/traffic → `fastapi.demar.cc`; Buy/Renew/Increase → RollyPay checkout (`/vpn/pay/*`, Custom Tabs, `demarvpn://pay/ok\|fail`) |
-| App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS (`UpdateDownloadService`) с progress notification |
+| App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU/TR/UK/UZ/zh-Hans/zh-Hant/KO/JA/ES/DE/FR/HI, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS (`UpdateDownloadService`) с progress notification |
 | Service menu (3× tap version) | about + latest version API + diagnostics |
 
 VPN connect (Hysteria2) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
@@ -98,7 +98,7 @@ UI-журнал («Настройки → Настройки приложени�
 | Область | Статус |
 |---------|--------|
 | Compose UI (4 tabs + push + login) | реализовано |
-| Тема / snackbar / соц. иконки / i18n EN+RU | per-app language через `localeConfig` |
+| Тема / snackbar / соц. иконки / i18n EN+RU+TR+UK+UZ+zh-Hans+zh-Hant+KO+JA+ES+DE+FR+HI | per-app language через `localeConfig`; checkout default currency: RU→RUB, иначе EUR |
 | Libbox VPN layer | `vpn/*` |
 | Domain / data / Hysteria2 pipeline | `domain/vpn/*`, `data/vpn/*` |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |

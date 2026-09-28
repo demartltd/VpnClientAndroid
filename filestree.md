@@ -23,7 +23,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateDownloadService (FGS dataSync) + UpdateChannelStore
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt
-│   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel
+│   ├── locale/AppLocale.kt      # openAppLocaleSettings + currentLanguageLabel + defaultPayCurrency (ru→RUB else EUR)
 │   └── device/                  # InstalledAppsQuery (TUN exclude picker)
 ├── ui/
 │   ├── AppRoot.kt

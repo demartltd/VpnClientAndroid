@@ -45,15 +45,15 @@ fun PlanCompareSheet(
   val table = listOf(
     RowSpec(
       stringResource(R.string.pay_compare_speed),
-      CompareCell.Label(stringResource(R.string.pay_compare_speed_free)),
-      CompareCell.Label(stringResource(R.string.pay_compare_speed_plus)),
-      CompareCell.Label(stringResource(R.string.pay_compare_speed_vip)),
+      CompareCell.Label("10 Mbps"),
+      CompareCell.Label("100 Mbps"),
+      CompareCell.Label("300 Mbps"),
     ),
     RowSpec(
       stringResource(R.string.pay_compare_traffic),
-      CompareCell.Label(stringResource(R.string.pay_compare_traffic_free)),
-      CompareCell.Label(stringResource(R.string.pay_compare_traffic_plus)),
-      CompareCell.Label(stringResource(R.string.pay_compare_traffic_vip)),
+      CompareCell.Label("5 GB"),
+      CompareCell.Label("500 GB"),
+      CompareCell.Label("3000 GB"),
     ),
     RowSpec(
       stringResource(R.string.pay_compare_family),
