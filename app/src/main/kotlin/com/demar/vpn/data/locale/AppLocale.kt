@@ -15,6 +15,10 @@ fun openAppLocaleSettings(context: Context) {
   )
 }
 
+/** Checkout default: RUB for Russian UI, EUR for every other language. */
+fun defaultPayCurrency(context: Context): String =
+  if (context.resources.configuration.locales[0]?.language == "ru") "RUB" else "EUR"
+
 fun currentLanguageLabel(context: Context): String {
   val appLocales = context.getSystemService(LocaleManager::class.java).applicationLocales
   if (appLocales.isEmpty) return context.getString(R.string.settings_language_system)

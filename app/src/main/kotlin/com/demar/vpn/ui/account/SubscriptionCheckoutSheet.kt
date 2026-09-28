@@ -61,6 +61,7 @@ import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSession
+import com.demar.vpn.data.locale.defaultPayCurrency
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SegmentBar
 import com.demar.vpn.ui.components.SegmentOption
@@ -89,11 +90,7 @@ fun SubscriptionCheckoutSheet(
   var catalog by remember { mutableStateOf<PayCatalog?>(null) }
   var tier by remember { mutableStateOf(intent.defaultTier(currentPlan)) }
   var period by remember { mutableStateOf("month") }
-  var currency by remember {
-    mutableStateOf(
-      if (context.resources.configuration.locales[0]?.language == "ru") "RUB" else "EUR",
-    )
-  }
+  var currency by remember { mutableStateOf(defaultPayCurrency(context)) }
   var paying by remember { mutableStateOf(false) }
   var loadingPlans by remember { mutableStateOf(true) }
   var plansError by remember { mutableStateOf<String?>(null) }

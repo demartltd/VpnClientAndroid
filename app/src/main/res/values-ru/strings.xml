@@ -156,12 +156,6 @@
     <string name="pay_compare_ads">Блокировка рекламы</string>
     <string name="pay_compare_tun">Настройки TUN</string>
     <string name="pay_compare_ip">Выделенный IP*</string>
-    <string name="pay_compare_speed_free">10 Мбит/с</string>
-    <string name="pay_compare_speed_plus">100 Мбит/с</string>
-    <string name="pay_compare_speed_vip">300 Мбит/с</string>
-    <string name="pay_compare_traffic_free">5 ГБ</string>
-    <string name="pay_compare_traffic_plus">500 ГБ</string>
-    <string name="pay_compare_traffic_vip">3000 ГБ</string>
     <string name="pay_compare_footnote">*Пока недоступно.</string>
     <string name="soon">Скоро</string>
     <string name="server_selected">Сервер выбран</string>
