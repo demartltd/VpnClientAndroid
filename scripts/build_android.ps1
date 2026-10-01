@@ -64,8 +64,14 @@ function Start-BuildInNewWindow {
     Write-Host "Started $Title in new window." -ForegroundColor Cyan
 }
 
+function Sync-AdsRuleSet {
+    & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+    if ($LASTEXITCODE -ne 0) { throw "sync_ads_ruleset.ps1 failed (exit $LASTEXITCODE)" }
+}
+
 $script:Platform = Get-HostPlatform
 Write-Host "Host: $script:Platform" -ForegroundColor Green
+Sync-AdsRuleSet
 
 $builds = @(
     @{ Title = 'APK Release'; Task = ':app:assembleRelease'; Output = 'app\build\outputs\apk\release' }

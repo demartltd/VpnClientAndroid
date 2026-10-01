@@ -31,6 +31,9 @@ app/src/main/jniLibs/
 !**/singbox/README.txt
 !**/singbox/README.md
 
+# Ads rule-set — fetched by scripts/build_android.ps1 before release
+app/src/main/assets/rule-sets/*.srs
+
 # Release signing — readme-signing.md
 key.properties
 **/*.jks

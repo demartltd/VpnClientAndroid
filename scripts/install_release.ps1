@@ -83,6 +83,9 @@ try {
     if ($Replace) { Uninstall-AppPackage }
 
     if (-not $SkipBuild) {
+        Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
+        & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+        if ($LASTEXITCODE -ne 0) { throw "sync_ads_ruleset.ps1 failed (exit $LASTEXITCODE)" }
         Write-Host 'Building and installing release…' -ForegroundColor Cyan
         Invoke-GradleInstallRelease
     } else {

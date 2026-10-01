@@ -99,9 +99,9 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 - UI: App settings → TUN → Ad block → (paid) master rules → ручные apps → системные группы
 - Persist: SharedPreferences `bypass_packages`, `tun_*_overrides`, `tun_rules_enabled`, `tun_ad_block_enabled`
 
-### Ad block (DNS)
+### Ad block (DNS + route)
 
-Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: remote `geosite-category-ads` + DNS `action: reject`. Prefetch `.srs` через `RuleSetPrefetch` + `initial_path` (как API geo RS). **Не** флипает `dns-direct`. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
+Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: bundled ads rule-set (`type: local`, tag `geosite-category-ads`) + DNS и route `action: reject`. Sync качает полный [DustinWin `ads.srs`](https://github.com/DustinWin/ruleset_geodata/releases/download/sing-box-ruleset/ads.srs) → `app/src/main/assets/rule-sets/geosite-category-ads.srs` (`scripts/sync_ads_ruleset.ps1`, также из `build_android.ps1` / `install_release.ps1` / `release_to_github.ps1`). Gradle `verifyAdsRuleSet` на `preBuild` — без `.srs` сборка падает. Runtime — `RuleSetPrefetch.ensureAds` (copy asset → `filesDir`), без сети. Path-реклама на first-party хосте (напр. `yandex.ru/ads/...`) DNS не режет. **Не** флипает `dns-direct`. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
 
 ---
 
