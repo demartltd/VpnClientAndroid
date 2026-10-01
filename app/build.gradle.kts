@@ -136,6 +136,22 @@ tasks.register("verifyBundledLibboxAar") {
     }
 }
 
+tasks.register("verifyAdsRuleSet") {
+    doLast {
+        val srs = layout.projectDirectory.file("src/main/assets/rule-sets/geosite-category-ads.srs").asFile
+        if (!srs.isFile || srs.length() <= 0L) {
+            throw GradleException(
+                """
+                Missing ads rule-set: ${srs.path}
+
+                Fix: pwsh scripts/sync_ads_ruleset.ps1
+                (also run automatically by build_android.ps1 / install_release.ps1)
+                """.trimIndent(),
+            )
+        }
+    }
+}
+
 tasks.named("preBuild").configure {
-    dependsOn("verifyBundledLibboxAar")
+    dependsOn("verifyBundledLibboxAar", "verifyAdsRuleSet")
 }

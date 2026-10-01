@@ -506,12 +506,8 @@ class VpnController(private val context: Context) {
       val prefetched = runCatching {
         withContext(Dispatchers.IO) {
           val geo = RuleSetPrefetch.ensure(context, plan.bypassRuleSets)
-          val ads =
-            if (adBlock) {
-              RuleSetPrefetch.ensure(context, listOf(SingBoxConfigBuilder.adsRuleSet())).firstOrNull()
-            } else {
-              null
-            }
+          val ads = if (adBlock) RuleSetPrefetch.ensureAds(context) else null
+          if (adBlock && ads == null) AppLog.append("[app] ads rule-set asset missing")
           geo to ads
         }
       }.getOrElse { t ->
@@ -523,7 +519,7 @@ class VpnController(private val context: Context) {
       plan = plan.copy(bypassRuleSets = prefetched.first)
       if (generation != connectGeneration.get()) return@launch
       val configJson =
-        SingBoxConfigBuilder.buildTunConfigJson(plan, effectiveTunSettings(), ads = prefetched.second)
+        SingBoxConfigBuilder.buildTunConfigJson(plan, effectiveTunSettings(), adsPath = prefetched.second)
       val uplinkHost = plan.uplinkHost
       val uplinkPort = profile.uplinkPort
 
