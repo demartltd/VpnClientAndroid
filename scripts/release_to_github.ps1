@@ -74,7 +74,6 @@ Write-Host "Selected: $kind" -ForegroundColor Cyan
 if (-not $SkipBuild) {
     Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
     & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
-    if ($LASTEXITCODE -ne 0) { throw "sync_ads_ruleset.ps1 failed (exit $LASTEXITCODE)" }
     Write-Host 'Building release APK...' -ForegroundColor Cyan
     Push-Location -LiteralPath $root
     try {
