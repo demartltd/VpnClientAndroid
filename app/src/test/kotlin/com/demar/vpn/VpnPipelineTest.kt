@@ -12,7 +12,9 @@ import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.tun.TunSettings
+import com.demar.vpn.domain.vpn.visibleProtocols
 import com.demar.vpn.domain.vpn.visibleTiers
+import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
 import org.json.JSONObject
@@ -23,7 +25,7 @@ import org.junit.Test
 
 class VpnPipelineTest {
   private val fixtureServers = listOf(
-    ServerProfile.hysteria2FromTag(
+    ServerProfile.fromTag(
       Hysteria2Profile(
         displayName = "FI-DEV-99",
         server = "fi-d-1.example.test",
@@ -34,7 +36,7 @@ class VpnPipelineTest {
       ),
       city = "Helsinki",
     ),
-    ServerProfile.hysteria2FromTag(
+    ServerProfile.fromTag(
       Hysteria2Profile(
         displayName = "FI-FREE-89",
         server = "fi-f-1.example.test",
@@ -136,12 +138,41 @@ class VpnPipelineTest {
         "${SingBoxTags.CLASH_API_HOST}:${SingBoxTags.CLASH_API_PORT}",
         clash.getString("external_controller"),
       )
+
+      fun ruleIndex(pred: (JSONObject) -> Boolean): Int =
+        (0 until routeRules.length()).firstOrNull { pred(routeRules.getJSONObject(it)) } ?: -1
+      val diagIdx = ruleIndex {
+        it.optJSONArray("inbound")?.let { arr ->
+          (0 until arr.length()).any { j -> arr.getString(j) == SingBoxTags.DIAG_INBOUND }
+        } == true && it.optString("outbound") == SingBoxTags.PROXY
+      }
+      assertTrue("diag→proxy present", diagIdx >= 0)
+      for (host in VpnTunnelProbe.probeBootstrapDomains) {
+        val domainDirectIdx = ruleIndex { rule ->
+          rule.optString("outbound") == SingBoxTags.DIRECT &&
+            rule.optJSONArray("domain")?.let { arr ->
+              (0 until arr.length()).any { j -> arr.getString(j) == host }
+            } == true
+        }
+        assertEquals("probe host $host must not be route DIRECT", -1, domainDirectIdx)
+      }
+      for (domain in plan.tun.bootstrapDomains) {
+        val domainDirectIdx = ruleIndex { rule ->
+          rule.optString("outbound") == SingBoxTags.DIRECT &&
+            rule.optJSONArray("domain")?.let { arr ->
+              (0 until arr.length()).any { j -> arr.getString(j) == domain }
+            } == true
+        }
+        if (domainDirectIdx >= 0) {
+          assertTrue("diag before uplink DIRECT for $domain", diagIdx < domainDirectIdx)
+        }
+      }
     }
   }
 
   @Test
   fun hostnameServer_addsBootstrapDomains() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "host-test",
         server = "vpn.example.com",
@@ -156,7 +187,7 @@ class VpnPipelineTest {
 
   @Test
   fun literalIpv4Server_hasRouteExclude() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "IP-TEST-1",
         server = "193.35.17.5",
@@ -172,7 +203,7 @@ class VpnPipelineTest {
 
   @Test
   fun withExtraDirectIps_mergesBypass() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "IP-TEST-2",
         server = "193.35.17.5",
@@ -197,7 +228,7 @@ class VpnPipelineTest {
 
   @Test
   fun isLiteralIpv4_matchesConnectPlan() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "IP-TEST-3",
         server = "193.35.17.5",
@@ -212,7 +243,7 @@ class VpnPipelineTest {
 
   @Test
   fun hysteria2FromTag_derivesCountryFromDisplayName() {
-    val profile = ServerProfile.hysteria2FromTag(
+    val profile = ServerProfile.fromTag(
       Hysteria2Profile(
         displayName = "FI-DEV-99",
         server = "fi-d-1.example.test",
@@ -224,7 +255,7 @@ class VpnPipelineTest {
     )
     assertEquals("FI", profile.countryCode)
     assertEquals(ServerProfile.countryNameFromCode("FI"), profile.countryName)
-    assertEquals("Hysteria2", profile.protocolLabel)
+    assertEquals("HY2", profile.protocolLabel)
     assertEquals(ServerTier.Dev, profile.tier)
     assertEquals(99, profile.tagNumber)
     assertEquals("${profile.countryName} | DEV", profile.listTitle)
@@ -265,7 +296,7 @@ class VpnPipelineTest {
       listOf(ServerTier.Free, ServerTier.Plus, ServerTier.Vip),
       productOnly.visibleTiers(),
     )
-    val withTester = productOnly + ServerProfile.hysteria2FromTag(
+    val withTester = productOnly + ServerProfile.fromTag(
       Hysteria2Profile(displayName = "NL-TESTER-1", server = "t.example.test", port = 443, password = "p", tlsServerName = "t.example.test"),
     )
     assertTrue(withTester.visibleTiers().contains(ServerTier.Tester))
@@ -281,8 +312,69 @@ class VpnPipelineTest {
   }
 
   @Test
+  fun visibleProtocols_onlyPresentProtocols() {
+    assertEquals(listOf(ServerProtocol.Hysteria2), fixtureServers.visibleProtocols())
+    val mixed = fixtureServers + ServerProfile.fromTag(
+      VlessRealityProfile(
+        displayName = "DE-FREE-9",
+        server = "vless.example.com",
+        port = 443,
+        uuid = "bf000d23-0752-40b4-affe-68f7707a9661",
+        tlsServerName = "www.microsoft.com",
+        publicKey = "pub",
+        shortId = "abcd",
+      ),
+      city = "Frankfurt",
+    )
+    assertEquals(
+      listOf(ServerProtocol.Hysteria2, ServerProtocol.VlessReality),
+      mixed.visibleProtocols(),
+    )
+    assertEquals(
+      listOf("DE-FREE-9"),
+      mixed.filterServers(ServerProtocol.VlessReality, null).map { it.displayName },
+    )
+  }
+
+  @Test
+  fun vlessReality_buildsOutboundWithoutMultiplex() {
+    val profile = ServerProfile.fromTag(
+      VlessRealityProfile(
+        displayName = "DE-FREE-9",
+        server = "vless.example.com",
+        port = 443,
+        uuid = "bf000d23-0752-40b4-affe-68f7707a9661",
+        tlsServerName = "www.microsoft.com",
+        publicKey = "jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0",
+        shortId = "0123456789abcdef",
+      ),
+    )
+    assertEquals("VLESS", profile.protocolLabel)
+    assertTrue(profile.profile.hasCredentials)
+    assertTrue(profile.profile.preferResolvedDial)
+    val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))
+      .getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("vless", outbound.getString("type"))
+    assertEquals("bf000d23-0752-40b4-affe-68f7707a9661", outbound.getString("uuid"))
+    assertEquals("xtls-rprx-vision", outbound.getString("flow"))
+    assertFalse(outbound.has("network"))
+    assertFalse(outbound.has("multiplex"))
+    val reality = outbound.getJSONObject("tls").getJSONObject("reality")
+    assertTrue(reality.getBoolean("enabled"))
+    assertEquals("jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0", reality.getString("public_key"))
+    assertEquals("0123456789abcdef", reality.getString("short_id"))
+    assertEquals("www.microsoft.com", outbound.getJSONObject("tls").getString("server_name"))
+    val utls = outbound.getJSONObject("tls").getJSONObject("utls")
+    assertTrue(utls.getBoolean("enabled"))
+    assertEquals("chrome", utls.getString("fingerprint"))
+    assertEquals("vless.example.com", profile.connectPlan.uplinkHost)
+    assertEquals(listOf("vless.example.com"), profile.connectPlan.tun.bootstrapDomains)
+    assertFalse(profile.connectPlan.tun.bootstrapDomains.contains("www.microsoft.com"))
+  }
+
+  @Test
   fun hysteria2FromTag_buildsOutboundWithAlpn() {
-    val profile = ServerProfile.hysteria2FromTag(
+    val profile = ServerProfile.fromTag(
       Hysteria2Profile(
         displayName = "FI-FREE-89",
         server = "fi-f-1.xyzdeer.space",
@@ -293,7 +385,7 @@ class VpnPipelineTest {
       ),
     )
     assertEquals("FI", profile.countryCode)
-    assertEquals("Hysteria2", profile.protocolLabel)
+    assertEquals("HY2", profile.protocolLabel)
     assertEquals("hysteria2:FI-FREE-89", profile.id)
 
     val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))
@@ -317,7 +409,7 @@ class VpnPipelineTest {
       ApiBypassRuleSet("geosite-cn", "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"),
     )
     val plan = SingBoxConnectPlan.hysteria2(
-      fixtureServers[0].profile,
+      fixtureServers[0].profile as Hysteria2Profile,
       bypassRuleSets = ruleSets,
     )
     val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
@@ -343,7 +435,7 @@ class VpnPipelineTest {
   fun tunSettings_ruleSets_emitInitialPathWhenPresent() {
     val path = "/data/data/com.demar.vpn/files/rule-sets/geoip-ru.srs"
     val plan = SingBoxConnectPlan.hysteria2(
-      fixtureServers[0].profile,
+      fixtureServers[0].profile as Hysteria2Profile,
       bypassRuleSets = listOf(
         ApiBypassRuleSet(
           "geoip-ru",
@@ -394,7 +486,7 @@ class VpnPipelineTest {
 
   @Test
   fun hysteria2_obfsIncludedWhenSet() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "OBFS",
         server = "1.2.3.4",
@@ -413,7 +505,7 @@ class VpnPipelineTest {
 
   @Test
   fun hysteria2_bandwidthMbpsIncludedWhenSet() {
-    val plan = ServerProfile.hysteria2(
+    val plan = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "FI-FREE-1",
         server = "fi.example.com",
@@ -456,7 +548,7 @@ class VpnPipelineTest {
     )
     val withGeo = JSONObject(
       SingBoxConfigBuilder.buildTunConfigJson(
-        SingBoxConnectPlan.hysteria2(fixtureServers[0].profile, bypassRuleSets = listOf(geo)),
+        SingBoxConnectPlan.hysteria2(fixtureServers[0].profile as Hysteria2Profile, bypassRuleSets = listOf(geo)),
         adsPath = "/tmp/ads.srs",
       ),
     )

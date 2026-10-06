@@ -35,8 +35,14 @@ enum class ServerTier(val label: String) {
   }
 }
 
-enum class ServerProtocol(val label: String) {
-  Hysteria2("Hysteria2"),
+enum class ServerProtocol(val apiKey: String, val label: String) {
+  Hysteria2("hysteria2", "HY2"),
+  VlessReality("vless_reality", "VLESS");
+
+  companion object {
+    fun fromApi(raw: String): ServerProtocol? =
+      entries.firstOrNull { it.apiKey == raw.lowercase(Locale.ROOT) }
+  }
 }
 
 data class ServerProfile(
@@ -45,13 +51,12 @@ data class ServerProfile(
   val countryCode: String? = null,
   val countryName: String? = null,
   val city: String? = null,
-  val profile: Hysteria2Profile,
+  val profile: ProxyProfile,
   val bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
 ) {
-  val connectPlan: SingBoxConnectPlan
-    get() = SingBoxConnectPlan.hysteria2(profile, bypassRuleSets)
+  val connectPlan: SingBoxConnectPlan get() = profile.toConnectPlan(bypassRuleSets)
 
-  val protocol: ServerProtocol get() = ServerProtocol.Hysteria2
+  val protocol: ServerProtocol get() = profile.protocol
 
   val protocolLabel: String get() = protocol.label
 
@@ -78,15 +83,15 @@ data class ServerProfile(
   val uplinkPort: Int get() = profile.port
 
   companion object {
-    fun hysteria2(
-      profile: Hysteria2Profile,
+    fun fromProxy(
+      profile: ProxyProfile,
       countryCode: String? = null,
       countryName: String? = null,
       city: String? = null,
       id: String? = null,
       bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
     ) = ServerProfile(
-      id = id ?: "hysteria2:${profile.displayName}",
+      id = id ?: "${profile.protocol.apiKey}:${profile.displayName}",
       displayName = profile.displayName,
       countryCode = countryCode,
       countryName = countryName,
@@ -95,14 +100,14 @@ data class ServerProfile(
       bypassRuleSets = bypassRuleSets,
     )
 
-    fun hysteria2FromTag(
-      profile: Hysteria2Profile,
+    fun fromTag(
+      profile: ProxyProfile,
       city: String? = null,
       id: String? = null,
       bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
     ): ServerProfile {
       val countryCode = countryCodeFromTag(profile.displayName)
-      return hysteria2(profile, countryCode, countryNameFromCode(countryCode), city, id, bypassRuleSets)
+      return fromProxy(profile, countryCode, countryNameFromCode(countryCode), city, id, bypassRuleSets)
     }
 
     fun countryCodeFromTag(tag: String): String? {
@@ -135,6 +140,10 @@ fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
   ServerTier.entries.filter { t ->
     (t != ServerTier.Dev && t != ServerTier.Tester) || any { p -> p.tier == t }
   }
+
+/** Only protocols present in the list (supported enum ∩ API). */
+fun List<ServerProfile>.visibleProtocols(): List<ServerProtocol> =
+  ServerProtocol.entries.filter { p -> any { it.protocol == p } }
 
 /** [tier] null = All. */
 fun List<ServerProfile>.filterServers(protocol: ServerProtocol, tier: ServerTier?): List<ServerProfile> =

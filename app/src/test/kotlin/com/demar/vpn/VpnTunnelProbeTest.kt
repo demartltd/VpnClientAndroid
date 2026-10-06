@@ -53,5 +53,8 @@ class VpnTunnelProbeTest {
     val hosts = VpnTunnelProbe.probeBootstrapDomains.toSet()
     assert(hosts.contains(VpnTunnelProbe.PROBE_HOST))
     assert(hosts.contains(VpnTunnelProbe.FALLBACK_HOST_GOOGLE))
+    assertEquals("https://www.google.com/generate_204", VpnTunnelProbe.FALLBACK_URL_GOOGLE)
+    assertEquals("https://www.cloudflare.com/cdn-cgi/trace", VpnTunnelProbe.PROBE_URL)
+    assertEquals("https://1.1.1.1/cdn-cgi/trace", VpnTunnelProbe.FALLBACK_URL_IP)
   }
 }

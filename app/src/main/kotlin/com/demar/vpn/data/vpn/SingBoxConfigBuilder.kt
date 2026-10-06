@@ -24,7 +24,9 @@ object SingBoxConfigBuilder {
     logLevel: String = "warning",
     adsPath: String? = null,
   ): String {
-    val bootstrap = (plan.tun.bootstrapDomains + VpnTunnelProbe.probeBootstrapDomains).distinct()
+    // DNS: uplink + probe hosts. Route DIRECT: uplink only (probe hosts must not bypass proxy).
+    val routeBootstrap = plan.tun.bootstrapDomains
+    val dnsBootstrap = (routeBootstrap + VpnTunnelProbe.probeBootstrapDomains).distinct()
     val ruleSets = plan.bypassRuleSets.distinctBy { it.tag }
     val packages =
       (listOf(SELF_PACKAGE) + tun.bypassPackages).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
@@ -32,7 +34,7 @@ object SingBoxConfigBuilder {
     val ads = adsPath?.trim()?.takeIf { it.isNotEmpty() }
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
-      "dns" to makeDns(plan.tun.dnsFinal, bootstrap, ruleSets, bypassHosts, ads != null),
+      "dns" to makeDns(plan.tun.dnsFinal, dnsBootstrap, ruleSets, bypassHosts, ads != null),
       "inbounds" to jArr(
         makeTunInbound(tunName, mtu, plan.directIPs, plan.tun.strictRoute, packages),
         jObj(
@@ -42,7 +44,7 @@ object SingBoxConfigBuilder {
           "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
         ),
       ),
-      "route" to makeRoute(plan.directIPs, bootstrap, ruleSets, bypassHosts, ads),
+      "route" to makeRoute(plan.directIPs, routeBootstrap, ruleSets, bypassHosts, ads),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
@@ -106,6 +108,8 @@ object SingBoxConfigBuilder {
     "rules" to jArr(
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "sniff"),
       jObj("protocol" to "dns", "action" to "hijack-dns"),
+      // Diag before domain DIRECT so probe always exercises the proxy outbound.
+      jObj("inbound" to jArr(SingBoxTags.DIAG_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
       jObj("network" to jArr("udp"), "port" to jArr(443), "action" to "reject"),
       jObj("ip_is_private" to true, "action" to "route", "outbound" to SingBoxTags.DIRECT),
       *listOfNotNull(adsPath?.let { adsReject() }).toTypedArray(),
@@ -118,7 +122,6 @@ object SingBoxConfigBuilder {
       *domainRules(bootstrap, "action" to "route", "outbound" to SingBoxTags.DIRECT),
       *suffixRule(bypassHosts, "outbound" to SingBoxTags.DIRECT),
       jObj("ip_version" to 6, "action" to "reject"),
-      jObj("inbound" to jArr(SingBoxTags.DIAG_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
     ),
   ).also { route ->

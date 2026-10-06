@@ -28,11 +28,12 @@ data class SingBoxConnectPlan(
     "rs=${bypassRuleSets.joinToString { "${it.tag}|${it.url}" }}"
 
   companion object {
+    private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
+
     fun hysteria2(
       profile: Hysteria2Profile,
       bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
     ): SingBoxConnectPlan {
-      val bootstrap = bootstrapDomains(profile.server, profile.tlsServerName)
       val tls = buildMap {
         put("enabled", true)
         put("server_name", profile.tlsServerName)
@@ -51,20 +52,62 @@ data class SingBoxConnectPlan(
         profile.upMbps?.takeIf { it > 0 }?.let { put("up_mbps", it) }
         profile.downMbps?.takeIf { it > 0 }?.let { put("down_mbps", it) }
       }
-      return SingBoxConnectPlan(
-        uplinkHost = profile.server,
-        proxyOutbound = outbound,
-        directIPs = directIPs(profile.server),
-        tun = SingBoxTunOptions(
-          dnsFinal = SingBoxTags.DNS_REMOTE,
-          bootstrapDomains = bootstrap,
-          strictRoute = true,
-        ),
-        bypassRuleSets = bypassRuleSets,
+      return of(
+        uplink = profile.server,
+        outbound = outbound,
+        bootstrap = bootstrapDomains(profile.server, profile.tlsServerName),
+        bypass = bypassRuleSets,
       )
     }
 
-    private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
+    fun vlessReality(
+      profile: VlessRealityProfile,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
+    ): SingBoxConnectPlan {
+      // Route/DNS bootstrap = uplink host only (Reality SNI is not a dial target).
+      val bootstrap = if (isHostname(profile.server)) listOf(profile.server.trim()) else emptyList()
+      val flow = profile.flow?.takeIf { it.isNotBlank() }
+      val tls = mapOf(
+        "enabled" to true,
+        "server_name" to profile.tlsServerName,
+        "utls" to mapOf("enabled" to true, "fingerprint" to "chrome"),
+        "reality" to mapOf(
+          "enabled" to true,
+          "public_key" to profile.publicKey,
+          "short_id" to profile.shortId,
+        ),
+      )
+      val outbound = buildMap {
+        put("type", "vless")
+        put("tag", SingBoxTags.PROXY)
+        put("server", profile.server)
+        put("server_port", profile.port)
+        put("uuid", profile.uuid)
+        if (flow != null) put("flow", flow)
+        // Omit network: both tcp+udp; Vision still uses TCP command.
+        // Vision flow is incompatible with multiplex — omit even if API sent it.
+        put("tls", tls)
+        put("domain_resolver", DOMAIN_RESOLVER)
+      }
+      return of(profile.server, outbound, bootstrap, bypassRuleSets)
+    }
+
+    private fun of(
+      uplink: String,
+      outbound: Map<String, Any?>,
+      bootstrap: List<String>,
+      bypass: List<ApiBypassRuleSet>,
+    ) = SingBoxConnectPlan(
+      uplinkHost = uplink,
+      proxyOutbound = outbound,
+      directIPs = directIPs(uplink),
+      tun = SingBoxTunOptions(
+        dnsFinal = SingBoxTags.DNS_REMOTE,
+        bootstrapDomains = bootstrap,
+        strictRoute = true,
+      ),
+      bypassRuleSets = bypass,
+    )
 
     private fun bootstrapDomains(server: String, tlsServerName: String): List<String> {
       val domains = linkedSetOf(tlsServerName)

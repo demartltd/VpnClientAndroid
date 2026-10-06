@@ -60,6 +60,7 @@ import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.ServerTier
 import com.demar.vpn.domain.vpn.filterServers
+import com.demar.vpn.domain.vpn.visibleProtocols
 import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
@@ -96,11 +97,17 @@ fun ServersScreen(
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
     var refreshing by remember { mutableStateOf(false) }
+    val protocolChips = remember(profiles) { profiles.visibleProtocols() }
     var protocol by remember(selected?.id) {
       mutableStateOf(selected?.protocol ?: ServerProtocol.Hysteria2)
     }
     var tierFilter by remember { mutableStateOf<ServerTier?>(null) }
     val tierChips = remember(profiles) { profiles.visibleTiers() }
+    LaunchedEffect(protocolChips, protocol) {
+      if (protocolChips.isNotEmpty() && protocol !in protocolChips) {
+        protocol = protocolChips.first()
+      }
+    }
     val list = remember(profiles, protocol, tierFilter) {
       profiles.filterServers(protocol, tierFilter)
     }
@@ -138,17 +145,19 @@ fun ServersScreen(
         .padding(top = 12.dp)
         .padding(bottom = toolbarBottomInset(24.dp)),
     ) {
-      SegmentBar(
-        options = ServerProtocol.entries.map {
-          SegmentOption(it.name.uppercase(Locale.ROOT), it.label, "server_protocol_${it.name.uppercase(Locale.ROOT)}")
-        },
-        selectedId = protocol.name.uppercase(Locale.ROOT),
-        bold = true,
-        onSelect = { id ->
-          ServerProtocol.entries.firstOrNull { it.name.uppercase(Locale.ROOT) == id }?.let { protocol = it }
-        },
-        modifier = Modifier.padding(horizontal = 16.dp),
-      )
+      if (protocolChips.isNotEmpty()) {
+        SegmentBar(
+          options = protocolChips.map {
+            SegmentOption(it.name.uppercase(Locale.ROOT), it.label, "server_protocol_${it.name.uppercase(Locale.ROOT)}")
+          },
+          selectedId = protocol.name.uppercase(Locale.ROOT),
+          bold = true,
+          onSelect = { id ->
+            protocolChips.firstOrNull { it.name.uppercase(Locale.ROOT) == id }?.let { protocol = it }
+          },
+          modifier = Modifier.padding(horizontal = 16.dp),
+        )
+      }
       SegmentBar(
         options = buildList {
           add(SegmentOption("ALL", stringResource(R.string.servers_filter_all), "server_tier_ALL"))
@@ -171,7 +180,11 @@ fun ServersScreen(
           }
           tierFilter = next
         },
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp),
+        modifier = Modifier.padding(
+          start = 16.dp,
+          end = 16.dp,
+          top = if (protocolChips.isEmpty()) 0.dp else 12.dp,
+        ),
       )
       HorizontalDivider(
         Modifier

@@ -11,13 +11,18 @@ import java.net.URL
 internal object VpnTunnelProbe {
   private const val TAG = "VpnTunnelProbe"
   const val PROBE_HOST = "www.cloudflare.com"
-  const val PROBE_URL = "https://$PROBE_HOST/cdn-cgi/trace"
   const val FALLBACK_HOST_GOOGLE = "www.google.com"
   const val FALLBACK_URL_GOOGLE = "https://$FALLBACK_HOST_GOOGLE/generate_204"
+  const val PROBE_URL = "https://$PROBE_HOST/cdn-cgi/trace"
+  /** Literal IP — cannot match domain DIRECT; last-resort through proxy. */
+  const val PROBE_IP = "1.1.1.1"
+  const val FALLBACK_URL_IP = "https://$PROBE_IP/cdn-cgi/trace"
 
+  /** DNS-only bootstrap (not route DIRECT). */
   val probeBootstrapDomains = listOf(PROBE_HOST, FALLBACK_HOST_GOOGLE)
 
-  private val PROBE_URLS = listOf(FALLBACK_URL_GOOGLE, PROBE_URL)
+  /** Google OR CF (Google first for fast Ready); IP tertiary. */
+  private val PROBE_URLS = listOf(FALLBACK_URL_GOOGLE, PROBE_URL, FALLBACK_URL_IP)
 
   private const val READY_POLL_MS = 100L
   private const val TCP_PROBE_MS = 500
@@ -91,7 +96,7 @@ internal object VpnTunnelProbe {
       url,
       TIMEOUT_MS,
     ) ?: return false
-    return url != PROBE_URL || body.contains("ip=")
+    return if (url.contains("cdn-cgi/trace")) body.contains("ip=") else true
   }
 
   private fun tcpOpen(host: String, port: Int, protectFd: ((Int) -> Boolean)?): Boolean {
@@ -132,6 +137,7 @@ internal object VpnTunnelProbe {
           val body = conn.inputStream.bufferedReader().use { it.readText() }
           when {
             body.contains("ip=") -> body
+            body.isBlank() && code == 204 -> "ip=0.0.0.0"
             body.isBlank() -> "ip=0.0.0.0"
             else -> body
           }

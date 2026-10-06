@@ -20,6 +20,7 @@ import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
+import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.isLiteralIpv4
@@ -460,7 +461,7 @@ class VpnController(private val context: Context) {
       requestOpenTrafficSheet()
       return
     }
-    if (profile.profile.password.isBlank()) {
+    if (!profile.profile.hasCredentials) {
       failConnect(context.getString(VpnConnectMessages.NO_CREDENTIALS))
       return
     }
@@ -484,6 +485,9 @@ class VpnController(private val context: Context) {
 
       if (resolved.isNotEmpty()) {
         plan = plan.withExtraDirectIps(resolved)
+        if (profile.profile.preferResolvedDial) {
+          plan = plan.withResolvedUplink(resolved.first())
+        }
       }
 
       val connectTarget = when {
@@ -528,6 +532,9 @@ class VpnController(private val context: Context) {
           "resolved=${resolved.joinToString()} tun=${tunFingerprint()} " +
           "rs=${plan.bypassRuleSets.size} adblock=${if (adBlock) "on" else "off"}",
       )
+      (profile.profile as? VlessRealityProfile)?.let { v ->
+        AppLog.append("vless sni=${v.tlsServerName} flow=${v.flow ?: "-"}")
+      }
       VpnControlStateStore.saveLastProfileId(context, profile.id)
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)
       if (generation != connectGeneration.get()) return@launch
