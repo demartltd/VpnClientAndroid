@@ -1,44 +1,66 @@
 #requires -Version 5.1
 <#
 .SYNOPSIS
-  Собирает release и ставит APK на Android, подключённый по USB к Mac (adb -d).
+  Собирает debug и ставит APK на Android по USB (adb).
 .PARAMETER SkipBuild
-  Только установить уже собранный app/build/outputs/apk/release/app-release.apk.
+  Только установить уже собранный app/build/outputs/apk/debug/app-debug.apk.
 .PARAMETER NoLaunch
   Не запускать MainActivity после установки.
 .PARAMETER Replace
-  Удалить com.demar.vpn перед установкой (нужно при смене debug → release).
+  Удалить com.demar.vpn перед установкой (нужно при смене release → debug).
+.PARAMETER Serial
+  Serial устройства (adb devices). Если не задан — единственный USB (-d), иначе ошибка при нескольких.
 #>
 param(
-    [switch]$SkipBuild, 
+    [switch]$SkipBuild,
     [switch]$NoLaunch,
-    [switch]$Replace
+    [switch]$Replace,
+    [string]$Serial = ''
 )
 
 $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
-$apk = Join-Path $repoRoot 'app/build/outputs/apk/release/app-release.apk'
+$apk = Join-Path $repoRoot 'app/build/outputs/apk/debug/app-debug.apk'
 $package = 'com.demar.vpn'
 $activity = "$package/.MainActivity"
 $gradlew = if ($IsWindows -or $env:OS -eq 'Windows_NT') { '.\gradlew.bat' } else { './gradlew' }
+
+function Get-AdbArgs {
+    if ($script:DeviceSerial) { return @('-s', $script:DeviceSerial) }
+    return @('-d')
+}
+
+function Invoke-Adb {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$AdbArgs)
+    & adb @(Get-AdbArgs) @AdbArgs
+}
 
 function Assert-AdbUsbDevice {
     if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
         throw 'adb not found. Install Android SDK platform-tools and add to PATH.'
     }
-    $null = & adb -d get-state 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw @"
+    if ($Serial) {
+        $script:DeviceSerial = $Serial.Trim()
+        $null = & adb -s $script:DeviceSerial get-state 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Device not ready: $script:DeviceSerial`nRun: adb devices"
+        }
+    } else {
+        $script:DeviceSerial = $null
+        $null = & adb -d get-state 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw @"
 No single USB Android device (adb -d).
 
-Connect the phone by cable, enable USB debugging, and run: adb devices
+Connect one phone, or pass -Serial <id> from: adb devices
 "@
+        }
+        $script:DeviceSerial = (& adb -d get-serialno).Trim()
     }
-    $serial = (& adb -d get-serialno).Trim()
-    $model = (& adb -d shell getprop ro.product.model).Trim()
-    Write-Host "Device: $model ($serial)" -ForegroundColor Green
-    return $serial
+    $model = (Invoke-Adb shell getprop ro.product.model).Trim()
+    Write-Host "Device: $model ($script:DeviceSerial)" -ForegroundColor Green
+    return $script:DeviceSerial
 }
 
 function Test-SignatureConflict {
@@ -48,31 +70,31 @@ function Test-SignatureConflict {
 
 function Uninstall-AppPackage {
     Write-Host "Uninstalling $package (signature conflict or -Replace)…" -ForegroundColor Yellow
-    & adb -d uninstall $package 2>&1 | Out-Null
+    Invoke-Adb uninstall $package 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "adb uninstall $package failed (exit $LASTEXITCODE)" }
 }
 
-function Install-ReleaseApk {
+function Install-DebugApk {
     param([string]$ApkPath)
-    $out = & adb -d install -r $ApkPath 2>&1 | Out-String
+    $out = Invoke-Adb install -r $ApkPath 2>&1 | Out-String
     if ($LASTEXITCODE -eq 0) { return }
     if (Test-SignatureConflict $out) {
         Uninstall-AppPackage
-        $out = & adb -d install -r $ApkPath 2>&1 | Out-String
+        $out = Invoke-Adb install -r $ApkPath 2>&1 | Out-String
         if ($LASTEXITCODE -eq 0) { return }
     }
     throw "adb install failed (exit $LASTEXITCODE)`n$out"
 }
 
-function Invoke-GradleInstallRelease {
-    $out = & $gradlew :app:installRelease 2>&1 | Out-String
+function Invoke-GradleInstallDebug {
+    $out = & $gradlew :app:installDebug 2>&1 | Out-String
     if ($LASTEXITCODE -eq 0) { return }
     if (Test-SignatureConflict $out) {
         Uninstall-AppPackage
-        $out = & $gradlew :app:installRelease 2>&1 | Out-String
+        $out = & $gradlew :app:installDebug 2>&1 | Out-String
         if ($LASTEXITCODE -eq 0) { return }
     }
-    throw "installRelease failed (exit $LASTEXITCODE)`n$out"
+    throw "installDebug failed (exit $LASTEXITCODE)`n$out"
 }
 
 $serial = Assert-AdbUsbDevice
@@ -85,22 +107,22 @@ try {
     if (-not $SkipBuild) {
         Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
         & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
-        Write-Host 'Building and installing release…' -ForegroundColor Cyan
-        Invoke-GradleInstallRelease
+        Write-Host 'Building and installing debug…' -ForegroundColor Cyan
+        Invoke-GradleInstallDebug
     } else {
         if (-not (Test-Path -LiteralPath $apk)) {
-            throw "APK not found: $apk`nRun without -SkipBuild or: pwsh scripts/build_android.ps1"
+            throw "APK not found: $apk`nRun without -SkipBuild or: ./gradlew :app:assembleDebug"
         }
         Write-Host "Installing $apk …" -ForegroundColor Cyan
-        Install-ReleaseApk -ApkPath $apk
+        Install-DebugApk -ApkPath $apk
     }
 
     if (-not $NoLaunch) {
-        & adb -d shell am start -n $activity | Out-Null
+        Invoke-Adb shell am start -n $activity | Out-Null
         Write-Host "Started $activity" -ForegroundColor Green
     }
 
-    Write-Host 'Release installed on USB device.' -ForegroundColor Green
+    Write-Host 'Debug installed on USB device.' -ForegroundColor Green
 } finally {
     Pop-Location
 }

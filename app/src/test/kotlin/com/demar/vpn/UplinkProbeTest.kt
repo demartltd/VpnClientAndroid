@@ -11,7 +11,7 @@ import org.junit.Test
 class UplinkProbeTest {
   @Test
   fun probe_unresolvableHost_returnsOffline() = runBlocking {
-    val profile = ServerProfile.hysteria2(
+    val profile = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "TEST-OFFLINE",
         server = "no-such-host.invalid",
@@ -26,7 +26,7 @@ class UplinkProbeTest {
 
   @Test
   fun probe_hysteria2_literalIp_dnsOk() = runBlocking {
-    val profile = ServerProfile.hysteria2(
+    val profile = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "HY2-DNS",
         server = "127.0.0.1",

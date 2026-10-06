@@ -5,7 +5,10 @@ import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.ProxyProfile
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.VlessRealityProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -69,27 +72,27 @@ object ServersApi {
     val id = item.optString("id").takeIf { it.isNotBlank() } ?: return null
     val name = item.optString("name").takeIf { it.isNotBlank() } ?: return null
     val city = item.optString("city").takeIf { it.isNotBlank() }
-    val protocol = item.optString("protocol").lowercase()
-    if (protocol != "hysteria2") return null
+    val protocol = ServerProtocol.fromApi(item.optString("protocol")) ?: return null
     val configRaw = item.optString("clientConfigJson").takeIf { it.isNotBlank() }
-      ?: return previewHysteria2(id, name, city)
+    if (configRaw == null) return preview(protocol, id, name, city)
     val config = runCatching { JSONObject(configRaw) }.getOrNull() ?: return null
-    return parseHysteria2(id, name, city, config)
+    return when (protocol) {
+      ServerProtocol.Hysteria2 -> parseHysteria2(id, name, city, config)
+      ServerProtocol.VlessReality -> parseVlessReality(id, name, city, config)
+    }
   }
 
-  /** Preview / store-review: metadata only, no connect credentials. */
-  private fun previewHysteria2(id: String, name: String, city: String?): ServerProfile =
-    ServerProfile.hysteria2FromTag(
-      Hysteria2Profile(
-        displayName = name,
-        server = "",
-        port = 443,
-        password = "",
-        tlsServerName = "",
-      ),
-      city = city,
-      id = id,
-    )
+  private fun preview(protocol: ServerProtocol, id: String, name: String, city: String?): ServerProfile {
+    val empty: ProxyProfile = when (protocol) {
+      ServerProtocol.Hysteria2 ->
+        Hysteria2Profile(name, server = "", port = 443, password = "", tlsServerName = "")
+      ServerProtocol.VlessReality ->
+        VlessRealityProfile(
+          name, server = "", port = 443, uuid = "", tlsServerName = "", publicKey = "", shortId = "",
+        )
+    }
+    return ServerProfile.fromTag(empty, city = city, id = id)
+  }
 
   private fun parseHysteria2(
     id: String,
@@ -97,18 +100,8 @@ object ServersApi {
     city: String?,
     config: JSONObject,
   ): ServerProfile? {
-    val outbounds = config.optJSONArray("outbounds") ?: return null
-    var hy2: JSONObject? = null
-    for (i in 0 until outbounds.length()) {
-      val o = outbounds.optJSONObject(i) ?: continue
-      if (o.optString("type") == "hysteria2") {
-        hy2 = o
-        break
-      }
-    }
-    hy2 ?: return null
-    val server = hy2.optString("server").takeIf { it.isNotBlank() } ?: return null
-    val port = hy2.optInt("server_port", 0).takeIf { it > 0 } ?: return null
+    val hy2 = firstOutbound(config, "hysteria2") ?: return null
+    val (server, port) = dialFields(hy2) ?: return null
     val password = hy2.optString("password")
     val tls = hy2.optJSONObject("tls")
     val tlsName = tls?.optString("server_name")?.takeIf { it.isNotBlank() } ?: server
@@ -120,7 +113,7 @@ object ServersApi {
     }
     val obfs = hy2.optJSONObject("obfs")?.optString("password")?.takeIf { it.isNotBlank() }
     val outboundCity = hy2.optString("city").takeIf { it.isNotBlank() } ?: city
-    return ServerProfile.hysteria2FromTag(
+    return ServerProfile.fromTag(
       Hysteria2Profile(
         displayName = name,
         server = server,
@@ -136,6 +129,54 @@ object ServersApi {
       id = id,
       bypassRuleSets = parseBypassRuleSets(config),
     )
+  }
+
+  private fun parseVlessReality(
+    id: String,
+    name: String,
+    city: String?,
+    config: JSONObject,
+  ): ServerProfile? {
+    val vless = firstOutbound(config, "vless") ?: return null
+    val (server, port) = dialFields(vless) ?: return null
+    val uuid = vless.optString("uuid")
+    val tls = vless.optJSONObject("tls")
+    val reality = tls?.optJSONObject("reality")
+    val publicKey = reality?.optString("public_key")?.takeIf { it.isNotBlank() } ?: return null
+    val shortId = reality?.optString("short_id")?.takeIf { it.isNotBlank() } ?: return null
+    val tlsName = tls.optString("server_name").takeIf { it.isNotBlank() } ?: "www.cloudflare.com"
+    val flow = vless.optString("flow").takeIf { it.isNotBlank() }
+    val outboundCity = vless.optString("city").takeIf { it.isNotBlank() } ?: city
+    return ServerProfile.fromTag(
+      VlessRealityProfile(
+        displayName = name,
+        server = server,
+        port = port,
+        uuid = uuid,
+        tlsServerName = tlsName,
+        publicKey = publicKey,
+        shortId = shortId,
+        flow = flow ?: "xtls-rprx-vision",
+      ),
+      city = outboundCity,
+      id = id,
+      bypassRuleSets = parseBypassRuleSets(config),
+    )
+  }
+
+  private fun firstOutbound(config: JSONObject, type: String): JSONObject? {
+    val outbounds = config.optJSONArray("outbounds") ?: return null
+    for (i in 0 until outbounds.length()) {
+      val o = outbounds.optJSONObject(i) ?: continue
+      if (o.optString("type") == type) return o
+    }
+    return null
+  }
+
+  private fun dialFields(outbound: JSONObject): Pair<String, Int>? {
+    val server = outbound.optString("server").takeIf { it.isNotBlank() } ?: return null
+    val port = outbound.optInt("server_port", 0).takeIf { it > 0 } ?: return null
+    return server to port
   }
 
   private fun positiveMbps(obj: JSONObject, key: String): Int? {

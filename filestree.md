@@ -10,7 +10,7 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── domain/
-│   ├── vpn/                     # Hysteria2Profile, SingBoxConnectPlan, ApiBypassRuleSet
+│   ├── vpn/                     # ProxyProfile, Hysteria2/VlessReality, SingBoxConnectPlan, ApiBypassRuleSet
 │   │   └── tun/                 # TunSettings, TunGroup, effectivePackages
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
@@ -33,7 +33,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── components/              # SettingsActionButton, DemarSnackbar, …
 │   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
-│   ├── servers/ServersScreen.kt  # Hysteria2 + tier SegmentBars above list
+│   ├── servers/ServersScreen.kt  # protocol + tier SegmentBars above list
 │   ├── settings/                # App settings, TunSettings, Documents, Service menu
 │   │   └── support/             # SupportScreen, ChatPane, Composer, Bubble, Attach, UiUtils
 │   ├── account/                 # AccountScreen + checkout/compare/pay result + TrafficPieChart

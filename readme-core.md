@@ -1,10 +1,12 @@
-# Ядро VPN: Sing-box (Hysteria2) — Demar Proxy Android
+# Ядро VPN: Sing-box (Hysteria2 + VLESS Reality) — Demar Proxy Android
 
 Целевая версия core: **sing-box 1.14.1**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 
 - [Hysteria2 outbound](https://sing-box.sagernet.org/configuration/outbound/hysteria2/)
+- [VLESS outbound](https://sing-box.sagernet.org/configuration/outbound/vless/)
+- [TLS / Reality](https://sing-box.sagernet.org/configuration/shared/tls/)
 - [DNS rule action](https://sing-box.sagernet.org/configuration/dns/rule_action/) (since 1.11.0)
 - [Dial Fields](https://sing-box.sagernet.org/configuration/shared/dial/) — `domain_resolver`
 - [HTTP Client](https://sing-box.sagernet.org/configuration/shared/http-client/) — remote rule-set download (since 1.14.0)
@@ -19,13 +21,13 @@
 ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigBuilder → config.json
 ```
 
-`resolveUplinkIpv4s` — перед connect на Android. Расширяемость: новый profile + `SingBoxConnectPlan.foo()` + factory в `ServerProfile`.
+`resolveUplinkIpv4s` — перед connect на Android. Расширяемость: новый `ProxyProfile` + `toConnectPlan` + `ServerProtocol` + parse ветка.
 
 ### Добавление протокола
 
-1. Profile struct (`FooProfile`) в `domain/vpn/`
-2. `SingBoxConnectPlan.foo(profile)` — outbound + tun overrides
-3. `ServerProtocol` + factory / `connectPlan`
+1. `FooProfile : ProxyProfile` — `protocol`, `preferResolvedDial`, `toConnectPlan` → `SingBoxConnectPlan.foo()`
+2. `ServerProtocol` entry (`apiKey` / label)
+3. Parse/preview ветка в `ServersApi` (+ `ServerProfile.fromTag`)
 4. Test / API seed (не hardcode в runtime)
 5. При новом outbound — обновить `TAGS` в `scripts/libbox-build-android.py` (если нужен build tag)
 
@@ -53,6 +55,38 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 | `up_mbps` / `down_mbps` | omitted → BBR |
 
 Uplink preflight: DNS-only (QUIC/UDP).
+
+---
+
+## VLESS Reality
+
+Стек: **VLESS + TCP + xtls-rprx-vision + REALITY** (не XHTTP — в stock sing-box 1.14 нет).
+
+API `protocol`: `vless_reality`. Outbound type: `vless`.
+
+| App field | sing-box key |
+|-----------|--------------|
+| `server` | `server` (VPS domain) |
+| `port` | `server_port` |
+| `uuid` | `uuid` |
+| `flow` | `flow` (default `xtls-rprx-vision`) |
+| `tlsServerName` | `tls.server_name` (handshake host, often `www.cloudflare.com`; avoid `www.microsoft.com` — Reality EOF) |
+| `publicKey` | `tls.reality.public_key` |
+| `shortId` | `tls.reality.short_id` |
+
+### Outbound defaults (`SingBoxConnectPlan.vlessReality`)
+
+| Поле | Значение |
+|------|----------|
+| `tls.reality` | enabled + public_key + short_id |
+| `tls.utls` | enabled + fingerprint `chrome` (обязателен для Reality в sing-box) |
+| `domain_resolver` | `dns-direct`, `ipv4_only` |
+| `network` / `multiplex` | **не эмитятся** (omit = tcp+udp; Vision ∌ mux) |
+| dial | `preferResolvedDial` → `withResolvedUplink` после resolve |
+
+Uplink host = VPS `server`, не SNI. Bootstrap DNS/route: только uplink hostname (без handshake SNI).
+
+**Нода:** inbound `tls.server_name` обязан совпадать с handshake host — без него `reality verification failed`. После правки шаблона — перенастроить ноду из панели.
 
 ---
 
@@ -118,7 +152,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 Mixed `127.0.0.1:10808` (`SingBoxTags.diagInbound`):
 
-- Post-connect: `VpnTunnelProbe` — HTTP сразу после diag TCP (`generate_204` → CF trace, timeout 1.5s, adaptive backoff)
+- Post-connect: `VpnTunnelProbe` — HTTP через diag mixed → **proxy**; успех = **OR** (первый ответ): Google `generate_204` → CF domain → literal `1.1.1.1` (timeout 1.5s). Probe-хосты только в DNS bootstrap, не в route DIRECT. Правило `diag → proxy` стоит до domain DIRECT.
 - Egress: `NetworkDiagnostics` (roadmap)
 - Native snapshot: `getEgressRouteSnapshot` (`osVpnActive`, `demarConnected`, `diagProxyReady`)
 
@@ -138,10 +172,11 @@ python3 scripts/libbox-build-android.py
 ### Build tags
 
 ```
-with_gvisor,with_quic,with_clash_api,badlinkname,tfogo_checklinkname0
+with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0
 ```
 
 - `with_quic` — Hysteria2 / QUIC
+- `with_utls` — Reality (обязателен для VLESS Reality)
 
 AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 
@@ -151,7 +186,7 @@ AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 
 | Путь | Роль |
 |------|------|
-| `domain/vpn/*` | `Hysteria2Profile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
+| `domain/vpn/*` | `ProxyProfile`, `Hysteria2Profile`, `VlessRealityProfile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
 | `data/vpn/SingBoxConfigBuilder.kt` | TUN + DNS + route JSON |
 | `data/vpn/VpnController.kt` | Connect pipeline, UI bridge |
 | `data/network/UplinkIpv4.kt` | uplink resolve |

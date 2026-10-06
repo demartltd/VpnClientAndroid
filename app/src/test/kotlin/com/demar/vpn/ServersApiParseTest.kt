@@ -3,6 +3,9 @@ package com.demar.vpn
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
+import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.VlessRealityProfile
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -129,11 +132,13 @@ class ServersApiParseTest {
     val profile = ServersApi.parseServerItem(item)
     assertNotNull(profile)
     assertEquals("def456", profile!!.id)
+    assertEquals(ServerProtocol.Hysteria2, profile.protocol)
     assertEquals("hy2.example.com", profile.profile.server)
     assertEquals(443, profile.profile.port)
-    assertEquals("hy2-pass", profile.profile.password)
-    assertEquals(10, profile.profile.upMbps)
-    assertEquals(10, profile.profile.downMbps)
+    val hy2 = profile.profile as Hysteria2Profile
+    assertEquals("hy2-pass", hy2.password)
+    assertEquals(10, hy2.upMbps)
+    assertEquals(10, hy2.downMbps)
     assertEquals(6, profile.bypassRuleSets.size)
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" && it.url.contains("Chocolate4U") })
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-cn" })
@@ -142,6 +147,75 @@ class ServersApiParseTest {
     assertTrue(built.contains("geosite-ir"))
     assertTrue(built.contains("\"up_mbps\": 10"))
     assertTrue(built.contains("\"down_mbps\": 10"))
+  }
+
+  @Test
+  fun parseVlessReality_fromClientConfigJson() {
+    val config = """
+      {
+        "outbounds": [
+          {
+            "type": "vless",
+            "tag": "DE-FREE-9",
+            "city": "Frankfurt",
+            "server": "vless.example.com",
+            "server_port": 443,
+            "uuid": "bf000d23-0752-40b4-affe-68f7707a9661",
+            "flow": "xtls-rprx-vision",
+            "tls": {
+              "enabled": true,
+              "server_name": "www.microsoft.com",
+              "reality": {
+                "enabled": true,
+                "public_key": "jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0",
+                "short_id": "0123456789abcdef"
+              }
+            },
+            "multiplex": { "enabled": true }
+          },
+          { "type": "direct", "tag": "direct" }
+        ],
+        "route": {
+          "final": "DE-FREE-9",
+          "rule_set": [
+            {
+              "tag": "geoip-ru",
+              "type": "remote",
+              "format": "binary",
+              "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs"
+            }
+          ]
+        }
+      }
+    """.trimIndent()
+    val item = JSONObject()
+      .put("id", "vless1")
+      .put("name", "DE-FREE-9")
+      .put("protocol", "vless_reality")
+      .put("clientConfigJson", config)
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals(ServerProtocol.VlessReality, profile!!.protocol)
+    assertEquals("VLESS", profile.protocolLabel)
+    val vl = profile.profile as VlessRealityProfile
+    assertEquals("vless.example.com", vl.server)
+    assertEquals(443, vl.port)
+    assertEquals("bf000d23-0752-40b4-affe-68f7707a9661", vl.uuid)
+    assertEquals("www.microsoft.com", vl.tlsServerName)
+    assertEquals("jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0", vl.publicKey)
+    assertEquals("0123456789abcdef", vl.shortId)
+    assertEquals(1, profile.bypassRuleSets.size)
+    val built = SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan)
+    val outbound = JSONObject(built).getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("vless", outbound.getString("type"))
+    assertEquals("xtls-rprx-vision", outbound.getString("flow"))
+    assertTrue(outbound.has("tls"))
+    assertFalse(outbound.has("multiplex"))
+    assertFalse(outbound.has("network"))
+    assertTrue(built.contains("www.microsoft.com"))
+    assertTrue(profile.profile.preferResolvedDial)
+    assertTrue(profile.connectPlan.tun.bootstrapDomains.contains("vless.example.com"))
+    assertFalse(profile.connectPlan.tun.bootstrapDomains.contains("www.microsoft.com"))
   }
 
   @Test
@@ -194,9 +268,10 @@ class ServersApiParseTest {
       .put("clientConfigJson", config)
     val profile = ServersApi.parseServerItem(item)
     assertNotNull(profile)
-    assertEquals("", profile!!.profile.password)
-    assertNull(profile.profile.upMbps)
-    assertNull(profile.profile.downMbps)
+    val hy2 = profile!!.profile as Hysteria2Profile
+    assertEquals("", hy2.password)
+    assertNull(hy2.upMbps)
+    assertNull(hy2.downMbps)
   }
 
   @Test
@@ -212,9 +287,26 @@ class ServersApiParseTest {
     assertEquals("6a3eeae01afeb82f6b1cddb7", profile!!.id)
     assertEquals("DE-FREE-93", profile.displayName)
     assertEquals("Frankfurt am Main", profile.city)
-    assertEquals("", profile.profile.password)
+    val hy2 = profile.profile as Hysteria2Profile
+    assertEquals("", hy2.password)
     assertEquals("", profile.profile.server)
-    assertNull(profile.profile.upMbps)
-    assertNull(profile.profile.downMbps)
+    assertNull(hy2.upMbps)
+    assertNull(hy2.downMbps)
+  }
+
+  @Test
+  fun parseVlessReality_previewWithoutConfig_buildsStub() {
+    val item = JSONObject()
+      .put("id", "vless-preview")
+      .put("name", "DE-FREE-10")
+      .put("protocol", "vless_reality")
+      .put("city", "Frankfurt")
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals(ServerProtocol.VlessReality, profile!!.protocol)
+    val vl = profile.profile as VlessRealityProfile
+    assertEquals("", vl.uuid)
+    assertEquals("", vl.publicKey)
+    assertFalse(vl.hasCredentials)
   }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build minimal Libbox AAR for Android (Hysteria2/QUIC + gVisor TUN, arm64-only)."""
+"""Build minimal Libbox AAR for Android (Hysteria2/QUIC + VLESS Reality/uTLS + gVisor TUN, arm64-only)."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ OUT_AAR = OUT_DIR / "libbox.aar"
 ASSETS_DIR = REPO_ROOT / "app" / "src" / "main" / "assets" / "singbox"
 TAG = os.environ.get("SINGBOX_TAG", "v1.14.1")
 MAX_AAR_BYTES = 40 * 1024 * 1024
-TAGS = "with_gvisor,with_quic,with_clash_api,badlinkname,tfogo_checklinkname0"
+TAGS = "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"
 
 
 def main() -> None:
