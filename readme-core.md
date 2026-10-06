@@ -1,10 +1,11 @@
-# Ядро VPN: Sing-box (Hysteria2 + VLESS Reality) — Demar Proxy Android
+# Ядро VPN: Sing-box (Hysteria2 + Trojan + VLESS Reality) — Demar Proxy Android
 
 Целевая версия core: **sing-box 1.14.1**. Фактическая — в `app/src/main/assets/singbox/bundled_version.txt` после `libbox-build-android.py`.
 
 Документация: https://sing-box.sagernet.org/
 
 - [Hysteria2 outbound](https://sing-box.sagernet.org/configuration/outbound/hysteria2/)
+- [Trojan outbound](https://sing-box.sagernet.org/configuration/outbound/trojan/)
 - [VLESS outbound](https://sing-box.sagernet.org/configuration/outbound/vless/)
 - [TLS / Reality](https://sing-box.sagernet.org/configuration/shared/tls/)
 - [DNS rule action](https://sing-box.sagernet.org/configuration/dns/rule_action/) (since 1.11.0)
@@ -55,6 +56,30 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 | `up_mbps` / `down_mbps` | omitted → BBR |
 
 Uplink preflight: DNS-only (QUIC/UDP).
+
+---
+
+## Trojan
+
+API `protocol`: `trojan`. Outbound type: `trojan`. TCP + TLS (ACME на ноде) + multiplex.
+
+| App field | sing-box key |
+|-----------|--------------|
+| `server` | `server` |
+| `port` | `server_port` |
+| `password` | `password` |
+| `tlsServerName` | `tls.server_name` |
+
+### Outbound defaults (`SingBoxConnectPlan.trojan`)
+
+| Поле | Значение |
+|------|----------|
+| `tls` | enabled + `server_name` |
+| `multiplex` | `{ enabled: true }` |
+| `domain_resolver` | `dns-direct`, `ipv4_only` |
+| dial | `preferResolvedDial` → `withResolvedUplink` после resolve |
+
+Bootstrap DNS/route: hostname сервера + TLS SNI (обычно совпадают).
 
 ---
 
@@ -186,7 +211,7 @@ AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 
 | Путь | Роль |
 |------|------|
-| `domain/vpn/*` | `ProxyProfile`, `Hysteria2Profile`, `VlessRealityProfile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
+| `domain/vpn/*` | `ProxyProfile`, `Hysteria2Profile`, `TrojanProfile`, `VlessRealityProfile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
 | `data/vpn/SingBoxConfigBuilder.kt` | TUN + DNS + route JSON |
 | `data/vpn/VpnController.kt` | Connect pipeline, UI bridge |
 | `data/network/UplinkIpv4.kt` | uplink resolve |

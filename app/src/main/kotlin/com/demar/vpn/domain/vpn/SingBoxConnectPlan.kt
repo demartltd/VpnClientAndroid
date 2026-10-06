@@ -60,6 +60,28 @@ data class SingBoxConnectPlan(
       )
     }
 
+    fun trojan(
+      profile: TrojanProfile,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
+    ): SingBoxConnectPlan {
+      val outbound = mapOf(
+        "type" to "trojan",
+        "tag" to SingBoxTags.PROXY,
+        "server" to profile.server,
+        "server_port" to profile.port,
+        "password" to profile.password,
+        "tls" to mapOf("enabled" to true, "server_name" to profile.tlsServerName),
+        "multiplex" to mapOf("enabled" to true),
+        "domain_resolver" to DOMAIN_RESOLVER,
+      )
+      return of(
+        uplink = profile.server,
+        outbound = outbound,
+        bootstrap = bootstrapDomains(profile.server, profile.tlsServerName),
+        bypass = bypassRuleSets,
+      )
+    }
+
     fun vlessReality(
       profile: VlessRealityProfile,
       bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),

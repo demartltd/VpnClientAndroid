@@ -10,7 +10,7 @@ app/src/main/kotlin/com/demar/vpn/
 ├── DemarApp.kt
 ├── DemarAppContextHolder.kt
 ├── domain/
-│   ├── vpn/                     # ProxyProfile, Hysteria2/VlessReality, SingBoxConnectPlan, ApiBypassRuleSet
+│   ├── vpn/                     # ProxyProfile, Hysteria2/Trojan/VlessReality, SingBoxConnectPlan, ApiBypassRuleSet
 │   │   └── tun/                 # TunSettings, TunGroup, effectivePackages
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/

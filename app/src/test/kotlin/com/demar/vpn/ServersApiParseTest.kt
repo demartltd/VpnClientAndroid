@@ -5,6 +5,7 @@ import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.TrojanProfile
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -219,11 +220,53 @@ class ServersApiParseTest {
   }
 
   @Test
+  fun parseTrojan_fromClientConfigJson() {
+    val config = """
+      {
+        "outbounds": [
+          {
+            "type": "trojan",
+            "tag": "SE-VIP-71",
+            "city": "Stockholm",
+            "server": "se-f-1.xyzdeer.space",
+            "server_port": 8443,
+            "password": "trojan-secret",
+            "tls": { "enabled": true, "server_name": "se-f-1.xyzdeer.space" },
+            "multiplex": { "enabled": true }
+          },
+          { "type": "direct", "tag": "direct" }
+        ]
+      }
+    """.trimIndent()
+    val item = JSONObject()
+      .put("id", "trj1")
+      .put("name", "SE-VIP-71")
+      .put("protocol", "trojan")
+      .put("clientConfigJson", config)
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals(ServerProtocol.Trojan, profile!!.protocol)
+    assertEquals("Trojan", profile.protocolLabel)
+    val tr = profile.profile as TrojanProfile
+    assertEquals("se-f-1.xyzdeer.space", tr.server)
+    assertEquals(8443, tr.port)
+    assertEquals("trojan-secret", tr.password)
+    assertEquals("se-f-1.xyzdeer.space", tr.tlsServerName)
+    assertTrue(profile.profile.preferResolvedDial)
+    val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))
+      .getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("trojan", outbound.getString("type"))
+    assertEquals("trojan-secret", outbound.getString("password"))
+    assertTrue(outbound.getJSONObject("multiplex").getBoolean("enabled"))
+    assertEquals("se-f-1.xyzdeer.space", outbound.getJSONObject("tls").getString("server_name"))
+  }
+
+  @Test
   fun parseUnsupported_returnsNull() {
     val item = JSONObject()
       .put("id", "x")
       .put("name", "DE-FREE-1")
-      .put("protocol", "trojan")
+      .put("protocol", "shadowsocks")
       .put("clientConfigJson", "{}")
     assertNull(ServersApi.parseServerItem(item))
   }
