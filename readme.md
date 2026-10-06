@@ -4,7 +4,7 @@
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
 
-Ядро: **sing-box 1.14.1** (**Hysteria2** + **VLESS Reality**). Документация: https://sing-box.sagernet.org/
+Ядро: **sing-box 1.14.1** (**Hysteria2** + **Trojan** + **VLESS Reality**). Документация: https://sing-box.sagernet.org/
 
 **UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot`.
 
@@ -32,13 +32,13 @@ pwsh scripts/build_android.ps1
 | Экран | Статус |
 |-------|--------|
 | Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / VLESS Reality) |
-| Servers | SegmentBar: протоколы из списка (HY2 / VLESS) + All/Free/Plus/Vip (+ Dev/Tester если есть); список с `fastapi.demar.cc` по подписке |
+| Servers | SegmentBar: протоколы из списка (HY2 / Trojan / VLESS) + All/Free/Plus/Vip (+ Dev/Tester если есть); список с `fastapi.demar.cc` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csapi.demar.cc`, channel `android`, `sourceId=2`, альбом до 10 фото WebP) |
 | Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `api.demar.cc`; VPN profile/notify/traffic → `fastapi.demar.cc`; Buy/Renew/Increase → RollyPay checkout (`/vpn/pay/*`, Custom Tabs, `demarvpn://pay/ok\|fail`) |
 | App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU/TR/UK/UZ/zh-Hans/zh-Hant/KO/JA/ES/DE/FR/HI, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS (`UpdateDownloadService`) с progress notification |
 | Service menu (3× tap version) | about + latest version API + diagnostics |
 
-VPN connect (Hysteria2 + VLESS Reality) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+VPN connect (Hysteria2 + Trojan + VLESS Reality) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 

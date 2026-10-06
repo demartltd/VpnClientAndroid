@@ -8,6 +8,7 @@ import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ProxyProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.TrojanProfile
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,6 +79,7 @@ object ServersApi {
     val config = runCatching { JSONObject(configRaw) }.getOrNull() ?: return null
     return when (protocol) {
       ServerProtocol.Hysteria2 -> parseHysteria2(id, name, city, config)
+      ServerProtocol.Trojan -> parseTrojan(id, name, city, config)
       ServerProtocol.VlessReality -> parseVlessReality(id, name, city, config)
     }
   }
@@ -86,6 +88,8 @@ object ServersApi {
     val empty: ProxyProfile = when (protocol) {
       ServerProtocol.Hysteria2 ->
         Hysteria2Profile(name, server = "", port = 443, password = "", tlsServerName = "")
+      ServerProtocol.Trojan ->
+        TrojanProfile(name, server = "", port = 443, password = "", tlsServerName = "")
       ServerProtocol.VlessReality ->
         VlessRealityProfile(
           name, server = "", port = 443, uuid = "", tlsServerName = "", publicKey = "", shortId = "",
@@ -124,6 +128,32 @@ object ServersApi {
         obfsPassword = obfs,
         upMbps = positiveMbps(hy2, "up_mbps"),
         downMbps = positiveMbps(hy2, "down_mbps"),
+      ),
+      city = outboundCity,
+      id = id,
+      bypassRuleSets = parseBypassRuleSets(config),
+    )
+  }
+
+  private fun parseTrojan(
+    id: String,
+    name: String,
+    city: String?,
+    config: JSONObject,
+  ): ServerProfile? {
+    val trojan = firstOutbound(config, "trojan") ?: return null
+    val (server, port) = dialFields(trojan) ?: return null
+    val password = trojan.optString("password")
+    val tls = trojan.optJSONObject("tls")
+    val tlsName = tls?.optString("server_name")?.takeIf { it.isNotBlank() } ?: server
+    val outboundCity = trojan.optString("city").takeIf { it.isNotBlank() } ?: city
+    return ServerProfile.fromTag(
+      TrojanProfile(
+        displayName = name,
+        server = server,
+        port = port,
+        password = password,
+        tlsServerName = tlsName,
       ),
       city = outboundCity,
       id = id,

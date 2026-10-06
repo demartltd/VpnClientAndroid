@@ -14,6 +14,7 @@ import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.visibleProtocols
 import com.demar.vpn.domain.vpn.visibleTiers
+import com.demar.vpn.domain.vpn.TrojanProfile
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
@@ -325,15 +326,51 @@ class VpnPipelineTest {
         shortId = "abcd",
       ),
       city = "Frankfurt",
+    ) + ServerProfile.fromTag(
+      TrojanProfile(
+        displayName = "SE-VIP-71",
+        server = "se.example.com",
+        port = 8443,
+        password = "pw",
+        tlsServerName = "se.example.com",
+      ),
+      city = "Stockholm",
     )
     assertEquals(
-      listOf(ServerProtocol.Hysteria2, ServerProtocol.VlessReality),
+      listOf(ServerProtocol.Hysteria2, ServerProtocol.Trojan, ServerProtocol.VlessReality),
       mixed.visibleProtocols(),
     )
     assertEquals(
       listOf("DE-FREE-9"),
       mixed.filterServers(ServerProtocol.VlessReality, null).map { it.displayName },
     )
+    assertEquals(
+      listOf("SE-VIP-71"),
+      mixed.filterServers(ServerProtocol.Trojan, null).map { it.displayName },
+    )
+  }
+
+  @Test
+  fun trojan_buildsOutboundWithMultiplex() {
+    val profile = ServerProfile.fromTag(
+      TrojanProfile(
+        displayName = "SE-VIP-71",
+        server = "se-f-1.xyzdeer.space",
+        port = 8443,
+        password = "trojan-secret",
+        tlsServerName = "se-f-1.xyzdeer.space",
+      ),
+    )
+    assertEquals("Trojan", profile.protocolLabel)
+    assertTrue(profile.profile.hasCredentials)
+    assertTrue(profile.profile.preferResolvedDial)
+    val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))
+      .getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("trojan", outbound.getString("type"))
+    assertEquals("trojan-secret", outbound.getString("password"))
+    assertTrue(outbound.getJSONObject("multiplex").getBoolean("enabled"))
+    assertEquals("se-f-1.xyzdeer.space", outbound.getJSONObject("tls").getString("server_name"))
+    assertTrue(profile.connectPlan.tun.bootstrapDomains.contains("se-f-1.xyzdeer.space"))
   }
 
   @Test

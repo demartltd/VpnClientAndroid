@@ -37,6 +37,7 @@ enum class ServerTier(val label: String) {
 
 enum class ServerProtocol(val apiKey: String, val label: String) {
   Hysteria2("hysteria2", "HY2"),
+  Trojan("trojan", "Trojan"),
   VlessReality("vless_reality", "VLESS");
 
   companion object {
