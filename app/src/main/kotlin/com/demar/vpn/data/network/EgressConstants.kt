@@ -14,12 +14,16 @@ object EgressConstants {
   )
 }
 
-data class EgressHostProbe(val tcpMs: Int, val httpsMs: Int)
+enum class ProbeKind { Tcp, Https }
 
-val EgressHostProbeZero = EgressHostProbe(tcpMs = 0, httpsMs = 0)
+data class EgressHostProbe(
+  val tcpMs: Int = 0,
+  val httpsMs: Int = 0,
+)
 
-fun egressHostProbeLabel(tcpMs: Int, httpsMs: Int): String {
-  val t = if (tcpMs > 0) "$tcpMs" else "0"
-  val h = if (httpsMs > 0) "$httpsMs" else "0"
-  return "TCP $t · HTTPS $h"
+val EgressHostProbeZero = EgressHostProbe()
+
+fun egressHostProbeLabel(p: EgressHostProbe): String {
+  fun ms(v: Int) = if (v > 0) "$v" else "0"
+  return "TCP ${ms(p.tcpMs)} · HTTPS ${ms(p.httpsMs)}"
 }

@@ -109,8 +109,8 @@ try {
 
     if (-not $SkipBuild) {
         if (-not $SkipAdsSync) {
-            $ans = Read-Host 'Download ads.srs? [Y/n]'
-            if ($ans -match '^[Nn]') { $SkipAdsSync = $true }
+            $ans = Read-Host 'Download ads.srs? 1=Yes 2=No'
+            if ($ans -eq '2') { $SkipAdsSync = $true }
         }
         if (-not $SkipAdsSync) {
             Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
