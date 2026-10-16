@@ -40,6 +40,7 @@ import com.demar.vpn.domain.content.LegalDocument
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.DemarSnackbarHost
 import com.demar.vpn.ui.components.snackbarHostBottomInset
+import com.demar.vpn.ui.account.AppSheetHost
 import com.demar.vpn.ui.scaffold.AppScaffold
 import com.demar.vpn.ui.settings.AppSettingsScreen
 import com.demar.vpn.ui.settings.DocumentScreen
@@ -211,6 +212,10 @@ fun AppRoot(
       snackbarHost,
       bottomInset = snackbarHostBottomInset(onMain),
       modifier = Modifier.align(Alignment.BottomCenter),
+    )
+    AppSheetHost(
+      snackbarHost = snackbarHost,
+      vpnController = vpnController,
     )
     if (showUpdateSheet && updateState !is AppUpdateState.Idle) {
       UpdateBottomSheet(

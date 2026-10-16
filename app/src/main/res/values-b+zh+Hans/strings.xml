@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">付费订阅可用</string>
     <string name="settings_tun_rules_title">TUN 设置</string>
     <string name="settings_tun_rules_sub">将所选应用与网站排除在 VPN 之外</string>
-    <string name="settings_tun_adblock_title">广告拦截</string>
     <string name="settings_tun_adblock_sub">通过 DNS 拦截广告</string>
     <string name="settings_tun_group_sub">排除在 VPN 隧道外</string>
     <string name="settings_tun_groups_title">预设应用组</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">日志已清空。</string>
     <string name="journal_share_empty">日志为空，无可分享内容。</string>
     <string name="journal_share_failed">无法分享日志：%s</string>
-    <string name="service_menu_title">服务菜单</string>
-    <string name="service_about">关于</string>
-    <string name="service_name">名称</string>
-    <string name="service_package">包名</string>
-    <string name="service_version">版本</string>
-    <string name="service_latest_version">最新版本</string>
-    <string name="service_platform">平台</string>
     <string name="update_title">有可用更新</string>
     <string name="update_body">已安装 %1$s。可用 %2$s。</string>
     <string name="update_now">更新</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">无法下载更新。请稍后重试。</string>
     <string name="update_notification_channel">应用更新</string>
     <string name="update_notification_ready">更新 %1$s 已可安装</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">网络</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">国家/地区</string>
-    <string name="service_refresh">刷新</string>
-    <string name="service_device">设备</string>
     <string name="login_sheet_title">登录 / 注册</string>
     <string name="login_email_hint">邮箱</string>
     <string name="login_continue">继续</string>
@@ -109,6 +94,23 @@
     <string name="account_expires_today">今天</string>
     <string name="account_buy">购买订阅</string>
     <string name="account_extend">续订</string>
+    <string name="sub_alert_expiry_title">订阅即将到期！</string>
+    <string name="sub_alert_expiry_body">您将在以下时间后失去网络</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="other">%d 小时</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="other">%d 分钟</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="other">小时</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="other">分钟</item>
+    </plurals>
+    <string name="sub_alert_secure">安全网络</string>
+    <string name="sub_alert_col_now">现在</string>
+    <string name="sub_alert_col_after">到期后</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">通知</string>
     <string name="account_notify_sub">通知设置</string>
@@ -151,7 +153,6 @@
     <string name="pay_compare_speed">速度</string>
     <string name="pay_compare_traffic">流量</string>
     <string name="pay_compare_family">家庭邀请*</string>
-    <string name="pay_compare_ads">广告拦截</string>
     <string name="pay_compare_tun">TUN 设置</string>
     <string name="pay_compare_ip">专属 IP*</string>
     <string name="pay_compare_footnote">*暂不可用。</string>
@@ -179,29 +180,6 @@
     <string name="tile_disconnecting">正在断开</string>
     <string name="tile_disconnected">已断开</string>
     <string name="tile_error">错误</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">品牌</string>
-    <string name="device_model">型号</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">语言区域</string>
-    <string name="device_timezone">时区</string>
-    <string name="device_pc_name">电脑名称</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android 错误</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">指纹</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">示例信息消息</string>
-    <string name="snack_demo_success_msg">操作完成</string>
-    <string name="snack_demo_warning_msg">警告</string>
-    <string name="snack_demo_error_msg">出错了</string>
     <string name="support_title">支持</string>
     <string name="support_create">创建工单</string>
     <string name="support_empty">暂无工单</string>

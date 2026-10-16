@@ -58,9 +58,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
-import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthSessionStore
 import com.demar.vpn.data.device.InstalledApp
 import com.demar.vpn.data.device.InstalledAppsQuery
@@ -71,9 +69,9 @@ import com.demar.vpn.domain.vpn.tun.TunSiteGroup
 import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
 import com.demar.vpn.domain.vpn.tun.isSiteGroupEnabled
+import com.demar.vpn.ui.account.AppSheet
+import com.demar.vpn.ui.account.AppSheets
 import com.demar.vpn.ui.account.CheckoutIntent
-import com.demar.vpn.ui.account.PlanCompareSheet
-import com.demar.vpn.ui.account.SubscriptionCheckoutSheet
 import com.demar.vpn.ui.auth.LoginBottomSheet
 import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
@@ -93,15 +91,12 @@ fun TunSettingsScreen(
   val groups by vpnController.tunGroups.collectAsState()
   val siteGroups by vpnController.tunSiteGroups.collectAsState()
   val session by AuthSessionStore.session.collectAsState()
-  val account by AccountStore.account.collectAsStateWithLifecycle()
   val isFree =
     session?.vpnSubscription == null ||
       session?.vpnSubscription.equals("free", ignoreCase = true) == true
   var showPicker by remember { mutableStateOf(false) }
   var customExpanded by remember { mutableStateOf(false) }
   var showLogin by remember { mutableStateOf(false) }
-  var checkoutIntent by remember { mutableStateOf<CheckoutIntent?>(null) }
-  var showPlanCompare by remember { mutableStateOf(false) }
   var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
   val selected = remember(stored.bypassPackages, context) {
     stored.bypassPackages.map { pkg ->
@@ -116,7 +111,8 @@ fun TunSettingsScreen(
   val adBlockOn = stored.isAdBlockEnabled(isFree)
 
   fun openBuy() {
-    if (session == null) showLogin = true else checkoutIntent = CheckoutIntent.Buy
+    if (session == null) showLogin = true
+    else AppSheets.show(AppSheet.Checkout(CheckoutIntent.Buy))
   }
 
   LaunchedEffect(Unit) {
@@ -146,30 +142,6 @@ fun TunSettingsScreen(
       onSignedIn = { showLogin = false },
     )
   }
-  val auth = session
-  val intent = checkoutIntent
-  if (auth != null && intent != null) {
-    SubscriptionCheckoutSheet(
-      intent = intent,
-      session = auth,
-      currentPlan = account?.vpnSubscription ?: auth.vpnSubscription,
-      snackbarHost = snackbarHost,
-      onCompare = {
-        checkoutIntent = null
-        showPlanCompare = true
-      },
-      onDismiss = { checkoutIntent = null },
-    )
-  }
-  if (showPlanCompare) {
-    PlanCompareSheet(
-      onBuy = {
-        showPlanCompare = false
-        checkoutIntent = CheckoutIntent.Buy
-      },
-      onDismiss = { showPlanCompare = false },
-    )
-  }
 
   DemarBackScaffold(
     title = stringResource(R.string.settings_tun_title),
@@ -183,7 +155,7 @@ fun TunSettingsScreen(
     ) {
       SettingsActionButton(
         Icons.Outlined.Block,
-        stringResource(R.string.settings_tun_adblock_title),
+        "Ad block",
         stringResource(R.string.settings_tun_adblock_sub),
         trailingIcon = null,
         trailing = {

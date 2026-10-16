@@ -21,10 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.demar.vpn.R
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.SnackKind
 import kotlinx.coroutines.launch
@@ -37,10 +35,10 @@ fun ServiceMenuSnackChips(snackbarHost: SnackbarHostState) {
   val chipBg = cs.surfaceContainerHighest.copy(alpha = 0.35f)
   val iconColor = cs.primary
   val demos = listOf(
-    Triple(stringResource(R.string.snack_demo_info), SnackKind.Info, stringResource(R.string.snack_demo_info_msg)),
-    Triple(stringResource(R.string.snack_demo_success), SnackKind.Success, stringResource(R.string.snack_demo_success_msg)),
-    Triple(stringResource(R.string.snack_demo_warning), SnackKind.Warning, stringResource(R.string.snack_demo_warning_msg)),
-    Triple(stringResource(R.string.snack_demo_error), SnackKind.Error, stringResource(R.string.snack_demo_error_msg)),
+    Triple("Info", SnackKind.Info, "Sample info message"),
+    Triple("Success", SnackKind.Success, "Operation completed"),
+    Triple("Warning", SnackKind.Warning, "Warning"),
+    Triple("Error", SnackKind.Error, "Something went wrong"),
   )
 
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

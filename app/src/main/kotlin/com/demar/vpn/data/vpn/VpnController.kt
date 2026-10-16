@@ -29,6 +29,8 @@ import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.tun.TunSiteGroup
 import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
+import com.demar.vpn.ui.account.AppSheet
+import com.demar.vpn.ui.account.AppSheets
 import com.demar.vpn.vpn.DemarVpnService
 import com.demar.vpn.vpn.VpnControlStateStore
 import com.demar.vpn.vpn.VpnEventStream
@@ -62,11 +64,8 @@ class VpnController(private val context: Context) {
   val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
   /** Open Account traffic sheet (e.g. connect blocked by monthly limit). */
-  private val _openTrafficSheetEvents = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-  val openTrafficSheetEvents: SharedFlow<Unit> = _openTrafficSheetEvents.asSharedFlow()
-
   fun requestOpenTrafficSheet() {
-    _openTrafficSheetEvents.tryEmit(Unit)
+    AppSheets.show(AppSheet.Traffic)
   }
 
   private val _selectedProfile = MutableStateFlow<ServerProfile?>(null)

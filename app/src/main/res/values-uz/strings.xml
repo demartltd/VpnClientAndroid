@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">Pullik obunada mavjud</string>
     <string name="settings_tun_rules_title">TUN sozlamalari</string>
     <string name="settings_tun_rules_sub">Tanlangan ilovalar va saytlarni VPN dan chiqarish</string>
-    <string name="settings_tun_adblock_title">Reklama bloklash</string>
     <string name="settings_tun_adblock_sub">DNS orqali reklamalarni bloklash</string>
     <string name="settings_tun_group_sub">VPN tunnelidan tashqari</string>
     <string name="settings_tun_groups_title">Tayyor ilova guruhlari</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">Jurnal tozalandi.</string>
     <string name="journal_share_empty">Jurnal bo‘sh — ulashish uchun hech narsa yo‘q.</string>
     <string name="journal_share_failed">Jurnalni ulashib bo‘lmadi: %s</string>
-    <string name="service_menu_title">Xizmat menyusi</string>
-    <string name="service_about">Ilova haqida</string>
-    <string name="service_name">Nomi</string>
-    <string name="service_package">Paket</string>
-    <string name="service_version">Versiya</string>
-    <string name="service_latest_version">Eng so‘nggi versiya</string>
-    <string name="service_platform">Platforma</string>
     <string name="update_title">Yangilanish mavjud</string>
     <string name="update_body">O‘rnatilgan %1$s. Mavjud %2$s.</string>
     <string name="update_now">Yangilash</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">Yangilanishni yuklab bo‘lmadi. Keyinroq qayta urinib ko‘ring.</string>
     <string name="update_notification_channel">Ilova yangilanishlari</string>
     <string name="update_notification_ready">Yangilanish %1$s o‘rnatishga tayyor</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">Internet</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">Mamlakat</string>
-    <string name="service_refresh">Yangilash</string>
-    <string name="service_device">Qurilma</string>
     <string name="login_sheet_title">Kirish / Ro‘yxatdan o‘tish</string>
     <string name="login_email_hint">Email</string>
     <string name="login_continue">Davom etish</string>
@@ -109,6 +94,27 @@
     <string name="account_expires_today">bugun</string>
     <string name="account_buy">Obuna sotib olish</string>
     <string name="account_extend">Obunani uzaytirish</string>
+    <string name="sub_alert_expiry_title">Obuna tugayapti!</string>
+    <string name="sub_alert_expiry_body">Internetdan mahrum bo‘lasiz:</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="one">%d soat</item>
+        <item quantity="other">%d soat</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="one">%d daqiqa</item>
+        <item quantity="other">%d daqiqa</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="one">soat</item>
+        <item quantity="other">soat</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="one">daqiqa</item>
+        <item quantity="other">daqiqa</item>
+    </plurals>
+    <string name="sub_alert_secure">Xavfsiz internet</string>
+    <string name="sub_alert_col_now">Hozir</string>
+    <string name="sub_alert_col_after">Keyin</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">Bildirishnomalar</string>
     <string name="account_notify_sub">Bildirishnoma sozlamalari</string>
@@ -151,7 +157,6 @@
     <string name="pay_compare_speed">Tezlik</string>
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Oilaviy takliflar*</string>
-    <string name="pay_compare_ads">Reklama bloklash</string>
     <string name="pay_compare_tun">TUN sozlamalari</string>
     <string name="pay_compare_ip">Maxsus IP*</string>
     <string name="pay_compare_footnote">*Hozircha mavjud emas.</string>
@@ -179,29 +184,6 @@
     <string name="tile_disconnecting">Uzilmoqda</string>
     <string name="tile_disconnected">Uzilgan</string>
     <string name="tile_error">Xato</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">Brend</string>
-    <string name="device_model">Model</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">Til</string>
-    <string name="device_timezone">Vaqt mintaqasi</string>
-    <string name="device_pc_name">PK nomi</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android xatosi</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">Barmoq izi</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">Namuna info xabari</string>
-    <string name="snack_demo_success_msg">Amal bajarildi</string>
-    <string name="snack_demo_warning_msg">Ogohlantirish</string>
-    <string name="snack_demo_error_msg">Nimadir xato ketdi</string>
     <string name="support_title">Qo‘llab-quvvatlash</string>
     <string name="support_create">Ticket yaratish</string>
     <string name="support_empty">Hali ticketlar yo‘q</string>

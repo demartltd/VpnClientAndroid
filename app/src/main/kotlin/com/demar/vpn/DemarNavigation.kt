@@ -32,6 +32,7 @@ enum class AccountSheet {
   Traffic,
   Buy,
   Plans,
+  Renew,
 }
 
 sealed interface IncomingRoute {

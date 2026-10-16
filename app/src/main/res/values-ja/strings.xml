@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">有料サブスクリプションで利用可能</string>
     <string name="settings_tun_rules_title">TUN 設定</string>
     <string name="settings_tun_rules_sub">選択したアプリとサイトを VPN から除外</string>
-    <string name="settings_tun_adblock_title">広告ブロック</string>
     <string name="settings_tun_adblock_sub">DNS で広告をブロック</string>
     <string name="settings_tun_group_sub">VPN トンネルから除外</string>
     <string name="settings_tun_groups_title">プリセットアプリグループ</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">ジャーナルをクリアしました。</string>
     <string name="journal_share_empty">ジャーナルは空です。共有する内容がありません。</string>
     <string name="journal_share_failed">ジャーナルを共有できませんでした: %s</string>
-    <string name="service_menu_title">サービスメニュー</string>
-    <string name="service_about">情報</string>
-    <string name="service_name">名前</string>
-    <string name="service_package">パッケージ</string>
-    <string name="service_version">バージョン</string>
-    <string name="service_latest_version">最新バージョン</string>
-    <string name="service_platform">プラットフォーム</string>
     <string name="update_title">更新があります</string>
     <string name="update_body">インストール済み %1$s。利用可能 %2$s。</string>
     <string name="update_now">更新</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">更新をダウンロードできませんでした。後でもう一度お試しください。</string>
     <string name="update_notification_channel">アプリの更新</string>
     <string name="update_notification_ready">更新 %1$s をインストールできます</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">インターネット</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">国</string>
-    <string name="service_refresh">更新</string>
-    <string name="service_device">デバイス</string>
     <string name="login_sheet_title">サインイン / 登録</string>
     <string name="login_email_hint">メール</string>
     <string name="login_continue">続行</string>
@@ -109,6 +94,23 @@
     <string name="account_expires_today">今日</string>
     <string name="account_buy">サブスクリプションを購入</string>
     <string name="account_extend">サブスクリプションを更新</string>
+    <string name="sub_alert_expiry_title">サブスクリプションの期限が近づいています！</string>
+    <string name="sub_alert_expiry_body">インターネットが使えなくなるまで</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="other">%d時間</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="other">%d分</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="other">時間</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="other">分</item>
+    </plurals>
+    <string name="sub_alert_secure">安全なインターネット</string>
+    <string name="sub_alert_col_now">現在</string>
+    <string name="sub_alert_col_after">期限後</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">通知</string>
     <string name="account_notify_sub">通知設定</string>
@@ -151,7 +153,6 @@
     <string name="pay_compare_speed">速度</string>
     <string name="pay_compare_traffic">トラフィック</string>
     <string name="pay_compare_family">ファミリー招待*</string>
-    <string name="pay_compare_ads">広告ブロック</string>
     <string name="pay_compare_tun">TUN 設定</string>
     <string name="pay_compare_ip">専用 IP*</string>
     <string name="pay_compare_footnote">*まだ利用できません。</string>
@@ -179,29 +180,6 @@
     <string name="tile_disconnecting">切断中</string>
     <string name="tile_disconnected">切断済み</string>
     <string name="tile_error">エラー</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">ブランド</string>
-    <string name="device_model">モデル</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">ロケール</string>
-    <string name="device_timezone">タイムゾーン</string>
-    <string name="device_pc_name">PC 名</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android エラー</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">フィンガープリント</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">サンプル情報メッセージ</string>
-    <string name="snack_demo_success_msg">操作が完了しました</string>
-    <string name="snack_demo_warning_msg">警告</string>
-    <string name="snack_demo_error_msg">問題が発生しました</string>
     <string name="support_title">サポート</string>
     <string name="support_create">チケットを作成</string>
     <string name="support_empty">まだチケットがありません</string>

@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">Available with a paid subscription</string>
     <string name="settings_tun_rules_title">TUN settings</string>
     <string name="settings_tun_rules_sub">Exclude selected apps and sites from the VPN</string>
-    <string name="settings_tun_adblock_title">Ad block</string>
     <string name="settings_tun_adblock_sub">Block ads via DNS</string>
     <string name="settings_tun_group_sub">Excluded from the VPN tunnel</string>
     <string name="settings_tun_groups_title">Preset app groups</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">Journal cleared.</string>
     <string name="journal_share_empty">Journal is empty — nothing to share.</string>
     <string name="journal_share_failed">Could not share journal: %s</string>
-    <string name="service_menu_title">Service menu</string>
-    <string name="service_about">About</string>
-    <string name="service_name">Name</string>
-    <string name="service_package">Package</string>
-    <string name="service_version">Version</string>
-    <string name="service_latest_version">Latest version</string>
-    <string name="service_platform">Platform</string>
     <string name="update_title">Update available</string>
     <string name="update_body">Installed %1$s. Available %2$s.</string>
     <string name="update_now">Update</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">Could not download the update. Try again later.</string>
     <string name="update_notification_channel">App updates</string>
     <string name="update_notification_ready">Update %1$s ready to install</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">Internet</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">Country</string>
-    <string name="service_refresh">Refresh</string>
-    <string name="service_device">Device</string>
     <string name="login_sheet_title">Sign in / Register</string>
     <string name="login_email_hint">Email</string>
     <string name="login_continue">Continue</string>
@@ -109,6 +94,27 @@
     <string name="account_expires_today">today</string>
     <string name="account_buy">Buy subscription</string>
     <string name="account_extend">Renew subscription</string>
+    <string name="sub_alert_expiry_title">Subscription is expiring!</string>
+    <string name="sub_alert_expiry_body">You will lose internet in</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="one">hour</item>
+        <item quantity="other">hours</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="one">minute</item>
+        <item quantity="other">minutes</item>
+    </plurals>
+    <string name="sub_alert_secure">Secure internet</string>
+    <string name="sub_alert_col_now">Now</string>
+    <string name="sub_alert_col_after">After</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">Notifications</string>
     <string name="account_notify_sub">Notification settings</string>
@@ -151,7 +157,6 @@
     <string name="pay_compare_speed">Speed</string>
     <string name="pay_compare_traffic">Traffic</string>
     <string name="pay_compare_family">Family invites*</string>
-    <string name="pay_compare_ads">Ad blocking</string>
     <string name="pay_compare_tun">TUN settings</string>
     <string name="pay_compare_ip">Dedicated IP*</string>
     <string name="pay_compare_footnote">*Not available yet.</string>
@@ -179,29 +184,6 @@
     <string name="tile_disconnecting">Disconnecting</string>
     <string name="tile_disconnected">Disconnected</string>
     <string name="tile_error">Error</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">Brand</string>
-    <string name="device_model">Model</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">Locale</string>
-    <string name="device_timezone">Timezone</string>
-    <string name="device_pc_name">PC Name</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Error Android</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">Fingerprint</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">Sample info message</string>
-    <string name="snack_demo_success_msg">Operation completed</string>
-    <string name="snack_demo_warning_msg">Warning</string>
-    <string name="snack_demo_error_msg">Something went wrong</string>
     <string name="support_title">Support</string>
     <string name="support_create">Create ticket</string>
     <string name="support_empty">No tickets yet</string>

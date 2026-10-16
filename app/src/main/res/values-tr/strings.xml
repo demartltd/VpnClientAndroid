@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">Ücretli abonelikte kullanılabilir</string>
     <string name="settings_tun_rules_title">TUN ayarları</string>
     <string name="settings_tun_rules_sub">Seçili uygulamaları ve siteleri VPN dışına alın</string>
-    <string name="settings_tun_adblock_title">Reklam engelleme</string>
     <string name="settings_tun_adblock_sub">DNS ile reklamları engelle</string>
     <string name="settings_tun_group_sub">VPN tünelinden hariç</string>
     <string name="settings_tun_groups_title">Hazır uygulama grupları</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">Günlük temizlendi.</string>
     <string name="journal_share_empty">Günlük boş — paylaşılacak bir şey yok.</string>
     <string name="journal_share_failed">Günlük paylaşılamadı: %s</string>
-    <string name="service_menu_title">Servis menüsü</string>
-    <string name="service_about">Hakkında</string>
-    <string name="service_name">Ad</string>
-    <string name="service_package">Paket</string>
-    <string name="service_version">Sürüm</string>
-    <string name="service_latest_version">En son sürüm</string>
-    <string name="service_platform">Platform</string>
     <string name="update_title">Güncelleme mevcut</string>
     <string name="update_body">Yüklü %1$s. Mevcut %2$s.</string>
     <string name="update_now">Güncelle</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">Güncelleme indirilemedi. Daha sonra tekrar deneyin.</string>
     <string name="update_notification_channel">Uygulama güncellemeleri</string>
     <string name="update_notification_ready">Güncelleme %1$s kuruluma hazır</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">İnternet</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">Ülke</string>
-    <string name="service_refresh">Yenile</string>
-    <string name="service_device">Cihaz</string>
     <string name="login_sheet_title">Giriş / Kayıt</string>
     <string name="login_email_hint">E-posta</string>
     <string name="login_continue">Devam</string>
@@ -109,6 +94,27 @@
     <string name="account_expires_today">bugün</string>
     <string name="account_buy">Abonelik satın al</string>
     <string name="account_extend">Aboneliği yenile</string>
+    <string name="sub_alert_expiry_title">Abonelik sona eriyor!</string>
+    <string name="sub_alert_expiry_body">İnternetiniz kesilecek:</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="one">%d saat</item>
+        <item quantity="other">%d saat</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="one">%d dakika</item>
+        <item quantity="other">%d dakika</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="one">saat</item>
+        <item quantity="other">saat</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="one">dakika</item>
+        <item quantity="other">dakika</item>
+    </plurals>
+    <string name="sub_alert_secure">Güvenli internet</string>
+    <string name="sub_alert_col_now">Şimdi</string>
+    <string name="sub_alert_col_after">Sonra</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">Bildirimler</string>
     <string name="account_notify_sub">Bildirim ayarları</string>
@@ -151,7 +157,6 @@
     <string name="pay_compare_speed">Hız</string>
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Aile davetleri*</string>
-    <string name="pay_compare_ads">Reklam engelleme</string>
     <string name="pay_compare_tun">TUN ayarları</string>
     <string name="pay_compare_ip">Özel IP*</string>
     <string name="pay_compare_footnote">*Henüz kullanılamıyor.</string>
@@ -179,29 +184,6 @@
     <string name="tile_disconnecting">Bağlantı kesiliyor</string>
     <string name="tile_disconnected">Bağlantı kesildi</string>
     <string name="tile_error">Hata</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">Marka</string>
-    <string name="device_model">Model</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">Dil</string>
-    <string name="device_timezone">Saat dilimi</string>
-    <string name="device_pc_name">PC Adı</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android hatası</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">Parmak izi</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">Örnek bilgi mesajı</string>
-    <string name="snack_demo_success_msg">İşlem tamamlandı</string>
-    <string name="snack_demo_warning_msg">Uyarı</string>
-    <string name="snack_demo_error_msg">Bir şeyler ters gitti</string>
     <string name="support_title">Destek</string>
     <string name="support_create">Talep oluştur</string>
     <string name="support_empty">Henüz talep yok</string>
