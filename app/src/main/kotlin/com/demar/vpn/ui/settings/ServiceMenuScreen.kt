@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DataUsage
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material3.SnackbarHostState
@@ -23,8 +25,11 @@ import com.demar.vpn.BuildConfig
 import com.demar.vpn.R
 import com.demar.vpn.data.update.AndroidReleaseApi
 import com.demar.vpn.data.update.UpdateChannelStore
+import com.demar.vpn.ui.account.AppSheet
+import com.demar.vpn.ui.account.AppSheets
 import com.demar.vpn.ui.components.KvRow
 import com.demar.vpn.ui.components.SectionCard
+import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.scaffold.DemarBackScaffold
 
 @Composable
@@ -40,7 +45,7 @@ fun ServiceMenuScreen(
   }
 
   DemarBackScaffold(
-    title = stringResource(R.string.service_menu_title),
+    title = "Service menu",
     onBack = onBack,
   ) { padding ->
     Column(
@@ -49,21 +54,37 @@ fun ServiceMenuScreen(
         .verticalScroll(rememberScrollState())
         .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 32.dp),
     ) {
-      SectionCard(title = stringResource(R.string.service_about), icon = Icons.Filled.Info) {
-        KvRow(stringResource(R.string.service_name), appName)
-        KvRow(stringResource(R.string.service_package), BuildConfig.APPLICATION_ID)
-        KvRow(stringResource(R.string.service_version), BuildConfig.VERSION_NAME)
-        KvRow(stringResource(R.string.service_latest_version), latestVersion)
-        KvRow(stringResource(R.string.service_platform), stringResource(R.string.platform_android))
-        KvRow(stringResource(R.string.service_singbox), singBoxLabel.ifEmpty { "…" })
+      SectionCard(title = "About", icon = Icons.Filled.Info) {
+        KvRow("Name", appName)
+        KvRow("Package", BuildConfig.APPLICATION_ID)
+        KvRow("Version", BuildConfig.VERSION_NAME)
+        KvRow("Latest version", latestVersion)
+        KvRow("Platform", "Android")
+        KvRow("Sing-box", singBoxLabel.ifEmpty { "…" })
       }
       Spacer(Modifier.height(12.dp))
       ServiceEgressCard()
       Spacer(Modifier.height(12.dp))
       DeviceIdentitySection()
       Spacer(Modifier.height(12.dp))
-      SectionCard(title = stringResource(R.string.service_snack_bar), icon = Icons.Filled.NotificationsActive) {
+      SectionCard(title = "Snack bar", icon = Icons.Filled.NotificationsActive) {
         ServiceMenuSnackChips(snackbarHost)
+      }
+      Spacer(Modifier.height(12.dp))
+      SectionCard(title = "Info sheets", icon = Icons.Filled.Info) {
+        SettingsActionButton(
+          Icons.Filled.EventBusy,
+          "Subscription is expiring!",
+          "Renew subscription",
+          onClick = { AppSheets.show(AppSheet.Expiry) },
+        )
+        Spacer(Modifier.height(12.dp))
+        SettingsActionButton(
+          Icons.Filled.DataUsage,
+          "Traffic this month",
+          "Increase limits",
+          onClick = { AppSheets.show(AppSheet.Traffic) },
+        )
       }
     }
   }

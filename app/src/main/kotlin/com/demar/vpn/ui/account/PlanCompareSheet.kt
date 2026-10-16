@@ -62,7 +62,7 @@ fun PlanCompareSheet(
       CompareCell.Label("4"),
     ),
     RowSpec(
-      stringResource(R.string.pay_compare_ads),
+      "Ad block",
       CompareCell.Bool(false),
       CompareCell.Bool(true),
       CompareCell.Bool(true),

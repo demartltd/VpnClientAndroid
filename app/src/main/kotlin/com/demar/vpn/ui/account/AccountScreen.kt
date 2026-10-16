@@ -71,7 +71,6 @@ import com.demar.vpn.R
 import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.account.VpnAccount
 import com.demar.vpn.data.account.VpnAccountApi
-import com.demar.vpn.data.account.VpnTraffic
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.auth.AuthRepository
 import com.demar.vpn.data.auth.AuthSession
@@ -82,8 +81,6 @@ import com.demar.vpn.ui.components.SettingsActionButton
 import com.demar.vpn.ui.components.SettingsGroup
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 import com.demar.vpn.ui.components.mainTabPadding
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -104,19 +101,8 @@ fun AccountScreen(
   snackbarHost: SnackbarHostState,
   onSignOut: () -> Unit,
   onPurchase: (isFree: Boolean) -> Unit = {},
-  onIncreaseLimits: () -> Unit = {},
-  openTrafficEvents: Flow<Unit> = emptyFlow(),
   modifier: Modifier = Modifier,
 ) {
-  var showTraffic by rememberSaveable { mutableStateOf(false) }
-
-  LaunchedEffect(openTrafficEvents) {
-    openTrafficEvents.collect { showTraffic = true }
-  }
-  LaunchedEffect(active) {
-    if (!active) showTraffic = false
-  }
-
   ActiveTabContent(active, modifier) {
     val user = session ?: return@ActiveTabContent
     val context = LocalContext.current
@@ -131,7 +117,6 @@ fun AccountScreen(
     var showSignOutConfirm by rememberSaveable { mutableStateOf(false) }
     val notifyFailed = stringResource(R.string.account_notify_failed)
     val idCopied = stringResource(R.string.account_id_copied)
-    val otherLabel = stringResource(R.string.account_traffic_other)
     val soon: () -> Unit = { scope.launch { DemarSnackbar.showSoon(snackbarHost, context) } }
 
     val rawPlan = account?.vpnSubscription ?: user.vpnSubscription
@@ -253,7 +238,7 @@ fun AccountScreen(
           Icons.Filled.DataUsage,
           stringResource(R.string.account_traffic_title),
           trafficSub,
-          onClick = { showTraffic = true },
+          onClick = { AppSheets.show(AppSheet.Traffic) },
           danger = trafficFull,
           extra = if (progress == null) null else {
             {
@@ -290,19 +275,6 @@ fun AccountScreen(
         notifyBusy = notifyBusy,
         onDismiss = { showNotify = false },
         onSetNotify = ::setNotify,
-      )
-    }
-    if (showTraffic) {
-      TrafficSheet(
-        traffic = traffic,
-        loading = loading,
-        otherLabel = otherLabel,
-        accountId = user.userId,
-        onIncreaseLimits = {
-          showTraffic = false
-          onIncreaseLimits()
-        },
-        onDismiss = { showTraffic = false },
       )
     }
     if (showSignOutConfirm) {
@@ -561,72 +533,6 @@ private fun NotifySheet(
             account.notifyImportant,
             !notifyBusy,
           ) { onSetNotify(null, it) }
-        }
-      }
-    }
-  }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun TrafficSheet(
-  traffic: VpnTraffic?,
-  loading: Boolean,
-  otherLabel: String,
-  accountId: String,
-  onIncreaseLimits: () -> Unit,
-  onDismiss: () -> Unit,
-) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState = sheetState,
-    dragHandle = { StaticSheetDragHandle() },
-  ) {
-    Column(
-      Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 24.dp)
-        .padding(bottom = 24.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      when {
-        traffic == null && loading -> Text(
-          stringResource(R.string.loading),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        traffic == null -> Text(
-          stringResource(R.string.account_traffic_unavailable),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        else -> {
-          Text(
-            stringResource(
-              R.string.account_traffic_remaining,
-              VpnAccountApi.formatBytes((traffic.limitBytes - traffic.total).coerceAtLeast(0L)),
-            ),
-            style = MaterialTheme.typography.headlineMedium,
-          )
-          TrafficPieChart(
-            servers = traffic.servers,
-            otherLabel = otherLabel,
-            centerPrimary = VpnAccountApi.formatBytes(traffic.total),
-            accountId = accountId,
-          )
-          Button(
-            onClick = onIncreaseLimits,
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(48.dp),
-            shape = RoundedCornerShape(12.dp),
-          ) {
-            Text(
-              stringResource(R.string.account_increase_limits),
-              style = MaterialTheme.typography.titleMedium,
-            )
-          }
         }
       }
     }

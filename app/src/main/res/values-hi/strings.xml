@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">सशुल्क सदस्यता में उपलब्ध</string>
     <string name="settings_tun_rules_title">TUN सेटिंग्स</string>
     <string name="settings_tun_rules_sub">चयनित ऐप और साइटों को VPN से बाहर रखें</string>
-    <string name="settings_tun_adblock_title">विज्ञापन ब्लॉक</string>
     <string name="settings_tun_adblock_sub">DNS से विज्ञापन ब्लॉक करें</string>
     <string name="settings_tun_group_sub">VPN टनल से बाहर</string>
     <string name="settings_tun_groups_title">प्रीसेट ऐप समूह</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">जर्नल साफ़ हो गया।</string>
     <string name="journal_share_empty">जर्नल खाली है — शेयर करने के लिए कुछ नहीं।</string>
     <string name="journal_share_failed">जर्नल शेयर नहीं हो सका: %s</string>
-    <string name="service_menu_title">सेवा मेनू</string>
-    <string name="service_about">परिचय</string>
-    <string name="service_name">नाम</string>
-    <string name="service_package">पैकेज</string>
-    <string name="service_version">संस्करण</string>
-    <string name="service_latest_version">नवीनतम संस्करण</string>
-    <string name="service_platform">प्लेटफ़ॉर्म</string>
     <string name="update_title">अपडेट उपलब्ध</string>
     <string name="update_body">इंस्टॉल %1$s। उपलब्ध %2$s।</string>
     <string name="update_now">अपडेट करें</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">अपडेट डाउनलोड नहीं हो सका। बाद में फिर कोशिश करें।</string>
     <string name="update_notification_channel">ऐप अपडेट</string>
     <string name="update_notification_ready">अपडेट %1$s इंस्टॉल के लिए तैयार</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">इंटरनेट</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">देश</string>
-    <string name="service_refresh">रीफ़्रेश</string>
-    <string name="service_device">डिवाइस</string>
     <string name="login_sheet_title">साइन इन / रजिस्टर</string>
     <string name="login_email_hint">ईमेल</string>
     <string name="login_continue">जारी रखें</string>
@@ -109,6 +94,27 @@
     <string name="account_expires_today">आज</string>
     <string name="account_buy">सदस्यता खरीदें</string>
     <string name="account_extend">सदस्यता नवीनीकृत करें</string>
+    <string name="sub_alert_expiry_title">सदस्यता समाप्त हो रही है!</string>
+    <string name="sub_alert_expiry_body">आप इंटरनेट खो देंगे</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="one">%d घंटा</item>
+        <item quantity="other">%d घंटे</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="one">%d मिनट</item>
+        <item quantity="other">%d मिनट</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="one">घंटा</item>
+        <item quantity="other">घंटे</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="one">मिनट</item>
+        <item quantity="other">मिनट</item>
+    </plurals>
+    <string name="sub_alert_secure">सुरक्षित इंटरनेट</string>
+    <string name="sub_alert_col_now">अभी</string>
+    <string name="sub_alert_col_after">बाद में</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">सूचनाएँ</string>
     <string name="account_notify_sub">सूचना सेटिंग्स</string>
@@ -151,7 +157,6 @@
     <string name="pay_compare_speed">गति</string>
     <string name="pay_compare_traffic">ट्रैफ़िक</string>
     <string name="pay_compare_family">पारिवारिक आमंत्रण*</string>
-    <string name="pay_compare_ads">विज्ञापन ब्लॉक</string>
     <string name="pay_compare_tun">TUN सेटिंग्स</string>
     <string name="pay_compare_ip">समर्पित IP*</string>
     <string name="pay_compare_footnote">*अभी उपलब्ध नहीं।</string>
@@ -179,29 +184,6 @@
     <string name="tile_disconnecting">डिस्कनेक्ट हो रहा है</string>
     <string name="tile_disconnected">डिस्कनेक्टेड</string>
     <string name="tile_error">त्रुटि</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">ब्रांड</string>
-    <string name="device_model">मॉडल</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">लोकेल</string>
-    <string name="device_timezone">समय क्षेत्र</string>
-    <string name="device_pc_name">PC नाम</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android त्रुटि</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">फ़िंगरप्रिंट</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">नमूना जानकारी संदेश</string>
-    <string name="snack_demo_success_msg">कार्य पूरा</string>
-    <string name="snack_demo_warning_msg">चेतावनी</string>
-    <string name="snack_demo_error_msg">कुछ गलत हो गया</string>
     <string name="support_title">सहायता</string>
     <string name="support_create">टिकट बनाएँ</string>
     <string name="support_empty">अभी कोई टिकट नहीं</string>

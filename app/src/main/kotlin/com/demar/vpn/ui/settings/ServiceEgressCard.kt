@@ -26,9 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.demar.vpn.R
 import com.demar.vpn.data.network.EgressConstants
 import com.demar.vpn.data.network.InternetProbe
 import com.demar.vpn.data.network.PublicEgressDiagnostics
@@ -80,7 +78,7 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
 
   SectionCard(
     modifier = modifier,
-    title = stringResource(R.string.service_internet),
+    title = "Internet",
     icon = Icons.Filled.Cloud,
     trailing = {
       Box(
@@ -97,7 +95,7 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
       ) {
         Icon(
           imageVector = Icons.Outlined.Refresh,
-          contentDescription = stringResource(R.string.service_refresh),
+          contentDescription = "Refresh",
           tint = MaterialTheme.colorScheme.primary,
           modifier = Modifier
             .size(20.dp)
@@ -107,8 +105,8 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
     },
   ) {
     Column {
-      KvRow(stringResource(R.string.service_ip), ipValue)
-      KvRow(stringResource(R.string.service_country), countryValue)
+      KvRow("IP", ipValue)
+      KvRow("Country", countryValue)
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
         KvRow(host, probes.getOrElse(i) { "…" })
       }

@@ -41,7 +41,6 @@
     <string name="settings_tun_custom_free_sub">유료 구독에서 사용 가능</string>
     <string name="settings_tun_rules_title">TUN 설정</string>
     <string name="settings_tun_rules_sub">선택한 앱과 사이트를 VPN에서 제외</string>
-    <string name="settings_tun_adblock_title">광고 차단</string>
     <string name="settings_tun_adblock_sub">DNS로 광고 차단</string>
     <string name="settings_tun_group_sub">VPN 터널에서 제외됨</string>
     <string name="settings_tun_groups_title">프리셋 앱 그룹</string>
@@ -60,13 +59,6 @@
     <string name="journal_cleared">저널이 지워졌습니다.</string>
     <string name="journal_share_empty">저널이 비어 있어 공유할 내용이 없습니다.</string>
     <string name="journal_share_failed">저널을 공유할 수 없음: %s</string>
-    <string name="service_menu_title">서비스 메뉴</string>
-    <string name="service_about">정보</string>
-    <string name="service_name">이름</string>
-    <string name="service_package">패키지</string>
-    <string name="service_version">버전</string>
-    <string name="service_latest_version">최신 버전</string>
-    <string name="service_platform">플랫폼</string>
     <string name="update_title">업데이트 사용 가능</string>
     <string name="update_body">설치됨 %1$s. 사용 가능 %2$s.</string>
     <string name="update_now">업데이트</string>
@@ -75,13 +67,6 @@
     <string name="update_failed">업데이트를 다운로드할 수 없습니다. 나중에 다시 시도하세요.</string>
     <string name="update_notification_channel">앱 업데이트</string>
     <string name="update_notification_ready">업데이트 %1$s 설치 준비됨</string>
-    <string name="service_singbox">Sing-box</string>
-    <string name="service_snack_bar">Snack bar</string>
-    <string name="service_internet">인터넷</string>
-    <string name="service_ip">IP</string>
-    <string name="service_country">국가</string>
-    <string name="service_refresh">새로고침</string>
-    <string name="service_device">기기</string>
     <string name="login_sheet_title">로그인 / 가입</string>
     <string name="login_email_hint">이메일</string>
     <string name="login_continue">계속</string>
@@ -109,6 +94,23 @@
     <string name="account_expires_today">오늘</string>
     <string name="account_buy">구독 구매</string>
     <string name="account_extend">구독 갱신</string>
+    <string name="sub_alert_expiry_title">구독이 만료됩니다!</string>
+    <string name="sub_alert_expiry_body">인터넷을 사용할 수 없게 되기까지</string>
+    <plurals name="sub_alert_in_hours">
+        <item quantity="other">%d시간</item>
+    </plurals>
+    <plurals name="sub_alert_in_minutes">
+        <item quantity="other">%d분</item>
+    </plurals>
+    <plurals name="sub_alert_unit_hours">
+        <item quantity="other">시간</item>
+    </plurals>
+    <plurals name="sub_alert_unit_minutes">
+        <item quantity="other">분</item>
+    </plurals>
+    <string name="sub_alert_secure">안전한 인터넷</string>
+    <string name="sub_alert_col_now">지금</string>
+    <string name="sub_alert_col_after">이후</string>
     <string name="account_vpn_unknown">—</string>
     <string name="account_notify_title">알림</string>
     <string name="account_notify_sub">알림 설정</string>
@@ -151,7 +153,6 @@
     <string name="pay_compare_speed">속도</string>
     <string name="pay_compare_traffic">트래픽</string>
     <string name="pay_compare_family">패밀리 초대*</string>
-    <string name="pay_compare_ads">광고 차단</string>
     <string name="pay_compare_tun">TUN 설정</string>
     <string name="pay_compare_ip">전용 IP*</string>
     <string name="pay_compare_footnote">*아직 사용할 수 없습니다.</string>
@@ -179,29 +180,6 @@
     <string name="tile_disconnecting">연결 해제 중</string>
     <string name="tile_disconnected">연결 해제됨</string>
     <string name="tile_error">오류</string>
-    <string name="device_android_id">Android ID</string>
-    <string name="device_ad_id">AD ID</string>
-    <string name="device_is_ad">Is AD</string>
-    <string name="device_app_set_id">App Set ID</string>
-    <string name="device_app_set_scope">App Set Scope</string>
-    <string name="device_brand">브랜드</string>
-    <string name="device_model">모델</string>
-    <string name="device_sdk">SDK</string>
-    <string name="device_locale">로케일</string>
-    <string name="device_timezone">시간대</string>
-    <string name="device_pc_name">PC 이름</string>
-    <string name="device_machine_guid">MachineGuid</string>
-    <string name="device_error_android">Android 오류</string>
-    <string name="device_channel_error">channel_error</string>
-    <string name="device_fingerprint">지문</string>
-    <string name="snack_demo_info">Info</string>
-    <string name="snack_demo_success">Success</string>
-    <string name="snack_demo_warning">Warning</string>
-    <string name="snack_demo_error">Error</string>
-    <string name="snack_demo_info_msg">샘플 정보 메시지</string>
-    <string name="snack_demo_success_msg">작업 완료</string>
-    <string name="snack_demo_warning_msg">경고</string>
-    <string name="snack_demo_error_msg">문제가 발생했습니다</string>
     <string name="support_title">지원</string>
     <string name="support_create">티켓 만들기</string>
     <string name="support_empty">아직 티켓이 없음</string>
