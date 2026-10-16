@@ -5,13 +5,15 @@ import java.time.Duration
 import java.time.Instant
 
 object SubscriptionAlertStore {
-  const val TrafficThresholdBytes = 3L shl 30
-  /** Early warning: from 3 days down to just above 25h. */
+  /** FREE upsell: show after ≥200 MiB used. */
+  const val TrafficThresholdBytes = 200L * 1024 * 1024
+  /** Early warning: from 3 days down to just above 24h. */
   const val ExpiryEarlyMaxMs = 72L * 60 * 60 * 1000
   const val ExpiryEarlyMinMs = 24L * 60 * 60 * 1000
-  /** Final warning: last 18h until expiry. Gap (18h, 25h] is silent. */
+  /** Final warning: last 18h until expiry. Gap (18h, 24h] is silent. */
   const val ExpiryFinalMaxMs = 18L * 60 * 60 * 1000
   const val ExpiryCooldownMs = 3L * 60 * 60 * 1000
+  /** FREE traffic upsell cooldown. */
   const val TrafficCooldownMs = 6L * 60 * 60 * 1000
 
   private const val PrefsName = "demar_sub_alerts"
@@ -32,11 +34,11 @@ object SubscriptionAlertStore {
   fun shouldShowExpiry(expiresAtIso: String, now: Instant = Instant.now()): Boolean {
     val ms = millisUntilExpiry(expiresAtIso, now) ?: return false
     if (ms <= 0L) return false
-    // (25h, 72h] early · (18h, 25h] silent · (0, 18h] final
+    // (24h, 72h] early · (18h, 24h] silent · (0, 18h] final
     return ms in (ExpiryEarlyMinMs + 1)..ExpiryEarlyMaxMs || ms in 1..ExpiryFinalMaxMs
   }
 
-  fun shouldShowTraffic(remainingBytes: Long): Boolean = remainingBytes < TrafficThresholdBytes
+  fun shouldShowTraffic(usedBytes: Long): Boolean = usedBytes >= TrafficThresholdBytes
 
   /** Hours if ≥1h, otherwise minutes (at least 1). */
   fun remainingTime(ms: Long): RemainingTime {

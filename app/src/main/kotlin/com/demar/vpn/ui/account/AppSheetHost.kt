@@ -46,12 +46,16 @@ fun AppSheetHost(
       iso?.let(SubscriptionAlertStore::millisUntilExpiry)?.takeIf { it > 0L }
     }
   }
+  val freeLeft = remember(sheet, traffic) {
+    if (sheet !is AppSheet.FreeTraffic) null
+    else (traffic?.let { it.limitBytes - it.total } ?: 0L).coerceAtLeast(0L)
+  }
 
   LaunchedEffect(sheet, session, expiryMs) {
     when (sheet) {
       null, is AppSheet.PayResult -> Unit
       AppSheet.Expiry -> if (session == null || expiryMs == null) AppSheets.dismiss()
-      AppSheet.Traffic, AppSheet.Plans, is AppSheet.Checkout ->
+      AppSheet.FreeTraffic, AppSheet.Traffic, AppSheet.Plans, is AppSheet.Checkout ->
         if (session == null) AppSheets.dismiss()
     }
   }
@@ -62,16 +66,23 @@ fun AppSheetHost(
       traffic = traffic,
       loading = loading,
       otherLabel = otherLabel,
-      accountId = session?.userId.orEmpty(),
+      accountId = session?.username.orEmpty(),
       onIncreaseLimits = { openCheckout(CheckoutIntent.UpgradeTraffic) },
       onDismiss = AppSheets::dismiss,
     )
+    AppSheet.FreeTraffic -> freeLeft?.let { left ->
+      FreeTrafficAlertSheet(
+        remainingBytes = left,
+        onBuy = { openCheckout(CheckoutIntent.Buy) },
+        onDismiss = AppSheets::dismiss,
+      )
+    }
     AppSheet.Plans -> PlanCompareSheet(
       onBuy = { openCheckout(CheckoutIntent.Buy) },
       onDismiss = AppSheets::dismiss,
     )
     AppSheet.Expiry -> expiryMs?.let { ms ->
-      SubscriptionInfoSheet(
+      ExpiryAlertSheet(
         remainingMs = ms,
         onDismiss = AppSheets::dismiss,
         onRenew = { openCheckout(CheckoutIntent.Renew) },

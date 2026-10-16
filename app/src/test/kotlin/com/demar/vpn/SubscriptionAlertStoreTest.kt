@@ -11,14 +11,16 @@ class SubscriptionAlertStoreTest {
   @Test
   fun shouldShowExpiry_earlyAndFinalWindows() {
     val now = Instant.parse("2026-10-08T12:00:00Z")
-    // 48h — early window (25h, 72h]
+    // 48h — early window (24h, 72h]
     assertTrue(SubscriptionAlertStore.shouldShowExpiry("2026-10-10T12:00:00Z", now))
     // 72h — edge of early window
     assertTrue(SubscriptionAlertStore.shouldShowExpiry("2026-10-11T12:00:00Z", now))
     // 73h — too early
     assertFalse(SubscriptionAlertStore.shouldShowExpiry("2026-10-11T13:00:00Z", now))
-    // 25h — silent gap (18h, 25h]
-    assertFalse(SubscriptionAlertStore.shouldShowExpiry("2026-10-09T13:00:00Z", now))
+    // 25h — early window
+    assertTrue(SubscriptionAlertStore.shouldShowExpiry("2026-10-09T13:00:00Z", now))
+    // 24h — silent gap (18h, 24h]
+    assertFalse(SubscriptionAlertStore.shouldShowExpiry("2026-10-09T12:00:00Z", now))
     // 20h — silent gap
     assertFalse(SubscriptionAlertStore.shouldShowExpiry("2026-10-09T08:00:00Z", now))
     // 18h — final window
@@ -30,11 +32,11 @@ class SubscriptionAlertStoreTest {
   }
 
   @Test
-  fun shouldShowTraffic_under3GiB() {
-    val threeGiB = 3L shl 30
-    assertTrue(SubscriptionAlertStore.shouldShowTraffic(threeGiB - 1))
-    assertFalse(SubscriptionAlertStore.shouldShowTraffic(threeGiB))
-    assertFalse(SubscriptionAlertStore.shouldShowTraffic(4L shl 30))
+  fun shouldShowTraffic_usedAtLeast200MiB() {
+    val threshold = 200L * 1024 * 1024
+    assertFalse(SubscriptionAlertStore.shouldShowTraffic(threshold - 1))
+    assertTrue(SubscriptionAlertStore.shouldShowTraffic(threshold))
+    assertTrue(SubscriptionAlertStore.shouldShowTraffic(threshold + 1))
   }
 
   @Test

@@ -96,6 +96,8 @@
     <string name="account_extend">구독 갱신</string>
     <string name="sub_alert_expiry_title">구독이 만료됩니다!</string>
     <string name="sub_alert_expiry_body">인터넷을 사용할 수 없게 되기까지</string>
+    <string name="sub_alert_free_title">구독을 구매하세요</string>
+    <string name="sub_alert_free_body">무료 버전 만료까지</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="other">%d시간</item>
     </plurals>

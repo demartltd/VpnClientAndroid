@@ -96,6 +96,8 @@
     <string name="account_extend">Abo verlängern</string>
     <string name="sub_alert_expiry_title">Abo läuft ab!</string>
     <string name="sub_alert_expiry_body">Du verlierst den Internetzugang in</string>
+    <string name="sub_alert_free_title">Kaufen Sie ein Abo</string>
+    <string name="sub_alert_free_body">Die kostenlose Version endet in</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d Stunde</item>
         <item quantity="other">%d Stunden</item>

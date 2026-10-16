@@ -193,12 +193,11 @@ fun AppScaffold(
       return@LaunchedEffect
     }
     val t = traffic ?: return@LaunchedEffect
-    val left = (t.limitBytes - t.total).coerceAtLeast(0)
-    if (SubscriptionAlertStore.shouldShowTraffic(left) &&
+    if (SubscriptionAlertStore.shouldShowTraffic(t.total) &&
       SubscriptionAlertStore.canShowTraffic(context)
     ) {
       SubscriptionAlertStore.markTrafficShown(context)
-      AppSheets.show(AppSheet.Traffic)
+      AppSheets.show(AppSheet.FreeTraffic)
     }
   }
 

@@ -96,6 +96,8 @@
     <string name="account_extend">सदस्यता नवीनीकृत करें</string>
     <string name="sub_alert_expiry_title">सदस्यता समाप्त हो रही है!</string>
     <string name="sub_alert_expiry_body">आप इंटरनेट खो देंगे</string>
+    <string name="sub_alert_free_title">सदस्यता खरीदें</string>
+    <string name="sub_alert_free_body">मुफ़्त संस्करण समाप्त होगा</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d घंटा</item>
         <item quantity="other">%d घंटे</item>

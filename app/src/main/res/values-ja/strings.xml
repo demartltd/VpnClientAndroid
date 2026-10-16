@@ -96,6 +96,8 @@
     <string name="account_extend">サブスクリプションを更新</string>
     <string name="sub_alert_expiry_title">サブスクリプションの期限が近づいています！</string>
     <string name="sub_alert_expiry_body">インターネットが使えなくなるまで</string>
+    <string name="sub_alert_free_title">サブスクリプションを購入してください</string>
+    <string name="sub_alert_free_body">無料版の残り</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="other">%d時間</item>
     </plurals>
