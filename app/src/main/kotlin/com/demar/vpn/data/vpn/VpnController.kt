@@ -63,9 +63,9 @@ class VpnController(private val context: Context) {
   private val _errorEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
   val errorEvents: SharedFlow<String> = _errorEvents.asSharedFlow()
 
-  /** Open Account traffic sheet (e.g. connect blocked by monthly limit). */
+  /** Open traffic / FREE upsell sheet (e.g. connect blocked by monthly limit). */
   fun requestOpenTrafficSheet() {
-    AppSheets.show(AppSheet.Traffic)
+    AppSheets.show(if (isFreeSubscription()) AppSheet.FreeTraffic else AppSheet.Traffic)
   }
 
   private val _selectedProfile = MutableStateFlow<ServerProfile?>(null)

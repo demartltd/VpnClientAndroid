@@ -96,6 +96,8 @@
     <string name="account_extend">Obunani uzaytirish</string>
     <string name="sub_alert_expiry_title">Obuna tugayapti!</string>
     <string name="sub_alert_expiry_body">Internetdan mahrum bo‘lasiz:</string>
+    <string name="sub_alert_free_title">Obuna sotib oling</string>
+    <string name="sub_alert_free_body">Bepul versiya tugaydi:</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d soat</item>
         <item quantity="other">%d soat</item>

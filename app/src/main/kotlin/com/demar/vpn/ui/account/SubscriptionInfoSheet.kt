@@ -23,6 +23,8 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,28 +32,69 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.demar.vpn.R
 import com.demar.vpn.data.account.SubscriptionAlertStore
+import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SubscriptionInfoSheet(
+fun ExpiryAlertSheet(
   remainingMs: Long,
   onRenew: () -> Unit,
   onDismiss: () -> Unit,
 ) {
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  val cs = MaterialTheme.colorScheme
   val remaining = SubscriptionAlertStore.remainingTime(remainingMs)
   val timeLabel = if (remaining.hours) {
     pluralStringResource(R.plurals.sub_alert_in_hours, remaining.amount, remaining.amount)
   } else {
     pluralStringResource(R.plurals.sub_alert_in_minutes, remaining.amount, remaining.amount)
   }
+  SubscriptionInfoSheet(
+    title = stringResource(R.string.sub_alert_expiry_title),
+    body = stringResource(R.string.sub_alert_expiry_body),
+    highlight = timeLabel,
+    cta = stringResource(R.string.account_extend),
+    afterPositive = false,
+    onAction = onRenew,
+    onDismiss = onDismiss,
+  )
+}
+
+@Composable
+fun FreeTrafficAlertSheet(
+  remainingBytes: Long,
+  onBuy: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  SubscriptionInfoSheet(
+    title = stringResource(R.string.sub_alert_free_title),
+    body = stringResource(R.string.sub_alert_free_body),
+    highlight = VpnAccountApi.formatBytes(remainingBytes.coerceAtLeast(0L)),
+    cta = stringResource(R.string.account_buy),
+    afterPositive = true,
+    onAction = onBuy,
+    onDismiss = onDismiss,
+  )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SubscriptionInfoSheet(
+  title: String,
+  body: String,
+  highlight: String,
+  cta: String,
+  afterPositive: Boolean,
+  onAction: () -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val cs = MaterialTheme.colorScheme
   val features = listOf(
     stringResource(R.string.sub_alert_secure),
     "Ad block",
     stringResource(R.string.pay_compare_tun),
   )
+  val nowIcon = if (afterPositive) Icons.Filled.Cancel to cs.error else Icons.Filled.Check to cs.primary
+  val afterIcon = if (afterPositive) Icons.Filled.Check to cs.primary else Icons.Filled.Cancel to cs.error
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -65,7 +108,7 @@ fun SubscriptionInfoSheet(
         .padding(bottom = 28.dp),
     ) {
       Text(
-        stringResource(R.string.sub_alert_expiry_title),
+        title,
         style = MaterialTheme.typography.headlineMedium,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.fillMaxWidth(),
@@ -85,13 +128,13 @@ fun SubscriptionInfoSheet(
             verticalAlignment = Alignment.CenterVertically,
           ) {
             Text(
-              stringResource(R.string.sub_alert_expiry_body),
-              modifier = Modifier.weight(1.3f),
+              body,
+              modifier = Modifier.weight(3f),
               style = MaterialTheme.typography.titleMedium,
               color = cs.onSurface,
             )
             Text(
-              timeLabel,
+              highlight,
               modifier = Modifier.weight(2f),
               style = MaterialTheme.typography.titleLarge,
               fontWeight = FontWeight.Bold,
@@ -122,7 +165,7 @@ fun SubscriptionInfoSheet(
           }
           HorizontalDivider(color = cs.outlineVariant.copy(alpha = 0.45f))
           features.forEachIndexed { index, label ->
-            FeatureRow(label = label)
+            FeatureRow(label = label, now = nowIcon, after = afterIcon)
             if (index < features.lastIndex) {
               HorizontalDivider(
                 Modifier.padding(horizontal = 12.dp),
@@ -134,14 +177,14 @@ fun SubscriptionInfoSheet(
       }
       Spacer(Modifier.height(16.dp))
       Button(
-        onClick = onRenew,
+        onClick = onAction,
         modifier = Modifier
           .fillMaxWidth()
           .height(48.dp),
         shape = MaterialTheme.shapes.small,
       ) {
         Text(
-          stringResource(R.string.account_extend),
+          cta,
           modifier = Modifier.fillMaxWidth(),
           style = MaterialTheme.typography.titleMedium,
           textAlign = TextAlign.Center,
@@ -152,7 +195,11 @@ fun SubscriptionInfoSheet(
 }
 
 @Composable
-private fun FeatureRow(label: String) {
+private fun FeatureRow(
+  label: String,
+  now: Pair<ImageVector, Color>,
+  after: Pair<ImageVector, Color>,
+) {
   val cs = MaterialTheme.colorScheme
   Row(
     Modifier
@@ -168,20 +215,10 @@ private fun FeatureRow(label: String) {
       maxLines = 2,
     )
     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-      Icon(
-        Icons.Filled.Check,
-        contentDescription = null,
-        tint = cs.primary,
-        modifier = Modifier.size(20.dp),
-      )
+      Icon(now.first, contentDescription = null, tint = now.second, modifier = Modifier.size(20.dp))
     }
     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-      Icon(
-        Icons.Filled.Cancel,
-        contentDescription = null,
-        tint = cs.error,
-        modifier = Modifier.size(20.dp),
-      )
+      Icon(after.first, contentDescription = null, tint = after.second, modifier = Modifier.size(20.dp))
     }
   }
 }

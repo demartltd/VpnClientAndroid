@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 sealed class AppSheet {
   data object Traffic : AppSheet()
+  data object FreeTraffic : AppSheet()
   data object Plans : AppSheet()
   data object Expiry : AppSheet()
   data class Checkout(val intent: CheckoutIntent) : AppSheet()

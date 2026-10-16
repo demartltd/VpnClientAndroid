@@ -96,6 +96,8 @@
     <string name="account_extend">Aboneliği yenile</string>
     <string name="sub_alert_expiry_title">Abonelik sona eriyor!</string>
     <string name="sub_alert_expiry_body">İnternetiniz kesilecek:</string>
+    <string name="sub_alert_free_title">Abonelik satın alın</string>
+    <string name="sub_alert_free_body">Ücretsiz sürüm şu kadar sonra bitecek:</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d saat</item>
         <item quantity="other">%d saat</item>

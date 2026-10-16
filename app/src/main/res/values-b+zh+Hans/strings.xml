@@ -96,6 +96,8 @@
     <string name="account_extend">续订</string>
     <string name="sub_alert_expiry_title">订阅即将到期！</string>
     <string name="sub_alert_expiry_body">您将在以下时间后失去网络</string>
+    <string name="sub_alert_free_title">请购买订阅</string>
+    <string name="sub_alert_free_body">免费版将在以下流量后到期</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="other">%d 小时</item>
     </plurals>

@@ -96,6 +96,8 @@
     <string name="account_extend">Renovar suscripción</string>
     <string name="sub_alert_expiry_title">¡La suscripción caduca!</string>
     <string name="sub_alert_expiry_body">Te quedarás sin internet en</string>
+    <string name="sub_alert_free_title">Compre una suscripción</string>
+    <string name="sub_alert_free_body">La versión gratuita caduca en</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d hora</item>
         <item quantity="other">%d horas</item>

@@ -96,6 +96,8 @@
     <string name="account_extend">Renew subscription</string>
     <string name="sub_alert_expiry_title">Subscription is expiring!</string>
     <string name="sub_alert_expiry_body">You will lose internet in</string>
+    <string name="sub_alert_free_title">Buy a subscription</string>
+    <string name="sub_alert_free_body">Free version expires in</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d hour</item>
         <item quantity="other">%d hours</item>

@@ -98,6 +98,8 @@
     <string name="account_extend">Продовжити підписку</string>
     <string name="sub_alert_expiry_title">Підписка закінчується!</string>
     <string name="sub_alert_expiry_body">Ви залишитеся без інтернету через</string>
+    <string name="sub_alert_free_title">Купіть підписку</string>
+    <string name="sub_alert_free_body">Безкоштовна версія закінчиться через</string>
     <plurals name="sub_alert_in_hours">
         <item quantity="one">%d годину</item>
         <item quantity="few">%d години</item>

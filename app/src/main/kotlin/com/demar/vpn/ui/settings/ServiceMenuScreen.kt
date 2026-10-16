@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DataUsage
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Info
@@ -81,9 +83,30 @@ fun ServiceMenuScreen(
         Spacer(Modifier.height(12.dp))
         SettingsActionButton(
           Icons.Filled.DataUsage,
+          "Buy subscription",
+          "Free traffic upsell",
+          onClick = { AppSheets.show(AppSheet.FreeTraffic) },
+        )
+        Spacer(Modifier.height(12.dp))
+        SettingsActionButton(
+          Icons.Filled.DataUsage,
           "Traffic this month",
           "Increase limits",
           onClick = { AppSheets.show(AppSheet.Traffic) },
+        )
+        Spacer(Modifier.height(12.dp))
+        SettingsActionButton(
+          Icons.Filled.CheckCircle,
+          "Pay result — success",
+          "demarvpn://pay/ok",
+          onClick = { AppSheets.show(AppSheet.PayResult(success = true)) },
+        )
+        Spacer(Modifier.height(12.dp))
+        SettingsActionButton(
+          Icons.Filled.Cancel,
+          "Pay result — fail",
+          "demarvpn://pay/fail",
+          onClick = { AppSheets.show(AppSheet.PayResult(success = false)) },
         )
       }
     }

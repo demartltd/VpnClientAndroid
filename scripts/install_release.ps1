@@ -10,11 +10,14 @@
   Удалить com.demar.vpn перед установкой (нужно при смене release → debug).
 .PARAMETER Serial
   Serial устройства (adb devices). Если не задан — единственный USB (-d), иначе ошибка при нескольких.
+.PARAMETER SkipAdsSync
+  Не скачивать ads.srs перед сборкой.
 #>
 param(
     [switch]$SkipBuild,
     [switch]$NoLaunch,
     [switch]$Replace,
+    [switch]$SkipAdsSync,
     [string]$Serial = ''
 )
 
@@ -105,8 +108,16 @@ try {
     if ($Replace) { Uninstall-AppPackage }
 
     if (-not $SkipBuild) {
-        Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
-        & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+        if (-not $SkipAdsSync) {
+            $ans = Read-Host 'Download ads.srs? [Y/n]'
+            if ($ans -match '^[Nn]') { $SkipAdsSync = $true }
+        }
+        if (-not $SkipAdsSync) {
+            Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
+            & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+        } else {
+            Write-Host 'Skipping ads.srs download.' -ForegroundColor Yellow
+        }
         Write-Host 'Building and installing debug…' -ForegroundColor Cyan
         Invoke-GradleInstallDebug
     } else {
