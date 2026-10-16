@@ -65,8 +65,8 @@ fun ServiceEgressCard(modifier: Modifier = Modifier) {
     coroutineScope {
       EgressConstants.TcpLatencyProbeHosts.forEachIndexed { i, host ->
         launch {
-          val probe = InternetProbe.probeHost(host)
-          probes[i] = egressHostProbeLabel(probe.tcpMs, probe.httpsMs)
+          probes[i] = egressHostProbeLabel(InternetProbe.probeHost(host))
+
         }
       }
     }

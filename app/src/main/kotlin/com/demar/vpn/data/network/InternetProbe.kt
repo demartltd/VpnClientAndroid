@@ -5,57 +5,57 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.URL
+import kotlin.coroutines.cancellation.CancellationException
 
 object InternetProbe {
   private const val TAG = "InternetProbe"
 
-  suspend fun probeHost(host: String): EgressHostProbe =
-    withTimeoutOrNull(EgressConstants.HOST_PROBE_DEADLINE_MS) {
-      coroutineScope {
-        val tcpD = async { probeTcpMs(host) }
-        val httpsD = async { probeHttpsMs(host) }
-        EgressHostProbe(
-          tcpMs = tcpD.await().coerceAtLeast(0),
-          httpsMs = httpsD.await().coerceAtLeast(0),
-        )
-      }
-    } ?: EgressHostProbeZero
+  /** Probe selected kinds in parallel. Skipped kinds stay 0. Each kind has its own timeout. */
+  suspend fun probeHost(
+    host: String,
+    kinds: Set<ProbeKind> = ProbeKind.entries.toSet(),
+  ): EgressHostProbe = coroutineScope {
+    val tcp = if (ProbeKind.Tcp in kinds) async { probeTcpMs(host).coerceAtLeast(0) } else null
+    val https = if (ProbeKind.Https in kinds) async { probeHttpsMs(host).coerceAtLeast(0) } else null
+    EgressHostProbe(
+      tcpMs = tcp?.await() ?: 0,
+      httpsMs = https?.await() ?: 0,
+    )
+  }
 
   suspend fun probeTcpMs(
     host: String,
     port: Int = 443,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int =
-    withContext(Dispatchers.IO) {
-      val t0 = System.currentTimeMillis()
-      val ok = tcpConnect(host, port, timeoutMs)
-      val ms = if (ok) (System.currentTimeMillis() - t0).toInt() else -1
-      AppLog.append("$TAG tcp $host:$port=${if (ms >= 0) "${ms}ms" else "fail"}")
-      ms
-    }
+  ): Int = measureMs("tcp $host:$port") {
+    Socket().use { it.connect(InetSocketAddress(host, port), timeoutMs) }
+  }
 
   suspend fun probeHttpsMs(
     host: String,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int =
+  ): Int = measureMs("https $host") {
+    httpGet("https://$host/", timeoutMs) ?: error("https fail")
+  }
+
+  private suspend fun measureMs(log: String, block: () -> Unit): Int =
     withContext(Dispatchers.IO) {
       val t0 = System.currentTimeMillis()
-      val body = httpGet("https://$host/", timeoutMs)
-      val ms = if (body != null) (System.currentTimeMillis() - t0).toInt() else -1
-      AppLog.append("$TAG https $host=${if (ms >= 0) "${ms}ms" else "fail"}")
+      val ms = try {
+        block()
+        (System.currentTimeMillis() - t0).toInt()
+      } catch (e: CancellationException) {
+        throw e
+      } catch (_: Throwable) {
+        -1
+      }
+      AppLog.append("$TAG $log=${if (ms >= 0) "${ms}ms" else "fail"}")
       ms
     }
-
-  private fun tcpConnect(host: String, port: Int, timeoutMs: Int): Boolean =
-    runCatching {
-      Socket().use { it.connect(InetSocketAddress(host, port), timeoutMs) }
-      true
-    }.getOrDefault(false)
 
   private fun httpGet(url: String, timeoutMs: Int): String? {
     var conn: HttpURLConnection? = null
