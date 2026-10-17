@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">चयनित ऐप और साइटों को VPN से बाहर रखें</string>
     <string name="settings_tun_adblock_sub">DNS से विज्ञापन ब्लॉक करें</string>
     <string name="settings_tun_group_sub">VPN टनल से बाहर</string>
-    <string name="settings_tun_groups_title">प्रीसेट ऐप समूह</string>
-    <string name="settings_tun_site_groups_title">प्रीसेट साइट समूह</string>
+    <string name="settings_tun_groups_title">ऐप समूह</string>
+    <string name="settings_tun_site_groups_title">साइट समूह</string>
     <string name="settings_beta">बीटा संस्करण इंस्टॉल करें</string>
     <string name="settings_beta_sub">उपलब्ध होने पर प्री-रिलीज़ अपडेट पाएँ</string>
     <string name="settings_beta_off_title">बीटा चैनल छोड़ना</string>

@@ -15,11 +15,10 @@ import com.demar.vpn.R
 import com.demar.vpn.data.logging.AppLog
 
 private val SocialLinks = listOf(
-  R.drawable.ic_brand_x to "https://x.com/demargames",
-  R.drawable.ic_brand_bluesky to "https://bsky.app/profile/demargames.bsky.social",
-  R.drawable.ic_brand_instagram to "https://www.instagram.com/demargames/",
-  R.drawable.ic_brand_tiktok to "https://www.tiktok.com/@demargames",
-  R.drawable.ic_brand_telegram to "https://t.me/demargames",
+  R.drawable.ic_brand_x to "https://x.com/DemarLtd",
+  R.drawable.ic_brand_bluesky to "https://bsky.app/profile/demarltd.bsky.social/",
+  R.drawable.ic_brand_threads to "https://www.threads.com/@demarltd",
+  R.drawable.ic_brand_telegram to "https://t.me/demarproxy",
 )
 
 fun openSocialLink(context: android.content.Context, url: String) {

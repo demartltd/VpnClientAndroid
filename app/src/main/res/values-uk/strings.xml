@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Виключити вибрані програми та сайти з VPN</string>
     <string name="settings_tun_adblock_sub">Блокувати рекламу через DNS</string>
     <string name="settings_tun_group_sub">Поза VPN-тунелем</string>
-    <string name="settings_tun_groups_title">Готові групи програм</string>
-    <string name="settings_tun_site_groups_title">Готові групи сайтів</string>
+    <string name="settings_tun_groups_title">Групи програм</string>
+    <string name="settings_tun_site_groups_title">Групи сайтів</string>
     <string name="settings_beta">Встановлювати бета-версії</string>
     <string name="settings_beta_sub">Отримувати попередні оновлення, якщо вони є</string>
     <string name="settings_beta_off_title">Вихід з бета-каналу</string>
