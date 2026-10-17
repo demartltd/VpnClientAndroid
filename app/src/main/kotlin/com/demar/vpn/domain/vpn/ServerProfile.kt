@@ -77,12 +77,9 @@ data class ServerProfile(
   val tagNumber: Int?
     get() = displayName.substringAfterLast('-', "").toIntOrNull()
 
-  /** List title: `"Finland | FREE"`. */
-  val listTitle: String
-    get() {
-      val country = countryName?.takeIf { it.isNotBlank() } ?: return displayName
-      return "$country | ${tier.label}"
-    }
+  /** List/home primary name: country or raw tag. */
+  val titleName: String
+    get() = countryName?.takeIf { it.isNotBlank() } ?: displayName
 
   /** List subtitle: `"Helsinki #99"`. */
   val listSubtitle: String
@@ -170,3 +167,11 @@ fun List<ServerProfile>.filterServers(
         .thenBy { it.displayName },
     )
     .toList()
+
+/** Prefer unlocked current/last; never stick on locked preview after downgrade. */
+fun List<ServerProfile>.pickSelected(currentId: String?, lastId: String?): ServerProfile? {
+  val unlocked = filter { !it.isLocked }
+  return unlocked.firstOrNull { it.id == currentId }
+    ?: unlocked.firstOrNull { it.id == lastId }
+    ?: unlocked.firstOrNull()
+}

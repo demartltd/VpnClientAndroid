@@ -42,7 +42,10 @@ data class VpnTraffic(
   val servers: List<VpnTrafficServer>,
   val total: Long,
   val limitBytes: Long,
-)
+) {
+  fun bytesForServer(displayName: String): Long? =
+    servers.firstOrNull { it.name.equals(displayName, ignoreCase = true) }?.bytes
+}
 
 object VpnAccountApi {
   private const val ConnectTimeoutMs = 15_000

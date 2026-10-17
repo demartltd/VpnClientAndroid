@@ -33,7 +33,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── components/              # SettingsActionButton, DemarSnackbar, …
 │   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
-│   ├── servers/ServersScreen.kt  # tier SegmentBar; protocol badge in each row
+│   ├── servers/                 # ServersScreen, CountryFlags, ServerBadges, ServerDetailsSheet
 │   ├── settings/                # App settings, TunSettings, Documents, Service menu
 │   │   └── support/             # SupportScreen, ChatPane, Composer, Bubble, Attach, UiUtils
 │   ├── account/                 # AccountScreen + checkout/compare/pay result + TrafficPieChart
