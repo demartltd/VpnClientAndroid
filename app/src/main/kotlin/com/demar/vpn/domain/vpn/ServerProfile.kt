@@ -35,10 +35,10 @@ enum class ServerTier(val label: String) {
   }
 }
 
-enum class ServerProtocol(val apiKey: String, val label: String) {
-  Hysteria2("hysteria2", "HY2"),
-  Trojan("trojan", "Trojan"),
-  VlessReality("vless_reality", "VLESS");
+enum class ServerProtocol(val apiKey: String, val label: String, val fullLabel: String) {
+  Hysteria2("hysteria2", "HY2", "Hysteria2"),
+  Trojan("trojan", "TRJ", "Trojan"),
+  VlessReality("vless_reality", "VLESS", "VLESS Reality");
 
   companion object {
     fun fromApi(raw: String): ServerProtocol? =
@@ -54,6 +54,8 @@ data class ServerProfile(
   val city: String? = null,
   val profile: ProxyProfile,
   val bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
+  /** Server load 0–100 from API when available. */
+  val loadPercent: Int? = null,
 ) {
   val connectPlan: SingBoxConnectPlan get() = profile.toConnectPlan(bypassRuleSets)
 
@@ -61,7 +63,16 @@ data class ServerProfile(
 
   val protocolLabel: String get() = protocol.label
 
+  val protocolFullLabel: String get() = protocol.fullLabel
+
   val tier: ServerTier get() = ServerTier.fromTag(displayName)
+
+  /** Preview row from API without secrets — needs a higher subscription. */
+  val isLocked: Boolean get() = !profile.hasCredentials
+
+  /** Load for UI; fixed stub until API provides [loadPercent]. */
+  val effectiveLoadPercent: Int
+    get() = loadPercent?.coerceIn(0, 100) ?: 10
 
   val tagNumber: Int?
     get() = displayName.substringAfterLast('-', "").toIntOrNull()
@@ -146,10 +157,16 @@ fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
 fun List<ServerProfile>.visibleProtocols(): List<ServerProtocol> =
   ServerProtocol.entries.filter { p -> any { it.protocol == p } }
 
-/** [tier] null = All. */
-fun List<ServerProfile>.filterServers(protocol: ServerProtocol, tier: ServerTier?): List<ServerProfile> =
+/** [tier] null = All. Unlocked first, then locked; favorites on top within group; A–Z. */
+fun List<ServerProfile>.filterServers(
+  tier: ServerTier?,
+  favoriteIds: Set<String> = emptySet(),
+): List<ServerProfile> =
   asSequence()
-    .filter { it.protocol == protocol }
     .filter { tier == null || it.tier == tier }
-    .sortedBy { it.displayName }
+    .sortedWith(
+      compareBy<ServerProfile> { it.isLocked }
+        .thenByDescending { it.id in favoriteIds }
+        .thenBy { it.displayName },
+    )
     .toList()

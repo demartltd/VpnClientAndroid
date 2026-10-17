@@ -165,10 +165,6 @@
     <string name="servers_load_failed">サーバーを読み込めませんでした</string>
     <string name="servers_retry">再試行</string>
     <string name="servers_filter_all">すべて</string>
-    <string name="server_status_online">サーバー利用可能</string>
-    <string name="server_status_offline">サーバー利用不可</string>
-    <string name="server_status_checking">サーバーを確認中</string>
-    <string name="server_status_degraded">サーバー制限あり</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">接続できませんでした</string>
     <string name="vpn_server_unreachable">サーバーを利用できません</string>

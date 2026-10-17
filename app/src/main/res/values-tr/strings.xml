@@ -169,10 +169,6 @@
     <string name="servers_load_failed">Sunucular yüklenemedi</string>
     <string name="servers_retry">Yeniden dene</string>
     <string name="servers_filter_all">Tümü</string>
-    <string name="server_status_online">Sunucu kullanılabilir</string>
-    <string name="server_status_offline">Sunucu kullanılamıyor</string>
-    <string name="server_status_checking">Sunucu kontrol ediliyor</string>
-    <string name="server_status_degraded">Sunucu kısıtlı</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Bağlanılamadı</string>
     <string name="vpn_server_unreachable">Sunucu kullanılamıyor</string>

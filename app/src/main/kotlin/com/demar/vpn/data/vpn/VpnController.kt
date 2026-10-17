@@ -19,7 +19,6 @@ import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.domain.vpn.ConnectTimeouts
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachState
-import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
@@ -43,6 +42,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -115,9 +115,16 @@ class VpnController(private val context: Context) {
     scope.launch {
       val session = AuthSessionStore.current() ?: return@launch
       SessionCacheStore.load(context, session.userId)?.let { cached ->
-        if (cached.servers.isNotEmpty()) applyServerList(cached.servers)
+        if (cached.servers.isNotEmpty()) {
+          applyServerList(cached.servers)
+          if (cached.reachability.isNotEmpty()) {
+            _serverReachability.value = cached.reachability
+          }
+        }
         AccountStore.hydrate(cached.account, cached.traffic)
-        AppLog.append("session: restored cache (servers=${cached.servers.size})")
+        AppLog.append(
+          "session: restored cache (servers=${cached.servers.size}, ping=${cached.reachability.size})",
+        )
       }
       refreshSessionData()
     }
@@ -270,6 +277,7 @@ class VpnController(private val context: Context) {
         AuthRepository.updateVpnProfile(context, result.vpnSubscription, result.vpnExpiresAt)
         AccountStore.updateVpnProfile(result.vpnSubscription, result.vpnExpiresAt)
         applyServerList(result.servers)
+        scheduleProbeAllServers()
         trafficExceeded = result.trafficExceeded
         result.rawJson?.let { SessionCacheStore.saveServers(context, session.userId, it) }
         AppLog.append("servers: loaded ${result.servers.size} (sub=${result.vpnSubscription})")
@@ -305,12 +313,15 @@ class VpnController(private val context: Context) {
       ?: servers.firstOrNull()
     _selectedProfile.value = keep
     keep?.let { VpnControlStateStore.saveLastProfileId(context, it.id) }
+    // Probe is scheduled by callers (refreshServers / tab / pull) — not here.
     initialReachabilityDone = false
-    if (servers.isNotEmpty()) {
-      scope.launch { probeAllServers() }
-      initialReachabilityDone = true
-    } else {
+    if (servers.isEmpty()) {
+      reachabilityJob?.cancel()
+      reachabilityJob = null
       _serverReachability.value = emptyMap()
+    } else {
+      val ids = servers.mapTo(HashSet()) { it.id }
+      _serverReachability.value = _serverReachability.value.filterKeys { it in ids }
     }
   }
 
@@ -322,31 +333,54 @@ class VpnController(private val context: Context) {
     }
     if (initialReachabilityDone || _serverProfiles.value.isEmpty()) return
     initialReachabilityDone = true
-    reachabilityJob?.cancel()
-    reachabilityJob = scope.launch { probeAllServers() }
+    scheduleProbeAllServers()
   }
 
   suspend fun refreshServerReachability() {
-    probeAllServers()
+    val job = scheduleProbeAllServers() ?: return
+    job.join()
+  }
+
+  /** One in-flight probe at a time — cancels any previous run. */
+  private fun scheduleProbeAllServers(): Job? {
+    if (_serverProfiles.value.isEmpty()) return null
+    reachabilityJob?.cancel()
+    return scope.launch { probeAllServers() }.also { reachabilityJob = it }
   }
 
   private suspend fun probeAllServers() {
-    val profiles = _serverProfiles.value
+    val profiles = _serverProfiles.value.filter { !it.isLocked }
     if (profiles.isEmpty()) return
     markServersChecking()
     coroutineScope {
       profiles.forEach { profile ->
         launch {
           val state = UplinkProbe.probe(profile)
+          ensureActive()
           _serverReachability.value = _serverReachability.value + (profile.id to state)
         }
       }
     }
+    persistReachability()
+  }
+
+  private fun persistReachability() {
+    val session = AuthSessionStore.current() ?: return
+    SessionCacheStore.saveReachability(context, session.userId, _serverReachability.value)
   }
 
   private fun markServersChecking() {
-    val checking = _serverProfiles.value.associate { it.id to ServerReachState(ServerReachStatus.Checking) }
-    _serverReachability.value = _serverReachability.value + checking
+    val prev = _serverReachability.value
+    val checking = _serverProfiles.value
+      .filter { !it.isLocked }
+      .associate { p ->
+        val old = prev[p.id]
+        p.id to ServerReachState.Checking.copy(
+          latencyMs = old?.latencyMs,
+          tlsMs = old?.tlsMs,
+        )
+      }
+    _serverReachability.value = prev + checking
   }
 
   fun selectProfile(profile: ServerProfile) {

@@ -93,7 +93,11 @@ fun AppScaffold(
   }
 
   fun openCheckout(intent: CheckoutIntent) {
-    if (!signedIn) return
+    if (!signedIn) {
+      deferredAccountSheet = intent.deferredAccountSheet()
+      openLogin(tab)
+      return
+    }
     AppSheets.show(AppSheet.Checkout(intent))
   }
 
@@ -225,7 +229,7 @@ fun AppScaffold(
           snackbarHost = snackbarHost,
           vpnController = vpnController,
           onNeedSignIn = { openLogin(1) },
-          onNeedUpgrade = { openAccountSheet(AccountSheet.Buy) },
+          onNeedUpgrade = { openCheckout(CheckoutIntent.Buy) },
         )
         SettingsScreen(
           active = tab == 2,

@@ -165,10 +165,6 @@
     <string name="servers_load_failed">無法載入伺服器</string>
     <string name="servers_retry">重試</string>
     <string name="servers_filter_all">全部</string>
-    <string name="server_status_online">伺服器可用</string>
-    <string name="server_status_offline">伺服器無法使用</string>
-    <string name="server_status_checking">正在檢查伺服器</string>
-    <string name="server_status_degraded">伺服器受限</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">無法連線</string>
     <string name="vpn_server_unreachable">伺服器無法使用</string>

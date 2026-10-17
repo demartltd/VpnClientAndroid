@@ -32,7 +32,7 @@ pwsh scripts/build_android.ps1
 | Экран | Статус |
 |-------|--------|
 | Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / VLESS Reality) |
-| Servers | SegmentBar: протоколы из списка (HY2 / Trojan / VLESS) + All/Free/Plus/Vip (+ Dev/Tester если есть); список с `vpn.example.invalid` по подписке |
+| Servers | SegmentBar tier (All/Free/Plus/Vip + Dev/Tester если есть); все протоколы в одном списке с бейджем HY2/TRJ/VLESS; список с `vpn.example.invalid` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csauth.example.invalid`, channel `android`, `sourceId=2`, альбом до 10 фото WebP) |
 | Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `auth.example.invalid`; VPN profile/notify/traffic → `vpn.example.invalid`; Buy/Renew/Increase → RollyPay checkout (`/vpn/pay/*`, Custom Tabs, `demarvpn://pay/ok\|fail`) |
 | App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU/TR/UK/UZ/zh-Hans/zh-Hant/KO/JA/ES/DE/FR/HI, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS (`UpdateDownloadService`) с progress notification |

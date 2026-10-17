@@ -179,10 +179,6 @@
     <string name="servers_load_failed">Не вдалося завантажити сервери</string>
     <string name="servers_retry">Повторити</string>
     <string name="servers_filter_all">Усі</string>
-    <string name="server_status_online">Сервер доступний</string>
-    <string name="server_status_offline">Сервер недоступний</string>
-    <string name="server_status_checking">Перевірка сервера</string>
-    <string name="server_status_degraded">Сервер з обмеженнями</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Не вдалося підключитися</string>
     <string name="vpn_server_unreachable">Сервер недоступний</string>

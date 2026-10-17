@@ -169,10 +169,6 @@
     <string name="servers_load_failed">सर्वर लोड नहीं हो सके</string>
     <string name="servers_retry">फिर कोशिश करें</string>
     <string name="servers_filter_all">सभी</string>
-    <string name="server_status_online">सर्वर उपलब्ध</string>
-    <string name="server_status_offline">सर्वर अनुपलब्ध</string>
-    <string name="server_status_checking">सर्वर जाँच हो रही है</string>
-    <string name="server_status_degraded">सर्वर सीमित</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">कनेक्ट नहीं हो सका</string>
     <string name="vpn_server_unreachable">सर्वर अनुपलब्ध</string>
