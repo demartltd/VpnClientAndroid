@@ -6,6 +6,8 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.net.ConnectException
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.HttpURLConnection
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -21,6 +23,7 @@ import kotlin.coroutines.cancellation.CancellationException
 object InternetProbe {
   private const val TAG = "InternetProbe"
   private const val ATTEMPTS = 3
+  private val secureRandom = SecureRandom()
 
   private val trustAllContext: SSLContext by lazy {
     val trustAll = arrayOf<TrustManager>(
@@ -30,7 +33,7 @@ object InternetProbe {
         override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
       },
     )
-    SSLContext.getInstance("TLS").apply { init(null, trustAll, SecureRandom()) }
+    SSLContext.getInstance("TLS").apply { init(null, trustAll, secureRandom) }
   }
 
   /** Probe selected kinds in parallel. Skipped kinds stay 0. */
@@ -92,6 +95,38 @@ object InternetProbe {
         runCatching { socket.close() }
       }
     }
+  }
+
+  /**
+   * QUIC Version Negotiation RTT (RFC 9000 §6). Used for HY2 — TCP TLS never applies.
+   * Sends a ≥1200-byte Initial with GREASE version; any UDP reply counts. `-1` if all fail.
+   */
+  suspend fun probeQuicMs(
+    host: String,
+    port: Int = 443,
+    timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
+  ): Int = bestOf("quic $host:$port") {
+    measureOnce(countConnectRefused = false) {
+      DatagramSocket().use { socket ->
+        socket.soTimeout = timeoutMs
+        val pkt = quicGreaseInitial()
+        socket.send(DatagramPacket(pkt, pkt.size, InetSocketAddress(host, port)))
+        socket.receive(DatagramPacket(ByteArray(1500), 1500))
+      }
+    }
+  }
+
+  /** Long-header Initial, GREASE version `0x0a0a0a0a`, padded to 1200 bytes. */
+  internal fun quicGreaseInitial(): ByteArray {
+    val dcid = ByteArray(8).also(secureRandom::nextBytes)
+    val scid = ByteArray(8).also(secureRandom::nextBytes)
+    val out = ByteArray(1200)
+    out[0] = 0xc0.toByte()
+    out[1] = 0x0a; out[2] = 0x0a; out[3] = 0x0a; out[4] = 0x0a
+    out[5] = 8; System.arraycopy(dcid, 0, out, 6, 8)
+    out[14] = 8; System.arraycopy(scid, 0, out, 15, 8)
+    out[23] = 0x00 // token length
+    return out
   }
 
   private suspend fun bestOf(log: String, attempt: suspend () -> Int): Int {

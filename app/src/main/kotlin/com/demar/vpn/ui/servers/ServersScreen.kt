@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,9 +21,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Favorite
@@ -136,7 +137,6 @@ fun ServersScreen(
     val loading by vpnController.serversLoading.collectAsStateWithLifecycle()
     val error by vpnController.serversError.collectAsStateWithLifecycle()
     val session by AuthRepository.session.collectAsStateWithLifecycle()
-    val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
     val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
     val favoriteIds by ServersStore.favorites.collectAsStateWithLifecycle()
     val enabledTiers by ServersStore.tiers.collectAsStateWithLifecycle()
@@ -219,15 +219,14 @@ fun ServersScreen(
             onAction = { scope.launch { vpnController.refreshServers() } },
           )
           list.isEmpty() -> ServersEmptyState(message = stringResource(R.string.servers_empty))
-          else -> Column(
+          else -> LazyColumn(
             Modifier
               .fillMaxSize()
               .offset(y = PullDistance * pullState.distanceFraction)
-              .verticalScroll(rememberScrollState())
-              .padding(horizontal = 16.dp, vertical = 12.dp)
               .semantics { contentDescription = "server_list" },
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
           ) {
-            list.forEach { profile ->
+            items(list, key = { it.id }) { profile ->
               ServerRow(
                 profile = profile,
                 selected = profile.id == selected?.id,
@@ -253,6 +252,7 @@ fun ServersScreen(
       }
     }
     detailsProfile?.let { profile ->
+      val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
       ServerDetailsSheet(
         profile = profile,
         reachState = reachOf(profile.id),
@@ -283,13 +283,6 @@ private fun ServersHeader(
     fontWeight = FontWeight.Light,
     fontStyle = FontStyle.Italic,
   )
-  var cursorOn by remember { mutableStateOf(true) }
-  LaunchedEffect(Unit) {
-    while (true) {
-      delay(CursorBlinkMs)
-      cursorOn = !cursorOn
-    }
-  }
   Surface(
     modifier = Modifier
       .fillMaxWidth()
@@ -315,7 +308,6 @@ private fun ServersHeader(
           text = stringResource(R.string.servers_header_label).uppercase(locale),
           color = colors.contentColor,
           style = style,
-          cursorOn = cursorOn,
         )
       }
       HeaderAction(
@@ -339,8 +331,14 @@ private fun HeaderLabel(
   text: String,
   color: Color,
   style: TextStyle,
-  cursorOn: Boolean,
 ) {
+  var cursorOn by remember { mutableStateOf(true) }
+  LaunchedEffect(Unit) {
+    while (true) {
+      delay(CursorBlinkMs)
+      cursorOn = !cursorOn
+    }
+  }
   Row(
     Modifier
       .fillMaxSize()

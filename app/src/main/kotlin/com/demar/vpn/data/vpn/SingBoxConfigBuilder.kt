@@ -14,7 +14,6 @@ object SingBoxConfigBuilder {
   /** Always exclude own UID from TUN (mirrors VpnService.addDisallowedApplication). */
   const val SELF_PACKAGE = "com.demar.vpn"
   const val ADS_RULE_SET_TAG = "geosite-category-ads"
-  private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
 
   fun buildTunConfigJson(
     plan: SingBoxConnectPlan,
@@ -103,7 +102,7 @@ object SingBoxConfigBuilder {
   ) = jObj(
     "auto_detect_interface" to true,
     "override_android_vpn" to true,
-    "default_domain_resolver" to DOMAIN_RESOLVER,
+    "default_domain_resolver" to SingBoxTags.DOMAIN_RESOLVER,
     "final" to SingBoxTags.PROXY,
     "rules" to jArr(
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "sniff"),

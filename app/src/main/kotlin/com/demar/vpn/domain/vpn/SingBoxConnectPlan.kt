@@ -24,12 +24,7 @@ data class SingBoxConnectPlan(
     return copy(proxyOutbound = proxyOutbound + ("server" to trimmed))
   }
 
-  fun bypassFingerprint(): String =
-    "rs=${bypassRuleSets.joinToString { "${it.tag}|${it.url}" }}"
-
   companion object {
-    private val DOMAIN_RESOLVER = mapOf("server" to SingBoxTags.DNS_DIRECT, "strategy" to "ipv4_only")
-
     fun hysteria2(
       profile: Hysteria2Profile,
       bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
@@ -46,7 +41,7 @@ data class SingBoxConnectPlan(
         put("server_port", profile.port)
         put("password", profile.password)
         put("tls", tls)
-        put("domain_resolver", DOMAIN_RESOLVER)
+        put("domain_resolver", SingBoxTags.DOMAIN_RESOLVER)
         val obfs = profile.obfsPassword?.takeIf { it.isNotEmpty() }
         if (obfs != null) put("obfs", mapOf("type" to "salamander", "password" to obfs))
         profile.upMbps?.takeIf { it > 0 }?.let { put("up_mbps", it) }
@@ -72,7 +67,7 @@ data class SingBoxConnectPlan(
         "password" to profile.password,
         "tls" to mapOf("enabled" to true, "server_name" to profile.tlsServerName),
         "multiplex" to mapOf("enabled" to true),
-        "domain_resolver" to DOMAIN_RESOLVER,
+        "domain_resolver" to SingBoxTags.DOMAIN_RESOLVER,
       )
       return of(
         uplink = profile.server,
@@ -109,7 +104,7 @@ data class SingBoxConnectPlan(
         // Omit network: both tcp+udp; Vision still uses TCP command.
         // Vision flow is incompatible with multiplex — omit even if API sent it.
         put("tls", tls)
-        put("domain_resolver", DOMAIN_RESOLVER)
+        put("domain_resolver", SingBoxTags.DOMAIN_RESOLVER)
       }
       return of(profile.server, outbound, bootstrap, bypassRuleSets)
     }

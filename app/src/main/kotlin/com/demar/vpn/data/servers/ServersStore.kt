@@ -42,18 +42,17 @@ object ServersStore {
       appContext = context.applicationContext
       val p = prefs()
       val legacyFav = appContext.getSharedPreferences("demar_server_favorites", Context.MODE_PRIVATE)
-      val legacyFilters = appContext.getSharedPreferences("demar_server_filters", Context.MODE_PRIVATE)
 
       _favorites.value = readStrings(p, KeyFavorites) ?: readStrings(legacyFav, "ids") ?: emptySet()
-      _tiers.value = readEnums(p, KeyTiers, allTiers) { ServerTier.valueOf(it) }
-        ?: readEnums(legacyFilters, KeyTiers, allTiers) { ServerTier.valueOf(it) }
-        ?: allTiers
+      _tiers.value = readEnums(p, KeyTiers, allTiers) { ServerTier.valueOf(it) } ?: allTiers
       _protocols.value = readEnums(p, KeyProtocols, allProtocols) { ServerProtocol.valueOf(it) }
-        ?: readEnums(legacyFilters, KeyProtocols, allProtocols) { ServerProtocol.valueOf(it) }
         ?: allProtocols
 
       // One-shot collapse into demar_servers.
-      if (!p.contains(KeyFavorites)) writeStrings(KeyFavorites, _favorites.value)
+      if (!p.contains(KeyFavorites)) {
+        writeStrings(KeyFavorites, _favorites.value)
+        legacyFav.edit().clear().apply()
+      }
       if (!p.contains(KeyTiers)) writeStrings(KeyTiers, _tiers.value.map { it.name }.toSet())
       if (!p.contains(KeyProtocols)) writeStrings(KeyProtocols, _protocols.value.map { it.name }.toSet())
       ready = true
@@ -86,7 +85,7 @@ object ServersStore {
   private fun readStrings(p: SharedPreferences, key: String): Set<String>? =
     if (p.contains(key)) p.getStringSet(key, emptySet())?.toSet().orEmpty() else null
 
-  /** `null` when key absent (so caller can fall back to legacy prefs). */
+  /** `null` when key absent. */
   private fun <T : Enum<T>> readEnums(
     p: SharedPreferences,
     key: String,

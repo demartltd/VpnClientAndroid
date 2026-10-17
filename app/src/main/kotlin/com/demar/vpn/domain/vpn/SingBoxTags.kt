@@ -13,4 +13,5 @@ object SingBoxTags {
   const val DNS_REMOTE = "dns-remote"
   /** Shared HTTP client for remote rule-set downloads (sing-box 1.14+). */
   const val HTTP_RS_DL = "rs-dl"
+  val DOMAIN_RESOLVER = mapOf("server" to DNS_DIRECT, "strategy" to "ipv4_only")
 }

@@ -139,11 +139,6 @@ data class ServerProfile(
   }
 }
 
-fun List<ServerProfile>.byTier(): Map<ServerTier, List<ServerProfile>> =
-  ServerTier.entries.associateWith { tier ->
-    filter { it.tier == tier }.sortedBy { it.displayName }
-  }
-
 /** Product tiers always; Dev/Tester only when at least one matching server exists. */
 fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
   ServerTier.entries.filter { t ->
