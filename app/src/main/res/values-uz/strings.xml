@@ -169,10 +169,6 @@
     <string name="servers_load_failed">Serverlarni yuklab bo‘lmadi</string>
     <string name="servers_retry">Qayta urinish</string>
     <string name="servers_filter_all">Hammasi</string>
-    <string name="server_status_online">Server mavjud</string>
-    <string name="server_status_offline">Server mavjud emas</string>
-    <string name="server_status_checking">Server tekshirilmoqda</string>
-    <string name="server_status_degraded">Server cheklangan</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Ulanib bo‘lmadi</string>
     <string name="vpn_server_unreachable">Server mavjud emas</string>

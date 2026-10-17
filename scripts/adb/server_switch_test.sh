@@ -105,11 +105,6 @@ tap_tab() {
   tap_xy "$tx" "$ty"
 }
 
-# Hysteria2-only protocol bar.
-server_protocol() {
-  echo "HYSTERIA2"
-}
-
 server_tier() {
   case "$1" in
     *-FREE-*) echo "FREE" ;;
@@ -136,8 +131,6 @@ discover_servers() {
   echo "→ discover servers from UI"
   tap_tab 1
   sleep_ms 800
-  tap_label "server_protocol_HYSTERIA2" 2>/dev/null || true
-  sleep_ms 200
   tap_label "server_tier_ALL" 2>/dev/null || true
   sleep_ms 200
   local names
@@ -159,8 +152,6 @@ tap_server() {
   local name="$1"
   local tier pos
   tier="$(server_tier "$name")"
-  tap_label "server_protocol_HYSTERIA2"
-  sleep_ms 200
   tap_label "server_tier_${tier}"
   sleep_ms 200
   pos="$(ui_query server "$name")"

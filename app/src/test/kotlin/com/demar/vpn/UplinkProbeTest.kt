@@ -6,6 +6,8 @@ import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UplinkProbeTest {
@@ -25,7 +27,7 @@ class UplinkProbeTest {
   }
 
   @Test
-  fun probe_hysteria2_literalIp_dnsOk() = runBlocking {
+  fun probe_literalIp_returnsOnlineWithLatency() = runBlocking {
     val profile = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "HY2-DNS",
@@ -37,5 +39,7 @@ class UplinkProbeTest {
     )
     val state = UplinkProbe.probe(profile)
     assertEquals(ServerReachStatus.Online, state.status)
+    assertNotNull(state.latencyMs)
+    assertTrue(state.latencyMs!! >= 0)
   }
 }

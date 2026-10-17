@@ -304,12 +304,53 @@ class VpnPipelineTest {
   }
 
   @Test
-  fun filterServers_protocolAndTier() {
-    val all = fixtureServers.filterServers(ServerProtocol.Hysteria2, null)
+  fun filterServers_byTier() {
+    val all = fixtureServers.filterServers(null)
     assertEquals(listOf("FI-DEV-99", "FI-FREE-89"), all.map { it.displayName })
-    val hy2Free = fixtureServers.filterServers(ServerProtocol.Hysteria2, ServerTier.Free)
-    assertEquals(listOf("FI-FREE-89"), hy2Free.map { it.displayName })
-    assertTrue(hy2Free.single().listSubtitle == "Helsinki #89")
+    val free = fixtureServers.filterServers(ServerTier.Free)
+    assertEquals(listOf("FI-FREE-89"), free.map { it.displayName })
+    assertTrue(free.single().listSubtitle == "Helsinki #89")
+  }
+
+  @Test
+  fun filterServers_favoritesFirst() {
+    val favId = fixtureServers.first { it.displayName == "FI-FREE-89" }.id
+    assertEquals(
+      listOf("FI-FREE-89", "FI-DEV-99"),
+      fixtureServers.filterServers(null, setOf(favId)).map { it.displayName },
+    )
+  }
+
+  @Test
+  fun filterServers_unlockedBeforeLockedAlphabetical() {
+    val unlocked = fixtureServers.first { it.displayName == "FI-FREE-89" }
+    val lockedPlus = ServerProfile.fromTag(
+      Hysteria2Profile(
+        displayName = "DE-PLUS-1",
+        server = "",
+        port = 443,
+        password = "",
+        tlsServerName = "",
+      ),
+      city = "Berlin",
+    )
+    val lockedVip = ServerProfile.fromTag(
+      Hysteria2Profile(
+        displayName = "AA-VIP-1",
+        server = "",
+        port = 443,
+        password = "",
+        tlsServerName = "",
+      ),
+      city = "Stockholm",
+    )
+    assertTrue(lockedPlus.isLocked)
+    assertTrue(lockedVip.isLocked)
+    assertFalse(unlocked.isLocked)
+    assertEquals(
+      listOf("FI-FREE-89", "AA-VIP-1", "DE-PLUS-1"),
+      listOf(unlocked, lockedPlus, lockedVip).filterServers(null).map { it.displayName },
+    )
   }
 
   @Test
@@ -341,13 +382,10 @@ class VpnPipelineTest {
       mixed.visibleProtocols(),
     )
     assertEquals(
-      listOf("DE-FREE-9"),
-      mixed.filterServers(ServerProtocol.VlessReality, null).map { it.displayName },
+      listOf("DE-FREE-9", "FI-DEV-99", "FI-FREE-89", "SE-VIP-71"),
+      mixed.filterServers(null).map { it.displayName },
     )
-    assertEquals(
-      listOf("SE-VIP-71"),
-      mixed.filterServers(ServerProtocol.Trojan, null).map { it.displayName },
-    )
+    assertEquals(listOf("SE-VIP-71"), mixed.filterServers(ServerTier.Vip).map { it.displayName })
   }
 
   @Test
@@ -361,7 +399,7 @@ class VpnPipelineTest {
         tlsServerName = "se-f-1.xyzdeer.space",
       ),
     )
-    assertEquals("Trojan", profile.protocolLabel)
+    assertEquals("TRJ", profile.protocolLabel)
     assertTrue(profile.profile.hasCredentials)
     assertTrue(profile.profile.preferResolvedDial)
     val outbound = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan))

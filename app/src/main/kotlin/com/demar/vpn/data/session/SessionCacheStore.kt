@@ -6,6 +6,7 @@ import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.data.account.VpnTraffic
 import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerReachState
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -15,11 +16,13 @@ object SessionCacheStore {
   private const val KEY_SERVERS = "servers_json"
   private const val KEY_ACCOUNT = "account_json"
   private const val KEY_TRAFFIC = "traffic_json"
+  private const val KEY_REACHABILITY = "reachability_json"
 
   data class Snapshot(
     val servers: List<ServerProfile>,
     val account: VpnAccount?,
     val traffic: VpnTraffic?,
+    val reachability: Map<String, ServerReachState> = emptyMap(),
   )
 
   fun load(context: Context, userId: String): Snapshot? {
@@ -34,7 +37,16 @@ object SessionCacheStore {
       val traffic = prefs.getString(KEY_TRAFFIC, null)?.takeIf { it.isNotBlank() }?.let {
         VpnAccountApi.parseTraffic(JSONObject(it))
       }
-      Snapshot(servers = servers, account = account, traffic = traffic)
+      val reachability = prefs.getString(KEY_REACHABILITY, null)
+        ?.let(ServerReachState::decodeCache)
+        .orEmpty()
+        .filterKeys { id -> servers.any { it.id == id } }
+      Snapshot(
+        servers = servers,
+        account = account,
+        traffic = traffic,
+        reachability = reachability,
+      )
     }.getOrNull()
   }
 
@@ -42,6 +54,13 @@ object SessionCacheStore {
     prefs(context).edit()
       .putString(KEY_USER_ID, userId)
       .putString(KEY_SERVERS, rawJson.toString())
+      .apply()
+  }
+
+  fun saveReachability(context: Context, userId: String, map: Map<String, ServerReachState>) {
+    prefs(context).edit()
+      .putString(KEY_USER_ID, userId)
+      .putString(KEY_REACHABILITY, ServerReachState.encodeCache(map))
       .apply()
   }
 

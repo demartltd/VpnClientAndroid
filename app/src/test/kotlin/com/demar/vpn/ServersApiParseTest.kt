@@ -246,7 +246,7 @@ class ServersApiParseTest {
     val profile = ServersApi.parseServerItem(item)
     assertNotNull(profile)
     assertEquals(ServerProtocol.Trojan, profile!!.protocol)
-    assertEquals("Trojan", profile.protocolLabel)
+    assertEquals("TRJ", profile.protocolLabel)
     val tr = profile.profile as TrojanProfile
     assertEquals("se-f-1.xyzdeer.space", tr.server)
     assertEquals(8443, tr.port)

@@ -169,10 +169,7 @@
     <string name="servers_load_failed">Failed to load servers</string>
     <string name="servers_retry">Retry</string>
     <string name="servers_filter_all">All</string>
-    <string name="server_status_online">Server available</string>
-    <string name="server_status_offline">Server unavailable</string>
-    <string name="server_status_checking">Checking server</string>
-    <string name="server_status_degraded">Server limited</string>
+    <string name="servers_premium">Premium</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Could not connect</string>
     <string name="vpn_server_unreachable">Server unavailable</string>

@@ -169,10 +169,6 @@
     <string name="servers_load_failed">Error al cargar los servidores</string>
     <string name="servers_retry">Reintentar</string>
     <string name="servers_filter_all">Todos</string>
-    <string name="server_status_online">Servidor disponible</string>
-    <string name="server_status_offline">Servidor no disponible</string>
-    <string name="server_status_checking">Comprobando servidor</string>
-    <string name="server_status_degraded">Servidor limitado</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">No se pudo conectar</string>
     <string name="vpn_server_unreachable">Servidor no disponible</string>
