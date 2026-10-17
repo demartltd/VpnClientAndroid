@@ -173,7 +173,10 @@
     <string name="pay_compare_ip">Виділений IP*</string>
     <string name="pay_compare_footnote">*Поки недоступно.</string>
     <string name="soon">Незабаром</string>
-    <string name="server_selected">Сервер вибрано</string>
+        <string name="server_load">Навантаження</string>
+    <string name="server_traffic">Трафік</string>
+    <string name="server_direct">Напряму</string>
+<string name="server_selected">Сервер вибрано</string>
     <string name="servers_sign_in_hint">Увійдіть, щоб побачити доступні сервери</string>
     <string name="servers_empty">Немає доступних серверів для вашої підписки</string>
     <string name="servers_load_failed">Не вдалося завантажити сервери</string>

@@ -159,7 +159,10 @@
     <string name="pay_compare_ip">専用 IP*</string>
     <string name="pay_compare_footnote">*まだ利用できません。</string>
     <string name="soon">近日公開</string>
-    <string name="server_selected">サーバーを選択しました</string>
+        <string name="server_load">負荷</string>
+    <string name="server_traffic">トラフィック</string>
+    <string name="server_direct">直接</string>
+<string name="server_selected">サーバーを選択しました</string>
     <string name="servers_sign_in_hint">利用可能なサーバーを見るにはサインインしてください</string>
     <string name="servers_empty">サブスクリプションで利用できるサーバーがありません</string>
     <string name="servers_load_failed">サーバーを読み込めませんでした</string>

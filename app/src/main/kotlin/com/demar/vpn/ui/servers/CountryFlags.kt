@@ -14,6 +14,8 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.demar.vpn.R
@@ -30,20 +32,33 @@ private fun countryCodeToFlagEmoji(countryCode: String?): String {
 }
 
 @Composable
-fun CountryFlag(countryCode: String?, modifier: Modifier = Modifier) {
+fun CountryFlag(
+  countryCode: String?,
+  modifier: Modifier = Modifier,
+  size: Dp = 36.dp,
+  flagFontSize: TextUnit = 22.sp,
+  framed: Boolean = true,
+) {
   val emoji = countryCodeToFlagEmoji(countryCode)
   Box(
     modifier
-      .size(36.dp)
-      .clip(RoundedCornerShape(8.dp))
-      .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+      .size(size)
+      .then(
+        if (framed) {
+          Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+        } else {
+          Modifier
+        },
+      ),
     contentAlignment = Alignment.Center,
   ) {
     if (emoji.isNotEmpty()) {
       Text(
         text = emoji,
         fontFamily = TwemojiCountryFlagFont,
-        fontSize = 22.sp,
+        fontSize = flagFontSize,
         style = MaterialTheme.typography.bodyMedium.copy(
           platformStyle = PlatformTextStyle(includeFontPadding = false),
         ),

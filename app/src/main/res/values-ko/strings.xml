@@ -159,7 +159,10 @@
     <string name="pay_compare_ip">전용 IP*</string>
     <string name="pay_compare_footnote">*아직 사용할 수 없습니다.</string>
     <string name="soon">곧 제공</string>
-    <string name="server_selected">서버 선택됨</string>
+        <string name="server_load">부하</string>
+    <string name="server_traffic">트래픽</string>
+    <string name="server_direct">직접</string>
+<string name="server_selected">서버 선택됨</string>
     <string name="servers_sign_in_hint">사용 가능한 서버를 보려면 로그인하세요</string>
     <string name="servers_empty">구독에 사용 가능한 서버가 없습니다</string>
     <string name="servers_load_failed">서버를 불러오지 못함</string>

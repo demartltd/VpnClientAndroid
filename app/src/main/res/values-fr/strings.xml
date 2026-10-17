@@ -163,7 +163,10 @@
     <string name="pay_compare_ip">IP dédiée*</string>
     <string name="pay_compare_footnote">*Pas encore disponible.</string>
     <string name="soon">Bientôt</string>
-    <string name="server_selected">Serveur sélectionné</string>
+        <string name="server_load">Charge</string>
+    <string name="server_traffic">Trafic</string>
+    <string name="server_direct">Direct</string>
+<string name="server_selected">Serveur sélectionné</string>
     <string name="servers_sign_in_hint">Connectez-vous pour voir les serveurs disponibles</string>
     <string name="servers_empty">Aucun serveur disponible pour votre abonnement</string>
     <string name="servers_load_failed">Échec du chargement des serveurs</string>
