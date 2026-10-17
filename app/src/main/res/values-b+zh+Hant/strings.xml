@@ -159,7 +159,10 @@
     <string name="pay_compare_ip">專用 IP*</string>
     <string name="pay_compare_footnote">*暫不可用。</string>
     <string name="soon">即將推出</string>
-    <string name="server_selected">已選取伺服器</string>
+        <string name="server_load">負載</string>
+    <string name="server_traffic">流量</string>
+    <string name="server_direct">直連</string>
+<string name="server_selected">已選取伺服器</string>
     <string name="servers_sign_in_hint">登入以查看可用伺服器</string>
     <string name="servers_empty">您的訂閱沒有可用伺服器</string>
     <string name="servers_load_failed">無法載入伺服器</string>

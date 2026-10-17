@@ -163,7 +163,10 @@
     <string name="pay_compare_ip">Maxsus IP*</string>
     <string name="pay_compare_footnote">*Hozircha mavjud emas.</string>
     <string name="soon">Tez orada</string>
-    <string name="server_selected">Server tanlandi</string>
+        <string name="server_load">Yuklama</string>
+    <string name="server_traffic">Trafik</string>
+    <string name="server_direct">To‘g‘ridan-to‘g‘ri</string>
+<string name="server_selected">Server tanlandi</string>
     <string name="servers_sign_in_hint">Mavjud serverlarni ko‘rish uchun kiring</string>
     <string name="servers_empty">Obunangiz uchun serverlar yo‘q</string>
     <string name="servers_load_failed">Serverlarni yuklab bo‘lmadi</string>

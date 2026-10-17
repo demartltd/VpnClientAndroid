@@ -3,6 +3,7 @@ package com.demar.vpn.ui.servers
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,13 +30,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.demar.vpn.R
 import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachState
+import com.demar.vpn.domain.vpn.directCountryCodes
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 
 @Composable
@@ -68,10 +73,11 @@ fun ServerDetailsSheet(
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val cs = MaterialTheme.colorScheme
+  val directCodes = remember(profile.bypassRuleSets) { profile.bypassRuleSets.directCountryCodes() }
   val metrics = listOf(
     "TCP" to ServerReachState.formatMs(reachState.latencyMs),
     "TLS" to ServerReachState.formatMs(reachState.tlsMs),
-    "Traffic" to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"),
+    stringResource(R.string.server_traffic) to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"),
   )
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -106,10 +112,12 @@ fun ServerDetailsSheet(
         )
       }
       Spacer(Modifier.height(12.dp))
-      Row(verticalAlignment = Alignment.CenterVertically) {
-        ServerBadge(profile.tier.label, badgePalette, profile.tier)
-        Spacer(Modifier.width(6.dp))
-        ServerBadge(profile.protocolFullLabel, badgePalette)
+      Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        ServerBadge(profile.tier.label, badgePalette, profile.tier, large = true)
+        ServerBadge(profile.protocolFullLabel, badgePalette, large = true)
       }
       Spacer(Modifier.height(16.dp))
       Surface(
@@ -121,7 +129,7 @@ fun ServerDetailsSheet(
         Column(Modifier.fillMaxWidth()) {
           Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
             Text(
-              "Load",
+              stringResource(R.string.server_load),
               style = MaterialTheme.typography.titleSmall,
               color = cs.onSurfaceVariant,
             )
@@ -135,6 +143,19 @@ fun ServerDetailsSheet(
             )
             DetailMetricRow(label, value)
           }
+          if (directCodes.isNotEmpty()) {
+            HorizontalDivider(
+              modifier = Modifier.padding(horizontal = 12.dp),
+              color = cs.outlineVariant.copy(alpha = 0.45f),
+            )
+            DetailMetricRow(label = stringResource(R.string.server_direct)) {
+              Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                directCodes.forEach { code ->
+                  CountryFlag(code, size = 32.dp, flagFontSize = 22.sp, framed = false)
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -143,6 +164,18 @@ fun ServerDetailsSheet(
 
 @Composable
 private fun DetailMetricRow(label: String, value: String) {
+  DetailMetricRow(label) {
+    Text(
+      value,
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+  }
+}
+
+@Composable
+private fun DetailMetricRow(label: String, valueContent: @Composable () -> Unit) {
   val cs = MaterialTheme.colorScheme
   Row(
     Modifier
@@ -151,12 +184,7 @@ private fun DetailMetricRow(label: String, value: String) {
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, color = cs.onSurface)
-    Text(
-      value,
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
-      color = cs.onSurface,
-    )
+    valueContent()
   }
 }
 

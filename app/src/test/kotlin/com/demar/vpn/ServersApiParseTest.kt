@@ -7,6 +7,7 @@ import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.TrojanProfile
 import com.demar.vpn.domain.vpn.VlessRealityProfile
+import com.demar.vpn.domain.vpn.directCountryCodes
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -143,6 +144,7 @@ class ServersApiParseTest {
     assertEquals(6, profile.bypassRuleSets.size)
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" && it.url.contains("Chocolate4U") })
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-cn" })
+    assertEquals(listOf("CN", "IR", "RU"), profile.bypassRuleSets.directCountryCodes())
     val built = SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan)
     assertFalse(built.contains("route_exclude_address_set"))
     assertTrue(built.contains("geosite-ir"))

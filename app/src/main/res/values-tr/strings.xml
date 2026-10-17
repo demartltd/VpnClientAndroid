@@ -163,7 +163,10 @@
     <string name="pay_compare_ip">Özel IP*</string>
     <string name="pay_compare_footnote">*Henüz kullanılamıyor.</string>
     <string name="soon">Yakında</string>
-    <string name="server_selected">Sunucu seçildi</string>
+        <string name="server_load">Yük</string>
+    <string name="server_traffic">Trafik</string>
+    <string name="server_direct">Doğrudan</string>
+<string name="server_selected">Sunucu seçildi</string>
     <string name="servers_sign_in_hint">Mevcut sunucuları görmek için giriş yapın</string>
     <string name="servers_empty">Aboneliğiniz için sunucu yok</string>
     <string name="servers_load_failed">Sunucular yüklenemedi</string>

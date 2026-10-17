@@ -163,7 +163,10 @@
     <string name="pay_compare_ip">समर्पित IP*</string>
     <string name="pay_compare_footnote">*अभी उपलब्ध नहीं।</string>
     <string name="soon">जल्द आ रहा है</string>
-    <string name="server_selected">सर्वर चुना गया</string>
+        <string name="server_load">लोड</string>
+    <string name="server_traffic">ट्रैफ़िक</string>
+    <string name="server_direct">सीधे</string>
+<string name="server_selected">सर्वर चुना गया</string>
     <string name="servers_sign_in_hint">उपलब्ध सर्वर देखने के लिए साइन इन करें</string>
     <string name="servers_empty">आपकी सदस्यता के लिए कोई सर्वर उपलब्ध नहीं</string>
     <string name="servers_load_failed">सर्वर लोड नहीं हो सके</string>
