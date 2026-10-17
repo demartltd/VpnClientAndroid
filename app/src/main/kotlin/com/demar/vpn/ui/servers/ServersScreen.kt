@@ -199,7 +199,6 @@ fun ServersScreen(
         Modifier
           .weight(1f)
           .fillMaxWidth()
-          .padding(top = 8.dp)
           .pullToRefresh(
             state = pullState,
             isRefreshing = pullRefreshing,
