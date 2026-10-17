@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Ausgewählte Apps und Seiten vom VPN ausschließen</string>
     <string name="settings_tun_adblock_sub">Werbung über DNS blockieren</string>
     <string name="settings_tun_group_sub">Außerhalb des VPN-Tunnels</string>
-    <string name="settings_tun_groups_title">Vorgefertigte App-Gruppen</string>
-    <string name="settings_tun_site_groups_title">Vorgefertigte Seitengruppen</string>
+    <string name="settings_tun_groups_title">App-Gruppen</string>
+    <string name="settings_tun_site_groups_title">Seitengruppen</string>
     <string name="settings_beta">Beta-Versionen installieren</string>
     <string name="settings_beta_sub">Vorab-Updates erhalten, wenn verfügbar</string>
     <string name="settings_beta_off_title">Beta-Kanal verlassen</string>

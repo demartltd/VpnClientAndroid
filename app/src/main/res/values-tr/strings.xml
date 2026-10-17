@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Seçili uygulamaları ve siteleri VPN dışına alın</string>
     <string name="settings_tun_adblock_sub">DNS ile reklamları engelle</string>
     <string name="settings_tun_group_sub">VPN tünelinden hariç</string>
-    <string name="settings_tun_groups_title">Hazır uygulama grupları</string>
-    <string name="settings_tun_site_groups_title">Hazır site grupları</string>
+    <string name="settings_tun_groups_title">Uygulama grupları</string>
+    <string name="settings_tun_site_groups_title">Site grupları</string>
     <string name="settings_beta">Beta sürümlerini yükle</string>
     <string name="settings_beta_sub">Varsa ön sürüm güncellemelerini al</string>
     <string name="settings_beta_off_title">Beta kanalından çıkılıyor</string>

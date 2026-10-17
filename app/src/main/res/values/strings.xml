@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Exclude selected apps and sites from the VPN</string>
     <string name="settings_tun_adblock_sub">Block ads via DNS</string>
     <string name="settings_tun_group_sub">Excluded from the VPN tunnel</string>
-    <string name="settings_tun_groups_title">Preset app groups</string>
-    <string name="settings_tun_site_groups_title">Preset site groups</string>
+    <string name="settings_tun_groups_title">App Groups</string>
+    <string name="settings_tun_site_groups_title">Site Groups</string>
     <string name="settings_beta">Install beta versions</string>
     <string name="settings_beta_sub">Get pre-release updates when available</string>
     <string name="settings_beta_off_title">Leaving the beta channel</string>

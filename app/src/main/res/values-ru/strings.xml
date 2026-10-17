@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Исключает выбранные приложения и сайты из VPN</string>
     <string name="settings_tun_adblock_sub">Блокировка рекламы через DNS</string>
     <string name="settings_tun_group_sub">Вне VPN-туннеля</string>
-    <string name="settings_tun_groups_title">Системные группы приложений</string>
-    <string name="settings_tun_site_groups_title">Готовые группы сайтов</string>
+    <string name="settings_tun_groups_title">Группы приложений</string>
+    <string name="settings_tun_site_groups_title">Группы сайтов</string>
     <string name="settings_beta">Устанавливать бета-версии</string>
     <string name="settings_beta_sub">Получать предварительные обновления, если они есть</string>
     <string name="settings_beta_off_title">Отключение бета-канала</string>

@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">将所选应用与网站排除在 VPN 之外</string>
     <string name="settings_tun_adblock_sub">通过 DNS 拦截广告</string>
     <string name="settings_tun_group_sub">排除在 VPN 隧道外</string>
-    <string name="settings_tun_groups_title">预设应用组</string>
-    <string name="settings_tun_site_groups_title">预设网站组</string>
+    <string name="settings_tun_groups_title">应用组</string>
+    <string name="settings_tun_site_groups_title">网站组</string>
     <string name="settings_beta">安装测试版</string>
     <string name="settings_beta_sub">有预发行更新时接收</string>
     <string name="settings_beta_off_title">退出测试频道</string>

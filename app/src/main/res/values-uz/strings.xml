@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">Tanlangan ilovalar va saytlarni VPN dan chiqarish</string>
     <string name="settings_tun_adblock_sub">DNS orqali reklamalarni bloklash</string>
     <string name="settings_tun_group_sub">VPN tunnelidan tashqari</string>
-    <string name="settings_tun_groups_title">Tayyor ilova guruhlari</string>
-    <string name="settings_tun_site_groups_title">Tayyor sayt guruhlari</string>
+    <string name="settings_tun_groups_title">Ilova guruhlari</string>
+    <string name="settings_tun_site_groups_title">Sayt guruhlari</string>
     <string name="settings_beta">Beta versiyalarni o‘rnatish</string>
     <string name="settings_beta_sub">Mavjud bo‘lsa, oldindan chiqarilgan yangilanishlarni olish</string>
     <string name="settings_beta_off_title">Beta kanalidan chiqish</string>

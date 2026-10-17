@@ -43,8 +43,8 @@
     <string name="settings_tun_rules_sub">선택한 앱과 사이트를 VPN에서 제외</string>
     <string name="settings_tun_adblock_sub">DNS로 광고 차단</string>
     <string name="settings_tun_group_sub">VPN 터널에서 제외됨</string>
-    <string name="settings_tun_groups_title">프리셋 앱 그룹</string>
-    <string name="settings_tun_site_groups_title">프리셋 사이트 그룹</string>
+    <string name="settings_tun_groups_title">앱 그룹</string>
+    <string name="settings_tun_site_groups_title">사이트 그룹</string>
     <string name="settings_beta">베타 버전 설치</string>
     <string name="settings_beta_sub">사전 출시 업데이트가 있으면 받기</string>
     <string name="settings_beta_off_title">베타 채널 나가기</string>
