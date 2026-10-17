@@ -170,9 +170,6 @@
     <string name="servers_header_label">伺服器</string>
     <string name="servers_refresh">重新整理伺服器</string>
     <string name="servers_filters">伺服器篩選</string>
-    <string name="servers_filters_title">篩選</string>
-    <string name="servers_filters_tier">訂閱</string>
-    <string name="servers_filters_protocol">協定</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">無法連線</string>
     <string name="vpn_server_unreachable">伺服器無法使用</string>

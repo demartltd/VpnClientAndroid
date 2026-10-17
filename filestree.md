@@ -19,7 +19,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic, promo); PayApi (/vpn/pay/plans, create)
 │   ├── support/                 # SupportApi + cache/unread; csapi.demar.cc (channel android, sourceId=2; album ≤10 WebP)
-│   ├── servers/                 # ServersApi (POST fastapi.demar.cc/vpn/servers → profiles)
+│   ├── servers/                 # ServersApi + ServersStore (favorites / filters)
 │   ├── update/                  # AndroidReleaseApi + AppUpdate + UpdateDownloadService (FGS dataSync) + UpdateChannelStore
 │   ├── content/                 # LegalDocumentRepository (GitHub Markdown)
 │   ├── logging/AppLog.kt

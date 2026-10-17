@@ -170,9 +170,6 @@
     <string name="servers_header_label">服务器</string>
     <string name="servers_refresh">刷新服务器</string>
     <string name="servers_filters">服务器筛选</string>
-    <string name="servers_filters_title">筛选</string>
-    <string name="servers_filters_tier">订阅</string>
-    <string name="servers_filters_protocol">协议</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">无法连接</string>
     <string name="vpn_server_unreachable">服务器不可用</string>

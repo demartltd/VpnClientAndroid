@@ -1,39 +1,72 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.demar.vpn.ui.servers
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonColors
+import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.demar.vpn.R
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.demar.vpn.data.servers.ServersStore
+import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerTier
+import com.demar.vpn.domain.vpn.matchesFilters
+import com.demar.vpn.domain.vpn.visibleProtocols
+import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.ui.components.StaticSheetDragHandle
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+private val BlockHeight = ButtonDefaults.MediumContainerHeight
+private val RowGap = 8.dp
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerFiltersSheet(
-  tiers: List<ServerTier>,
-  protocols: List<ServerProtocol>,
-  enabledTiers: Set<ServerTier>,
-  enabledProtocols: Set<ServerProtocol>,
-  onTiersChange: (Set<ServerTier>) -> Unit,
-  onProtocolsChange: (Set<ServerProtocol>) -> Unit,
+  profiles: List<ServerProfile>,
   onDismiss: () -> Unit,
 ) {
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val enabledTiers by ServersStore.tiers.collectAsStateWithLifecycle()
+  val enabledProtocols by ServersStore.protocols.collectAsStateWithLifecycle()
+  val tiers = remember(profiles) { profiles.visibleTiers() }
+  val protocols = remember(profiles) { profiles.visibleProtocols() }
+  val tonal = IconButtonDefaults.filledTonalIconButtonColors()
+  val colors = ToggleButtonDefaults.toggleButtonColors(
+    containerColor = tonal.containerColor.copy(alpha = 0.45f),
+    contentColor = tonal.contentColor.copy(alpha = 0.65f),
+    checkedContainerColor = tonal.containerColor,
+    checkedContentColor = tonal.contentColor,
+  )
+
+  fun tryTiers(next: Set<ServerTier>) {
+    if (profiles.matchesFilters(next, enabledProtocols)) ServersStore.setTiers(next)
+  }
+
+  fun tryProtocols(next: Set<ServerProtocol>) {
+    if (profiles.matchesFilters(enabledTiers, next)) ServersStore.setProtocols(next)
+  }
+
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
@@ -43,29 +76,28 @@ fun ServerFiltersSheet(
       Modifier
         .fillMaxWidth()
         .padding(horizontal = 24.dp)
-        .padding(bottom = 28.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
+        .padding(top = 4.dp, bottom = 36.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-      Text(
-        stringResource(R.string.servers_filters_title),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.SemiBold,
-      )
-      FilterSection(stringResource(R.string.servers_filters_tier)) {
+      FilterRow {
         tiers.forEach { tier ->
-          FilterChip(
-            selected = tier in enabledTiers,
-            onClick = { onTiersChange(enabledTiers.toggle(tier)) },
-            label = { Text(tier.label) },
+          FilterBlock(
+            label = tier.label,
+            checked = tier in enabledTiers,
+            colors = colors,
+            onCheckedChange = { on -> tryTiers(if (on) enabledTiers + tier else enabledTiers - tier) },
           )
         }
       }
-      FilterSection(stringResource(R.string.servers_filters_protocol)) {
+      FilterRow {
         protocols.forEach { protocol ->
-          FilterChip(
-            selected = protocol in enabledProtocols,
-            onClick = { onProtocolsChange(enabledProtocols.toggle(protocol)) },
-            label = { Text(protocol.label) },
+          FilterBlock(
+            label = protocol.label,
+            checked = protocol in enabledProtocols,
+            colors = colors,
+            onCheckedChange = { on ->
+              tryProtocols(if (on) enabledProtocols + protocol else enabledProtocols - protocol)
+            },
           )
         }
       }
@@ -73,25 +105,38 @@ fun ServerFiltersSheet(
   }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FilterSection(
-  title: String,
-  chips: @Composable () -> Unit,
+private fun FilterRow(content: @Composable RowScope.() -> Unit) {
+  Row(
+    Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(RowGap),
+    content = content,
+  )
+}
+
+@Composable
+private fun RowScope.FilterBlock(
+  label: String,
+  checked: Boolean,
+  colors: ToggleButtonColors,
+  onCheckedChange: (Boolean) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+  ToggleButton(
+    checked = checked,
+    onCheckedChange = onCheckedChange,
+    modifier = Modifier
+      .weight(1f)
+      .heightIn(min = BlockHeight),
+    shapes = ToggleButtonDefaults.shapesFor(BlockHeight),
+    colors = colors,
+    contentPadding = ButtonDefaults.contentPaddingFor(BlockHeight),
+  ) {
     Text(
-      title,
+      label,
       style = MaterialTheme.typography.titleSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    FlowRow(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
-      content = { chips() },
+      fontWeight = FontWeight.SemiBold,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
-
-private fun <T> Set<T>.toggle(item: T): Set<T> =
-  if (item in this) this - item else this + item

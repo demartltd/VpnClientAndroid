@@ -154,6 +154,9 @@ fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
 fun List<ServerProfile>.visibleProtocols(): List<ServerProtocol> =
   ServerProtocol.entries.filter { p -> any { it.protocol == p } }
 
+fun List<ServerProfile>.matchesFilters(tiers: Set<ServerTier>, protocols: Set<ServerProtocol>): Boolean =
+  isEmpty() || any { it.tier in tiers && it.protocol in protocols }
+
 /** Unlocked first, then locked; favorites on top within group; A–Z. */
 fun List<ServerProfile>.filterServers(
   tiers: Set<ServerTier>,

@@ -174,9 +174,6 @@
     <string name="servers_header_label">Serverlar</string>
     <string name="servers_refresh">Serverlarni yangilash</string>
     <string name="servers_filters">Server filtrlari</string>
-    <string name="servers_filters_title">Filtrlar</string>
-    <string name="servers_filters_tier">Obuna</string>
-    <string name="servers_filters_protocol">Protokol</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Ulanib bo‘lmadi</string>
     <string name="vpn_server_unreachable">Server mavjud emas</string>

@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularProgressIndicator
@@ -34,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -43,6 +45,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,15 +85,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthRepository
-import com.demar.vpn.data.servers.FavoriteServersStore
+import com.demar.vpn.data.servers.ServersStore
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
-import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
-import com.demar.vpn.domain.vpn.ServerTier
 import com.demar.vpn.domain.vpn.filterServers
-import com.demar.vpn.domain.vpn.visibleProtocols
-import com.demar.vpn.domain.vpn.visibleTiers
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.toolbarBottomInset
@@ -139,7 +138,9 @@ fun ServersScreen(
     val session by AuthRepository.session.collectAsStateWithLifecycle()
     val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
     val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
-    val favoriteIds by FavoriteServersStore.ids.collectAsStateWithLifecycle()
+    val favoriteIds by ServersStore.favorites.collectAsStateWithLifecycle()
+    val enabledTiers by ServersStore.tiers.collectAsStateWithLifecycle()
+    val enabledProtocols by ServersStore.protocols.collectAsStateWithLifecycle()
     val selectedMsg = stringResource(R.string.server_selected)
     val scope = rememberCoroutineScope()
     val pullState = rememberPullToRefreshState()
@@ -148,11 +149,7 @@ fun ServersScreen(
     val busy = buttonRefreshing || pullRefreshing
     var detailsProfile by remember { mutableStateOf<ServerProfile?>(null) }
     var showFilters by remember { mutableStateOf(false) }
-    var enabledTiers by remember { mutableStateOf(ServerTier.entries.toSet()) }
-    var enabledProtocols by remember { mutableStateOf(ServerProtocol.entries.toSet()) }
     val badgePalette = rememberServerBadgePalette()
-    val filterTiers = remember(profiles) { profiles.visibleTiers() }
-    val filterProtocols = remember(profiles) { profiles.visibleProtocols() }
     val list = remember(profiles, enabledTiers, enabledProtocols, favoriteIds) {
       profiles.filterServers(enabledTiers, enabledProtocols, favoriteIds)
     }
@@ -192,6 +189,7 @@ fun ServersScreen(
       ServersHeader(
         refreshing = buttonRefreshing,
         enabled = session != null,
+        filtersActive = ServersStore.filtersActive(enabledTiers, enabledProtocols),
         onRefresh = { launchRefresh(asButton = true) },
         onFilters = { showFilters = true },
       )
@@ -261,20 +259,12 @@ fun ServersScreen(
         trafficBytes = traffic?.bytesForServer(profile.displayName),
         badgePalette = badgePalette,
         favorite = profile.id in favoriteIds,
-        onToggleFavorite = { FavoriteServersStore.toggle(profile.id) },
+        onToggleFavorite = { ServersStore.toggleFavorite(profile.id) },
         onDismiss = { detailsProfile = null },
       )
     }
     if (showFilters) {
-      ServerFiltersSheet(
-        tiers = filterTiers,
-        protocols = filterProtocols,
-        enabledTiers = enabledTiers,
-        enabledProtocols = enabledProtocols,
-        onTiersChange = { enabledTiers = it },
-        onProtocolsChange = { enabledProtocols = it },
-        onDismiss = { showFilters = false },
-      )
+      ServerFiltersSheet(profiles = profiles, onDismiss = { showFilters = false })
     }
   }
 }
@@ -283,6 +273,7 @@ fun ServersScreen(
 private fun ServersHeader(
   refreshing: Boolean,
   enabled: Boolean,
+  filtersActive: Boolean,
   onRefresh: () -> Unit,
   onFilters: () -> Unit,
 ) {
@@ -335,7 +326,7 @@ private fun ServersHeader(
         spinning = refreshing,
       )
       HeaderAction(
-        icon = Icons.Outlined.Tune,
+        icon = if (filtersActive) Icons.Outlined.FilterList else Icons.Outlined.Tune,
         contentDescription = stringResource(R.string.servers_filters),
         onClick = onFilters,
       )
@@ -409,31 +400,33 @@ private fun HeaderAction(
   val amp = waveAmp.value
   val outline = MaterialTheme.colorScheme.secondaryContainer
   val wavy = amp > 0.001f
-  FilledTonalIconButton(
-    onClick = { if (!spinning) onClick() },
-    shape = if (wavy) WavyRoundedRectShape(phase, amp) else HeaderChipShape,
-    enabled = enabled,
-    colors = IconButtonDefaults.filledTonalIconButtonColors(),
-    modifier = Modifier
-      .size(HeaderActionSize)
-      .then(
-        if (!wavy) Modifier else Modifier.drawWithCache {
-          val path = wavyRoundedRectPath(size, phase, HeaderCorner.toPx(), amp)
-          onDrawWithContent {
-            drawContent()
-            drawPath(path, outline, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
-          }
-        },
-      )
-      .semantics { this.contentDescription = contentDescription },
-  ) {
-    Icon(
-      imageVector = icon,
-      contentDescription = null,
+  CompositionLocalProvider(LocalRippleConfiguration provides null) {
+    FilledTonalIconButton(
+      onClick = { if (!spinning) onClick() },
+      shape = if (wavy) WavyRoundedRectShape(phase, amp) else HeaderChipShape,
+      enabled = enabled,
+      colors = IconButtonDefaults.filledTonalIconButtonColors(),
       modifier = Modifier
-        .size(HeaderIconSize)
-        .rotate(rotation.value),
-    )
+        .size(HeaderActionSize)
+        .then(
+          if (!wavy) Modifier else Modifier.drawWithCache {
+            val path = wavyRoundedRectPath(size, phase, HeaderCorner.toPx(), amp)
+            onDrawWithContent {
+              drawContent()
+              drawPath(path, outline, style = Stroke(1.5.dp.toPx(), cap = StrokeCap.Round))
+            }
+          },
+        )
+        .semantics { this.contentDescription = contentDescription },
+    ) {
+      Icon(
+        imageVector = icon,
+        contentDescription = null,
+        modifier = Modifier
+          .size(HeaderIconSize)
+          .rotate(rotation.value),
+      )
+    }
   }
 }
 
