@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.account.AccountStore
-import com.demar.vpn.data.servers.FavoriteServersStore
+import com.demar.vpn.data.servers.ServersStore
 import com.demar.vpn.data.vpn.ThroughputRates
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -75,7 +75,7 @@ fun HomeScreen(
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
-  val favoriteIds by FavoriteServersStore.ids.collectAsStateWithLifecycle()
+  val favoriteIds by ServersStore.favorites.collectAsStateWithLifecycle()
   val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
   val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
   val badgePalette = rememberServerBadgePalette()
@@ -135,7 +135,7 @@ fun HomeScreen(
       trafficBytes = traffic?.bytesForServer(profile.displayName),
       badgePalette = badgePalette,
       favorite = profile.id in favoriteIds,
-      onToggleFavorite = { FavoriteServersStore.toggle(profile.id) },
+      onToggleFavorite = { ServersStore.toggleFavorite(profile.id) },
       onDismiss = { showDetails = false },
     )
   }

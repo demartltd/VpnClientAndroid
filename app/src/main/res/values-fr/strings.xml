@@ -174,9 +174,6 @@
     <string name="servers_header_label">Serveurs</string>
     <string name="servers_refresh">Actualiser les serveurs</string>
     <string name="servers_filters">Filtres des serveurs</string>
-    <string name="servers_filters_title">Filtres</string>
-    <string name="servers_filters_tier">Abonnement</string>
-    <string name="servers_filters_protocol">Protocole</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Impossible de se connecter</string>
     <string name="vpn_server_unreachable">Serveur indisponible</string>

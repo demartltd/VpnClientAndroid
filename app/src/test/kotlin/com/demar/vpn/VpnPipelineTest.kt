@@ -11,6 +11,7 @@ import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
+import com.demar.vpn.domain.vpn.matchesFilters
 import com.demar.vpn.domain.vpn.pickSelected
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.visibleProtocols
@@ -315,6 +316,15 @@ class VpnPipelineTest {
     val free = fixtureServers.filterServers(setOf(ServerTier.Free), allProtocols)
     assertEquals(listOf("FI-FREE-89"), free.map { it.displayName })
     assertTrue(free.single().listSubtitle == "Helsinki #89")
+  }
+
+  @Test
+  fun matchesFilters_blocksEmptyResult() {
+    assertTrue(fixtureServers.matchesFilters(allTiers, allProtocols))
+    assertTrue(fixtureServers.matchesFilters(setOf(ServerTier.Free), allProtocols))
+    assertFalse(fixtureServers.matchesFilters(emptySet(), allProtocols))
+    assertFalse(fixtureServers.matchesFilters(setOf(ServerTier.Vip), allProtocols))
+    assertTrue(emptyList<ServerProfile>().matchesFilters(emptySet(), emptySet()))
   }
 
   @Test
