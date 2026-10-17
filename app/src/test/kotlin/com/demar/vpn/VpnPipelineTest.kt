@@ -11,6 +11,7 @@ import com.demar.vpn.domain.vpn.SingBoxTags
 import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
+import com.demar.vpn.domain.vpn.pickSelected
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.visibleProtocols
 import com.demar.vpn.domain.vpn.visibleTiers
@@ -21,6 +22,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -259,7 +261,7 @@ class VpnPipelineTest {
     assertEquals("HY2", profile.protocolLabel)
     assertEquals(ServerTier.Dev, profile.tier)
     assertEquals(99, profile.tagNumber)
-    assertEquals("${profile.countryName} | DEV", profile.listTitle)
+    assertEquals(profile.countryName, profile.titleName)
     assertEquals("Helsinki #99", profile.listSubtitle)
   }
 
@@ -319,6 +321,25 @@ class VpnPipelineTest {
       listOf("FI-FREE-89", "FI-DEV-99"),
       fixtureServers.filterServers(null, setOf(favId)).map { it.displayName },
     )
+  }
+
+  @Test
+  fun pickSelected_skipsLockedCurrentAndLast() {
+    val unlocked = fixtureServers.first { it.displayName == "FI-FREE-89" }
+    val locked = ServerProfile.fromTag(
+      Hysteria2Profile(
+        displayName = "DE-PLUS-1",
+        server = "",
+        port = 443,
+        password = "",
+        tlsServerName = "",
+      ),
+      city = "Berlin",
+    )
+    val list = listOf(locked, unlocked)
+    assertEquals(unlocked.id, list.pickSelected(locked.id, locked.id)?.id)
+    assertEquals(unlocked.id, list.pickSelected(null, locked.id)?.id)
+    assertNull(listOf(locked).pickSelected(locked.id, locked.id))
   }
 
   @Test

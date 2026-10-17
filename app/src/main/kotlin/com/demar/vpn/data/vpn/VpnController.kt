@@ -24,6 +24,7 @@ import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.parseVpnStateEvent
+import com.demar.vpn.domain.vpn.pickSelected
 import com.demar.vpn.domain.vpn.tun.TunGroup
 import com.demar.vpn.domain.vpn.tun.TunSettings
 import com.demar.vpn.domain.vpn.tun.TunSiteGroup
@@ -308,9 +309,7 @@ class VpnController(private val context: Context) {
   private fun applyServerList(servers: List<ServerProfile>) {
     _serverProfiles.value = servers
     val lastId = VpnControlStateStore.loadLastProfileId(context)
-    val keep = servers.firstOrNull { it.id == _selectedProfile.value?.id }
-      ?: servers.firstOrNull { it.id == lastId }
-      ?: servers.firstOrNull()
+    val keep = servers.pickSelected(_selectedProfile.value?.id, lastId)
     _selectedProfile.value = keep
     keep?.let { VpnControlStateStore.saveLastProfileId(context, it.id) }
     // Probe is scheduled by callers (refreshServers / tab / pull) — not here.
@@ -494,9 +493,18 @@ class VpnController(private val context: Context) {
       requestOpenTrafficSheet()
       return
     }
-    if (!profile.profile.hasCredentials) {
-      failConnect(context.getString(VpnConnectMessages.NO_CREDENTIALS))
-      return
+    val connectProfile = if (!profile.isLocked) {
+      profile
+    } else {
+      val fallback = _serverProfiles.value.pickSelected(null, null)
+      if (fallback == null) {
+        failConnect(context.getString(VpnConnectMessages.NO_CREDENTIALS))
+        return
+      }
+      AppLog.append("[vpn] selected locked — fallback to ${fallback.id}")
+      _selectedProfile.value = fallback
+      VpnControlStateStore.saveLastProfileId(context, fallback.id)
+      fallback
     }
     connectJob?.cancel()
     val generation = connectGeneration.incrementAndGet()
@@ -510,15 +518,15 @@ class VpnController(private val context: Context) {
       awaitPostStopSettle()
       if (generation != connectGeneration.get()) return@launch
 
-      AppLog.append("[app] new connect session profile=${profile.id}")
+      AppLog.append("[app] new connect session profile=${connectProfile.id}")
 
-      var plan = profile.connectPlan
+      var plan = connectProfile.connectPlan
       val resolved = resolveUplinkIpv4s(plan.uplinkHost)
       if (generation != connectGeneration.get()) return@launch
 
       if (resolved.isNotEmpty()) {
         plan = plan.withExtraDirectIps(resolved)
-        if (profile.profile.preferResolvedDial) {
+        if (connectProfile.profile.preferResolvedDial) {
           plan = plan.withResolvedUplink(resolved.first())
         }
       }
@@ -558,17 +566,17 @@ class VpnController(private val context: Context) {
       val configJson =
         SingBoxConfigBuilder.buildTunConfigJson(plan, effectiveTunSettings(), adsPath = prefetched.second)
       val uplinkHost = plan.uplinkHost
-      val uplinkPort = profile.uplinkPort
+      val uplinkPort = connectProfile.uplinkPort
 
       AppLog.append(
         "connect uplinkHost=$uplinkHost dialServer=$dialServer uplinkPort=$uplinkPort " +
           "resolved=${resolved.joinToString()} tun=${tunFingerprint()} " +
           "rs=${plan.bypassRuleSets.size} adblock=${if (adBlock) "on" else "off"}",
       )
-      (profile.profile as? VlessRealityProfile)?.let { v ->
+      (connectProfile.profile as? VlessRealityProfile)?.let { v ->
         AppLog.append("vless sni=${v.tlsServerName} flow=${v.flow ?: "-"}")
       }
-      VpnControlStateStore.saveLastProfileId(context, profile.id)
+      VpnControlStateStore.saveLastProfileId(context, connectProfile.id)
       VpnControlStateStore.saveConnectPayload(context, configJson, uplinkHost, uplinkPort)
       if (generation != connectGeneration.get()) return@launch
 

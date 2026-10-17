@@ -19,9 +19,9 @@ import androidx.compose.ui.unit.sp
 import com.demar.vpn.R
 
 /** Twemoji COLR subset (flags only) — flat flags, closer to iOS than default Android emoji. */
-val TwemojiCountryFlagFont = FontFamily(Font(R.font.twemoji_country_flags))
+private val TwemojiCountryFlagFont = FontFamily(Font(R.font.twemoji_country_flags))
 
-fun countryCodeToFlagEmoji(countryCode: String?): String {
+private fun countryCodeToFlagEmoji(countryCode: String?): String {
   val code = countryCode?.trim()?.uppercase().orEmpty()
   if (code.length != 2 || !code.all { it in 'A'..'Z' }) return ""
   val first = Character.toChars(0x1F1E6 + (code[0] - 'A'))
@@ -31,18 +31,17 @@ fun countryCodeToFlagEmoji(countryCode: String?): String {
 
 @Composable
 fun CountryFlag(countryCode: String?, modifier: Modifier = Modifier) {
-  val cs = MaterialTheme.colorScheme
-  val flagEmoji = countryCodeToFlagEmoji(countryCode)
+  val emoji = countryCodeToFlagEmoji(countryCode)
   Box(
     modifier
       .size(36.dp)
       .clip(RoundedCornerShape(8.dp))
-      .background(cs.primary.copy(alpha = 0.1f)),
+      .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
     contentAlignment = Alignment.Center,
   ) {
-    if (flagEmoji.isNotEmpty()) {
+    if (emoji.isNotEmpty()) {
       Text(
-        text = flagEmoji,
+        text = emoji,
         fontFamily = TwemojiCountryFlagFont,
         fontSize = 22.sp,
         style = MaterialTheme.typography.bodyMedium.copy(
@@ -54,7 +53,7 @@ fun CountryFlag(countryCode: String?, modifier: Modifier = Modifier) {
         countryCode?.uppercase().orEmpty().ifEmpty { "?" },
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
-        color = cs.primary,
+        color = MaterialTheme.colorScheme.primary,
       )
     }
   }
