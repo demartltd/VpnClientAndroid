@@ -154,13 +154,14 @@ fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
 fun List<ServerProfile>.visibleProtocols(): List<ServerProtocol> =
   ServerProtocol.entries.filter { p -> any { it.protocol == p } }
 
-/** [tier] null = All. Unlocked first, then locked; favorites on top within group; A–Z. */
+/** Unlocked first, then locked; favorites on top within group; A–Z. */
 fun List<ServerProfile>.filterServers(
-  tier: ServerTier?,
+  tiers: Set<ServerTier>,
+  protocols: Set<ServerProtocol>,
   favoriteIds: Set<String> = emptySet(),
 ): List<ServerProfile> =
   asSequence()
-    .filter { tier == null || it.tier == tier }
+    .filter { it.tier in tiers && it.protocol in protocols }
     .sortedWith(
       compareBy<ServerProfile> { it.isLocked }
         .thenByDescending { it.id in favoriteIds }

@@ -28,12 +28,12 @@ app/src/main/kotlin/com/demar/vpn/
 ├── ui/
 │   ├── AppRoot.kt
 │   ├── SingBoxVersion.kt
-│   ├── theme/
+│   ├── theme/                   # DemarTheme (Material Expressive)
 │   ├── scaffold/AppScaffold.kt  # tabs + pay flow sheets (checkout / compare / result)
 │   ├── components/              # SettingsActionButton, DemarSnackbar, …
 │   ├── home/HomeScreen.kt       # + UpdateFab overlay in AppScaffold
 │   ├── update/                  # UpdateBottomSheet, UpdateFab
-│   ├── servers/                 # ServersScreen, CountryFlags, ServerBadges, ServerDetailsSheet
+│   ├── servers/                 # ServersScreen, ServerFiltersSheet, CountryFlags, ServerBadges, ServerDetailsSheet
 │   ├── settings/                # App settings, TunSettings, Documents, Service menu
 │   │   └── support/             # SupportScreen, ChatPane, Composer, Bubble, Attach, UiUtils
 │   ├── account/                 # AccountScreen + checkout/compare/pay result + TrafficPieChart
