@@ -389,8 +389,7 @@ class DemarVpnService :
       shutdownSingBox()
     }
     stopForegroundCompat()
-    VpnControlStateStore.saveState(applicationContext, "disconnected")
-    DemarVpnTileSync.requestRefresh(applicationContext)
+    emitState("disconnected", "")
     executor.shutdown()
     super.onDestroy()
   }

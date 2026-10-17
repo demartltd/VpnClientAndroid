@@ -56,7 +56,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class VpnController(private val context: Context) {
-  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private val job = SupervisorJob()
+  private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
   private val _state = MutableStateFlow<VpnState>(VpnState.Disconnected)
   val state: StateFlow<VpnState> = _state.asStateFlow()
 
@@ -111,7 +112,6 @@ class VpnController(private val context: Context) {
 
   init {
     VpnControlStateStore.hydrate(context)
-    TunSettingsStore.init(context)
     scope.launch { refreshTunGroups() }
     scope.launch {
       val session = AuthSessionStore.current() ?: return@launch
@@ -146,6 +146,7 @@ class VpnController(private val context: Context) {
     watchdogJob?.cancel()
     disconnectWatchdogJob?.cancel()
     connectJob?.cancel()
+    job.cancel()
   }
 
   val tunSettings: StateFlow<TunSettings> get() = TunSettingsStore.settings
@@ -484,11 +485,9 @@ class VpnController(private val context: Context) {
     }
   }
 
-  private fun isTrafficConnectBlocked(): Boolean = trafficExceeded
-
   private fun startConnect() {
     val profile = _selectedProfile.value ?: return
-    if (isTrafficConnectBlocked()) {
+    if (trafficExceeded) {
       AppLog.append("[vpn] connect blocked: traffic limit")
       requestOpenTrafficSheet()
       return
@@ -544,9 +543,6 @@ class VpnController(private val context: Context) {
       }
 
       val dialServer = plan.proxyOutbound["server"]
-      TunGroupsApi.fetch()?.let {
-        TunSettingsStore.cacheGroups(context, it.appGroups, it.siteGroups, it.raw)
-      }
       val adBlock = TunSettingsStore.settings.value.isAdBlockEnabled(isFreeSubscription())
       val prefetched = runCatching {
         withContext(Dispatchers.IO) {

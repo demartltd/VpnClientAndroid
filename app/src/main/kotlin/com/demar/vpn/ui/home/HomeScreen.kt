@@ -69,15 +69,13 @@ fun HomeScreen(
   vpnController: VpnController,
   snackbarHost: SnackbarHostState,
   throughput: ThroughputRates,
-  onToggle: () -> Unit = { vpnController.toggle() },
+  onToggle: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   ActiveTabContent(active, modifier) {
   val vpnState by vpnController.state.collectAsStateWithLifecycle()
   val selected by vpnController.selectedProfile.collectAsStateWithLifecycle()
   val favoriteIds by ServersStore.favorites.collectAsStateWithLifecycle()
-  val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
-  val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
   val badgePalette = rememberServerBadgePalette()
   val notSelected = stringResource(R.string.server_not_selected)
   var showDetails by remember { mutableStateOf(false) }
@@ -129,6 +127,8 @@ fun HomeScreen(
   }
 
   if (showDetails && profile != null) {
+    val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
+    val reachability by vpnController.serverReachability.collectAsStateWithLifecycle()
     ServerDetailsSheet(
       profile = profile,
       reachState = reachability[profile.id] ?: ServerReachState.Checking,

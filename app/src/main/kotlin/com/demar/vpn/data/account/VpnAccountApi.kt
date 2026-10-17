@@ -32,8 +32,6 @@ data class PromoResult(
   val isApplied: Boolean get() = result == "applied"
 }
 
-typealias PromoActivateResult = PromoResult
-
 data class VpnTrafficServer(val name: String, val bytes: Long)
 
 data class VpnTraffic(

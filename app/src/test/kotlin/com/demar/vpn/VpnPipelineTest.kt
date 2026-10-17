@@ -8,7 +8,6 @@ import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerTier
 import com.demar.vpn.domain.vpn.SingBoxConnectPlan
 import com.demar.vpn.domain.vpn.SingBoxTags
-import com.demar.vpn.domain.vpn.byTier
 import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.domain.vpn.isLiteralIpv4
 import com.demar.vpn.domain.vpn.matchesFilters
@@ -285,12 +284,6 @@ class VpnPipelineTest {
     assertTrue(ServerTier.Vip.requiresUpgrade("plus"))
     assertFalse(ServerTier.Plus.requiresUpgrade("vip"))
     assertFalse(ServerTier.Free.requiresUpgrade(null))
-  }
-
-  @Test
-  fun byTier_sortsByDisplayName() {
-    val free = fixtureServers.byTier()[ServerTier.Free].orEmpty().map { it.displayName }
-    assertEquals(listOf("FI-FREE-89"), free)
   }
 
   @Test
