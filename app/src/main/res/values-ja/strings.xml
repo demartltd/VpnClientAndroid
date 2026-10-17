@@ -167,7 +167,12 @@
     <string name="servers_empty">サブスクリプションで利用できるサーバーがありません</string>
     <string name="servers_load_failed">サーバーを読み込めませんでした</string>
     <string name="servers_retry">再試行</string>
-    <string name="servers_filter_all">すべて</string>
+    <string name="servers_header_label">サーバー</string>
+    <string name="servers_refresh">サーバーを更新</string>
+    <string name="servers_filters">サーバーフィルター</string>
+    <string name="servers_filters_title">フィルター</string>
+    <string name="servers_filters_tier">サブスクリプション</string>
+    <string name="servers_filters_protocol">プロトコル</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">接続できませんでした</string>
     <string name="vpn_server_unreachable">サーバーを利用できません</string>

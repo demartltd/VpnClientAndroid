@@ -171,7 +171,12 @@
     <string name="servers_empty">No servers available for your subscription</string>
     <string name="servers_load_failed">Failed to load servers</string>
     <string name="servers_retry">Retry</string>
-    <string name="servers_filter_all">All</string>
+    <string name="servers_header_label">Servers</string>
+    <string name="servers_refresh">Refresh servers</string>
+    <string name="servers_filters">Server filters</string>
+    <string name="servers_filters_title">Filters</string>
+    <string name="servers_filters_tier">Subscription</string>
+    <string name="servers_filters_protocol">Protocol</string>
     <string name="servers_premium">Premium</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Could not connect</string>

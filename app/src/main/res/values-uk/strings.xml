@@ -181,7 +181,12 @@
     <string name="servers_empty">Немає доступних серверів для вашої підписки</string>
     <string name="servers_load_failed">Не вдалося завантажити сервери</string>
     <string name="servers_retry">Повторити</string>
-    <string name="servers_filter_all">Усі</string>
+    <string name="servers_header_label">Сервери</string>
+    <string name="servers_refresh">Оновити сервери</string>
+    <string name="servers_filters">Фільтри серверів</string>
+    <string name="servers_filters_title">Фільтри</string>
+    <string name="servers_filters_tier">Підписка</string>
+    <string name="servers_filters_protocol">Протокол</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Не вдалося підключитися</string>
     <string name="vpn_server_unreachable">Сервер недоступний</string>

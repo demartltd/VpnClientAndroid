@@ -27,6 +27,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VpnPipelineTest {
+  private val allTiers = ServerTier.entries.toSet()
+  private val allProtocols = ServerProtocol.entries.toSet()
+
   private val fixtureServers = listOf(
     ServerProfile.fromTag(
       Hysteria2Profile(
@@ -307,9 +310,9 @@ class VpnPipelineTest {
 
   @Test
   fun filterServers_byTier() {
-    val all = fixtureServers.filterServers(null)
+    val all = fixtureServers.filterServers(allTiers, allProtocols)
     assertEquals(listOf("FI-DEV-99", "FI-FREE-89"), all.map { it.displayName })
-    val free = fixtureServers.filterServers(ServerTier.Free)
+    val free = fixtureServers.filterServers(setOf(ServerTier.Free), allProtocols)
     assertEquals(listOf("FI-FREE-89"), free.map { it.displayName })
     assertTrue(free.single().listSubtitle == "Helsinki #89")
   }
@@ -319,7 +322,7 @@ class VpnPipelineTest {
     val favId = fixtureServers.first { it.displayName == "FI-FREE-89" }.id
     assertEquals(
       listOf("FI-FREE-89", "FI-DEV-99"),
-      fixtureServers.filterServers(null, setOf(favId)).map { it.displayName },
+      fixtureServers.filterServers(allTiers, allProtocols, setOf(favId)).map { it.displayName },
     )
   }
 
@@ -370,7 +373,7 @@ class VpnPipelineTest {
     assertFalse(unlocked.isLocked)
     assertEquals(
       listOf("FI-FREE-89", "AA-VIP-1", "DE-PLUS-1"),
-      listOf(unlocked, lockedPlus, lockedVip).filterServers(null).map { it.displayName },
+      listOf(unlocked, lockedPlus, lockedVip).filterServers(allTiers, allProtocols).map { it.displayName },
     )
   }
 
@@ -404,9 +407,16 @@ class VpnPipelineTest {
     )
     assertEquals(
       listOf("DE-FREE-9", "FI-DEV-99", "FI-FREE-89", "SE-VIP-71"),
-      mixed.filterServers(null).map { it.displayName },
+      mixed.filterServers(allTiers, allProtocols).map { it.displayName },
     )
-    assertEquals(listOf("SE-VIP-71"), mixed.filterServers(ServerTier.Vip).map { it.displayName })
+    assertEquals(
+      listOf("SE-VIP-71"),
+      mixed.filterServers(setOf(ServerTier.Vip), allProtocols).map { it.displayName },
+    )
+    assertEquals(
+      listOf("SE-VIP-71"),
+      mixed.filterServers(allTiers, setOf(ServerProtocol.Trojan)).map { it.displayName },
+    )
   }
 
   @Test

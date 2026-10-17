@@ -171,7 +171,12 @@
     <string name="servers_empty">आपकी सदस्यता के लिए कोई सर्वर उपलब्ध नहीं</string>
     <string name="servers_load_failed">सर्वर लोड नहीं हो सके</string>
     <string name="servers_retry">फिर कोशिश करें</string>
-    <string name="servers_filter_all">सभी</string>
+    <string name="servers_header_label">सर्वर</string>
+    <string name="servers_refresh">सर्वर रीफ़्रेश करें</string>
+    <string name="servers_filters">सर्वर फ़िल्टर</string>
+    <string name="servers_filters_title">फ़िल्टर</string>
+    <string name="servers_filters_tier">सदस्यता</string>
+    <string name="servers_filters_protocol">प्रोटोकॉल</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">कनेक्ट नहीं हो सका</string>
     <string name="vpn_server_unreachable">सर्वर अनुपलब्ध</string>

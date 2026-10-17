@@ -171,7 +171,12 @@
     <string name="servers_empty">Keine Server für dein Abo verfügbar</string>
     <string name="servers_load_failed">Server konnten nicht geladen werden</string>
     <string name="servers_retry">Erneut versuchen</string>
-    <string name="servers_filter_all">Alle</string>
+    <string name="servers_header_label">Server</string>
+    <string name="servers_refresh">Server aktualisieren</string>
+    <string name="servers_filters">Serverfilter</string>
+    <string name="servers_filters_title">Filter</string>
+    <string name="servers_filters_tier">Abo</string>
+    <string name="servers_filters_protocol">Protokoll</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Verbindung fehlgeschlagen</string>
     <string name="vpn_server_unreachable">Server nicht verfügbar</string>

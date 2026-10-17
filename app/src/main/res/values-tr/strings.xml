@@ -171,7 +171,12 @@
     <string name="servers_empty">Aboneliğiniz için sunucu yok</string>
     <string name="servers_load_failed">Sunucular yüklenemedi</string>
     <string name="servers_retry">Yeniden dene</string>
-    <string name="servers_filter_all">Tümü</string>
+    <string name="servers_header_label">Sunucular</string>
+    <string name="servers_refresh">Sunucuları yenile</string>
+    <string name="servers_filters">Sunucu filtreleri</string>
+    <string name="servers_filters_title">Filtreler</string>
+    <string name="servers_filters_tier">Abonelik</string>
+    <string name="servers_filters_protocol">Protokol</string>
     <string name="platform_android">Android</string>
     <string name="vpn_connect_failed">Bağlanılamadı</string>
     <string name="vpn_server_unreachable">Sunucu kullanılamıyor</string>
