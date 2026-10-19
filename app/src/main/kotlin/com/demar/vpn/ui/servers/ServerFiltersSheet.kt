@@ -1,11 +1,11 @@
-@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.demar.vpn.ui.servers
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -59,63 +59,51 @@ fun ServerFiltersSheet(
     checkedContentColor = tonal.contentColor,
   )
 
-  fun tryTiers(next: Set<ServerTier>) {
-    if (profiles.matchesFilters(next, enabledProtocols)) ServersStore.setTiers(next)
-  }
-
-  fun tryProtocols(next: Set<ServerProtocol>) {
-    if (profiles.matchesFilters(enabledTiers, next)) ServersStore.setProtocols(next)
-  }
+  fun ok(tiers: Set<ServerTier>, protocols: Set<ServerProtocol>) =
+    profiles.matchesFilters(tiers, protocols)
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,
     dragHandle = { StaticSheetDragHandle() },
   ) {
-    Column(
+    FlowRow(
       Modifier
         .fillMaxWidth()
         .padding(horizontal = 24.dp)
         .padding(top = 4.dp, bottom = 36.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
+      horizontalArrangement = Arrangement.spacedBy(RowGap),
+      verticalArrangement = Arrangement.spacedBy(RowGap),
+      maxItemsInEachRow = 3,
     ) {
-      FilterRow {
-        tiers.forEach { tier ->
-          FilterBlock(
-            label = tier.label,
-            checked = tier in enabledTiers,
-            colors = colors,
-            onCheckedChange = { on -> tryTiers(if (on) enabledTiers + tier else enabledTiers - tier) },
-          )
-        }
+      tiers.forEach { tier ->
+        FilterBlock(
+          label = tier.label,
+          checked = tier in enabledTiers,
+          colors = colors,
+          onCheckedChange = { on ->
+            val next = if (on) enabledTiers + tier else enabledTiers - tier
+            if (ok(next, enabledProtocols)) ServersStore.setTiers(next)
+          },
+        )
       }
-      FilterRow {
-        protocols.forEach { protocol ->
-          FilterBlock(
-            label = protocol.label,
-            checked = protocol in enabledProtocols,
-            colors = colors,
-            onCheckedChange = { on ->
-              tryProtocols(if (on) enabledProtocols + protocol else enabledProtocols - protocol)
-            },
-          )
-        }
+      protocols.forEach { protocol ->
+        FilterBlock(
+          label = protocol.label,
+          checked = protocol in enabledProtocols,
+          colors = colors,
+          onCheckedChange = { on ->
+            val next = if (on) enabledProtocols + protocol else enabledProtocols - protocol
+            if (ok(enabledTiers, next)) ServersStore.setProtocols(next)
+          },
+        )
       }
     }
   }
 }
 
 @Composable
-private fun FilterRow(content: @Composable RowScope.() -> Unit) {
-  Row(
-    Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(RowGap),
-    content = content,
-  )
-}
-
-@Composable
-private fun RowScope.FilterBlock(
+private fun FlowRowScope.FilterBlock(
   label: String,
   checked: Boolean,
   colors: ToggleButtonColors,
