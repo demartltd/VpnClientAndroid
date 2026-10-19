@@ -166,6 +166,10 @@ fun ServersScreen(
     LaunchedEffect(active, session?.userId) {
       if (active && session != null) vpnController.refreshServersOnTabOpen()
     }
+    // Spec §3: stale filters that match nothing after refresh → reset.
+    LaunchedEffect(profiles, list) {
+      if (profiles.isNotEmpty() && list.isEmpty()) ServersStore.resetFilters()
+    }
 
     fun launchRefresh(asButton: Boolean) {
       scope.launch {

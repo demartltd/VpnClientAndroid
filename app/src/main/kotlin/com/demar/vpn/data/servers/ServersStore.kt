@@ -70,6 +70,11 @@ object ServersStore {
   fun setProtocols(value: Set<ServerProtocol>) =
     setEnums(KeyProtocols, value, allProtocols, _protocols) { it.name }
 
+  fun resetFilters() {
+    setTiers(allTiers)
+    setProtocols(allProtocols)
+  }
+
   private fun <T> setEnums(
     key: String,
     value: Set<T>,
