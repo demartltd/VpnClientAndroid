@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -113,6 +114,8 @@ private val HeaderCorner = 16.dp
 private val HeaderIconSize = 28.dp
 private val HeaderChipShape = RoundedCornerShape(HeaderCorner)
 private val ServerRowShape = RoundedCornerShape(12.dp)
+/** Matches iOS `ServerRow.rowMinHeight`. */
+private val ServerRowMinHeight = 72.dp
 
 private val LockedRowVeil = Brush.horizontalGradient(
   0.0f to Color.Black.copy(alpha = 0.28f),
@@ -557,7 +560,8 @@ private fun ServerRow(
     Row(
       Modifier
         .fillMaxWidth()
-        .padding(horizontal = 16.dp, vertical = 14.dp),
+        .heightIn(min = ServerRowMinHeight)
+        .padding(horizontal = 16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       CountryFlag(profile.countryCode)
