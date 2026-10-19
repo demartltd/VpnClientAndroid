@@ -287,19 +287,16 @@ class VpnPipelineTest {
   }
 
   @Test
-  fun visibleTiers_hidesDevAndTesterWhenAbsent() {
-    assertTrue(fixtureServers.visibleTiers().contains(ServerTier.Dev))
-    val productOnly = fixtureServers.filter { it.tier != ServerTier.Dev && it.tier != ServerTier.Tester }
-    assertFalse(productOnly.visibleTiers().contains(ServerTier.Dev))
-    assertFalse(productOnly.visibleTiers().contains(ServerTier.Tester))
-    assertEquals(
-      listOf(ServerTier.Free, ServerTier.Plus, ServerTier.Vip),
-      productOnly.visibleTiers(),
-    )
-    val withTester = productOnly + ServerProfile.fromTag(
+  fun visibleTiers_onlyPresentTiers() {
+    assertEquals(listOf(ServerTier.Free, ServerTier.Dev), fixtureServers.visibleTiers())
+    val freeOnly = fixtureServers.filter { it.tier == ServerTier.Free }
+    assertEquals(listOf(ServerTier.Free), freeOnly.visibleTiers())
+    assertFalse(freeOnly.visibleTiers().contains(ServerTier.Plus))
+    assertFalse(freeOnly.visibleTiers().contains(ServerTier.Vip))
+    val withTester = freeOnly + ServerProfile.fromTag(
       Hysteria2Profile(displayName = "NL-TESTER-1", server = "t.example.test", port = 443, password = "p", tlsServerName = "t.example.test"),
     )
-    assertTrue(withTester.visibleTiers().contains(ServerTier.Tester))
+    assertEquals(listOf(ServerTier.Free, ServerTier.Tester), withTester.visibleTiers())
   }
 
   @Test

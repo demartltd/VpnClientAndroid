@@ -139,13 +139,10 @@ data class ServerProfile(
   }
 }
 
-/** Product tiers always; Dev/Tester only when at least one matching server exists. */
+/** Only tiers/protocols present in the list (§9: hide absent filter badges). */
 fun List<ServerProfile>.visibleTiers(): List<ServerTier> =
-  ServerTier.entries.filter { t ->
-    (t != ServerTier.Dev && t != ServerTier.Tester) || any { p -> p.tier == t }
-  }
+  ServerTier.entries.filter { t -> any { it.tier == t } }
 
-/** Only protocols present in the list (supported enum ∩ API). */
 fun List<ServerProfile>.visibleProtocols(): List<ServerProtocol> =
   ServerProtocol.entries.filter { p -> any { it.protocol == p } }
 
