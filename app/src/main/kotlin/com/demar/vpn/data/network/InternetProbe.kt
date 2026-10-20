@@ -52,36 +52,36 @@ object InternetProbe {
     )
   }
 
-  /** Best (lowest) RTT of [ATTEMPTS] TCP connects. `-1` if all fail. */
+  /** First success of ≤[ATTEMPTS] TCP connects. `-1` if all fail. */
   suspend fun probeTcpMs(
     host: String,
     port: Int = 443,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int = bestOf("tcp $host:$port") {
+  ): Int = firstSuccess("tcp $host:$port") {
     measureOnce(countConnectRefused = true) {
       Socket().use { it.connect(InetSocketAddress(host, port), timeoutMs) }
     }
   }
 
-  /** Best (lowest) RTT of [ATTEMPTS] HTTPS GETs. `-1` if all fail. */
+  /** First success of ≤[ATTEMPTS] HTTPS GETs. `-1` if all fail. */
   suspend fun probeHttpsMs(
     host: String,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int = bestOf("https $host") {
+  ): Int = firstSuccess("https $host") {
     measureOnce(countConnectRefused = false) {
       httpGet("https://$host/", timeoutMs) ?: error("https fail")
     }
   }
 
   /**
-   * Best (lowest) RTT of [ATTEMPTS] TLS handshakes (no HTTP).
+   * First success of ≤[ATTEMPTS] TLS handshakes (no HTTP).
    * Trusts any cert — latency probe only. `-1` if all fail.
    */
   suspend fun probeTlsMs(
     host: String,
     port: Int = 443,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int = bestOf("tls $host:$port") {
+  ): Int = firstSuccess("tls $host:$port") {
     measureOnce(countConnectRefused = false) {
       val socket = trustAllContext.socketFactory.createSocket() as SSLSocket
       try {
@@ -105,7 +105,7 @@ object InternetProbe {
     host: String,
     port: Int = 443,
     timeoutMs: Int = EgressConstants.HOST_PROBE_DEADLINE_MS.toInt(),
-  ): Int = bestOf("quic $host:$port") {
+  ): Int = firstSuccess("quic $host:$port") {
     measureOnce(countConnectRefused = false) {
       DatagramSocket().use { socket ->
         socket.soTimeout = timeoutMs
@@ -129,14 +129,16 @@ object InternetProbe {
     return out
   }
 
-  private suspend fun bestOf(log: String, attempt: suspend () -> Int): Int {
-    var best = -1
-    repeat(ATTEMPTS) {
+  private suspend fun firstSuccess(log: String, attempt: suspend () -> Int): Int {
+    repeat(ATTEMPTS) { i ->
       val ms = attempt()
-      if (ms >= 0 && (best < 0 || ms < best)) best = ms
+      if (ms >= 0) {
+        AppLog.append("$TAG $log=${ms}ms (attempt ${i + 1}/$ATTEMPTS)")
+        return ms
+      }
     }
-    AppLog.append("$TAG $log=${if (best >= 0) "${best}ms" else "fail"} (best of $ATTEMPTS)")
-    return best
+    AppLog.append("$TAG $log=fail (attempts $ATTEMPTS)")
+    return -1
   }
 
   private suspend fun measureOnce(countConnectRefused: Boolean, block: () -> Unit): Int =

@@ -11,10 +11,10 @@ class EgressConstantsTest {
   @Test
   fun egressHostProbeLabel_formats() {
     assertEquals(
-      "TCP 42 · HTTPS 88 · TLS 12",
+      "TCP 42 · TLS 12 · HTTPS 88",
       egressHostProbeLabel(EgressHostProbe(tcpMs = 42, httpsMs = 88, tlsMs = 12)),
     )
-    assertEquals("TCP 0 · HTTPS 0 · TLS 0", egressHostProbeLabel(EgressHostProbe()))
+    assertEquals("TCP 0 · TLS 0 · HTTPS 0", egressHostProbeLabel(EgressHostProbe()))
   }
 
   @Test
