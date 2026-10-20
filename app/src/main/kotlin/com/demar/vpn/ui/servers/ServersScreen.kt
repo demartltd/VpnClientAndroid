@@ -177,8 +177,7 @@ fun ServersScreen(
         if (asButton) buttonRefreshing = true else pullRefreshing = true
         try {
           val t0 = System.currentTimeMillis()
-          vpnController.refreshSessionData()
-          vpnController.refreshServerReachability()
+          vpnController.refreshSessionData() // ping continues in background after API
           val remain = RefreshStubMinMs - (System.currentTimeMillis() - t0)
           if (remain > 0) delay(remain)
         } finally {
