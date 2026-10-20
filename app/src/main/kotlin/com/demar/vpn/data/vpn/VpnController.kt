@@ -313,7 +313,7 @@ class VpnController(private val context: Context) {
     val keep = servers.pickSelected(_selectedProfile.value?.id, lastId)
     _selectedProfile.value = keep
     keep?.let { VpnControlStateStore.saveLastProfileId(context, it.id) }
-    // Probe is scheduled by callers (refreshServers / tab / pull) — not here.
+    // Probe scheduled by refreshServers / setServersTabActive — not here.
     initialReachabilityDone = false
     if (servers.isEmpty()) {
       reachabilityJob?.cancel()
@@ -334,11 +334,6 @@ class VpnController(private val context: Context) {
     if (initialReachabilityDone || _serverProfiles.value.isEmpty()) return
     initialReachabilityDone = true
     scheduleProbeAllServers()
-  }
-
-  suspend fun refreshServerReachability() {
-    val job = scheduleProbeAllServers() ?: return
-    job.join()
   }
 
   /** One in-flight probe at a time — cancels any previous run. */
