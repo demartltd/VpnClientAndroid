@@ -1,7 +1,7 @@
 package com.demar.vpn.data.network
 
 object EgressConstants {
-  const val HOST_PROBE_DEADLINE_MS = 2_500L
+  const val HOST_PROBE_DEADLINE_MS = 2_000L
 
   val TcpLatencyProbeHosts = listOf(
     "github.com",
@@ -26,5 +26,5 @@ val EgressHostProbeZero = EgressHostProbe()
 
 fun egressHostProbeLabel(p: EgressHostProbe): String {
   fun ms(v: Int) = if (v > 0) "$v" else "0"
-  return "TCP ${ms(p.tcpMs)} · HTTPS ${ms(p.httpsMs)} · TLS ${ms(p.tlsMs)}"
+  return "TCP ${ms(p.tcpMs)} · TLS ${ms(p.tlsMs)} · HTTPS ${ms(p.httpsMs)}"
 }
