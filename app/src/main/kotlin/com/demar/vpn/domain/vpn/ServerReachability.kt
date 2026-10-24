@@ -35,7 +35,15 @@ data class ServerReachState(
     val Checking = ServerReachState(ServerReachStatus.Checking)
     val Offline = ServerReachState(ServerReachStatus.Offline)
 
-    fun formatMs(ms: Int?): String = ms?.let { "~${it}ms" } ?: "n/a"
+    fun formatMs(ms: Int?): String = ms?.let { "~${it}ms" } ?: "—"
+
+    /** List/home ping label; OpenFlux SOCKS has no TCP uplink metric. */
+    fun formatListLabel(state: ServerReachState, protocol: ServerProtocol): String =
+      when {
+        protocol == ServerProtocol.OpenFlux && state.status == ServerReachStatus.Online -> "—"
+        state.status == ServerReachStatus.Offline -> "—"
+        else -> formatMs(state.tlsMs ?: state.latencyMs)
+      }
 
     fun fromProbes(tcpMs: Int, tlsMs: Int): ServerReachState {
       val tcpOk = tcpMs >= 0

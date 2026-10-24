@@ -5,6 +5,7 @@ import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ProxyProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
@@ -51,7 +52,12 @@ object ServersApi {
         }
       }
     }
-    AppLog.append("servers: raw=$rawCount parsed=${profiles.size}")
+    val protoSummary = profiles
+      .groupingBy { it.protocol.apiKey }
+      .eachCount()
+      .entries
+      .joinToString(",") { "${it.key}=${it.value}" }
+    AppLog.append("servers: raw=$rawCount parsed=${profiles.size} [$protoSummary]")
     validateParsedCount(rawCount, profiles.size)
     return ServersListResult(
       vpnSubscription = json.optApiString("vpnSubscription"),
@@ -81,6 +87,7 @@ object ServersApi {
       ServerProtocol.Hysteria2 -> parseHysteria2(id, name, city, config)
       ServerProtocol.Trojan -> parseTrojan(id, name, city, config)
       ServerProtocol.VlessReality -> parseVlessReality(id, name, city, config)
+      ServerProtocol.OpenFlux -> parseOpenFlux(id, name, city, config)
     }
   }
 
@@ -94,8 +101,38 @@ object ServersApi {
         VlessRealityProfile(
           name, server = "", port = 443, uuid = "", tlsServerName = "", publicKey = "", shortId = "",
         )
+      ServerProtocol.OpenFlux ->
+        OpenFluxSocksProfile(name, openfluxLink = "")
     }
     return ServerProfile.fromTag(empty, city = city, id = id)
+  }
+
+  private fun parseOpenFlux(
+    id: String,
+    name: String,
+    city: String?,
+    config: JSONObject,
+  ): ServerProfile? {
+    val engine = config.optString("engine").takeIf { it.isNotBlank() } ?: return null
+    if (engine != OpenFluxSocksProfile.ENGINE) return null
+    val link = config.optString("openfluxLink").takeIf { it.isNotBlank() } ?: return null
+    val socks = config.optJSONObject("socks")
+    val host = socks?.optString("host")?.takeIf { it.isNotBlank() }
+      ?: OpenFluxSocksProfile.DEFAULT_SOCKS_HOST
+    val port = socks?.optInt("port", OpenFluxSocksProfile.DEFAULT_SOCKS_PORT)
+      ?.takeIf { it > 0 }
+      ?: OpenFluxSocksProfile.DEFAULT_SOCKS_PORT
+    return ServerProfile.fromTag(
+      OpenFluxSocksProfile(
+        displayName = name,
+        openfluxLink = link,
+        socksHost = host,
+        socksPort = port,
+      ),
+      city = city,
+      id = id,
+      bypassRuleSets = parseBypassRuleSets(config),
+    )
   }
 
   private fun parseHysteria2(

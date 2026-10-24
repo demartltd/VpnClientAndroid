@@ -38,9 +38,15 @@ enum class ServerTier(val label: String) {
 enum class ServerProtocol(val apiKey: String, val label: String, val fullLabel: String) {
   Hysteria2("hysteria2", "HY2", "Hysteria2"),
   Trojan("trojan", "TRJ", "Trojan"),
-  VlessReality("vless_reality", "VLESS", "VLESS Reality");
+  VlessReality("vless_reality", "VLESS", "VLESS Reality"),
+  /** UI: white White / White List + neutral SCK / SOCKS (OpenFlux sidecar). */
+  OpenFlux("openflux", "White", "White List");
 
   companion object {
+    /** Neutral second chip for OpenFlux (list / details). */
+    const val SOCKS_BADGE = "SCK"
+    const val SOCKS_BADGE_FULL = "SOCKS"
+
     fun fromApi(raw: String): ServerProtocol? =
       entries.firstOrNull { it.apiKey == raw.lowercase(Locale.ROOT) }
   }
@@ -138,6 +144,20 @@ data class ServerProfile(
     }
   }
 }
+
+/** List/home/details protocol chips. OpenFlux → White List (white) + SOCKS (neutral). */
+data class ProtocolBadgeSpec(val label: String, val whiteList: Boolean = false)
+
+fun ServerProfile.protocolBadges(full: Boolean = false): List<ProtocolBadgeSpec> =
+  when (protocol) {
+    ServerProtocol.OpenFlux -> listOf(
+      ProtocolBadgeSpec(if (full) protocolFullLabel else protocolLabel, whiteList = true),
+      ProtocolBadgeSpec(
+        if (full) ServerProtocol.SOCKS_BADGE_FULL else ServerProtocol.SOCKS_BADGE,
+      ),
+    )
+    else -> listOf(ProtocolBadgeSpec(if (full) protocolFullLabel else protocolLabel))
+  }
 
 /** Only tiers/protocols present in the list (§9: hide absent filter badges). */
 fun List<ServerProfile>.visibleTiers(): List<ServerTier> =

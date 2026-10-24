@@ -17,7 +17,9 @@ import com.demar.vpn.data.session.SessionCacheStore
 import com.demar.vpn.data.support.SupportCacheStore
 import com.demar.vpn.data.support.SupportUnreadStore
 import com.demar.vpn.domain.vpn.ConnectTimeouts
+import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.domain.vpn.VpnConnectMessages
@@ -466,6 +468,8 @@ class VpnController(private val context: Context) {
       putExtra(DemarVpnService.EXTRA_LOG_SOURCE, DemarVpnService.LOG_SOURCE_UI)
     }
     context.startService(stop)
+    // Sidecar after TUN stop request (Libbox teardown races briefly; process exit is fine).
+    OpenFluxSidecar.stop()
   }
 
   private fun armDisconnectWatchdog() {
@@ -514,8 +518,25 @@ class VpnController(private val context: Context) {
 
       AppLog.append("[app] new connect session profile=${connectProfile.id}")
 
+      val ofx = connectProfile.profile as? OpenFluxSocksProfile
+      if (ofx != null) {
+        runCatching { OpenFluxSidecar.start(context, ofx) }
+          .onFailure { t ->
+            AppLog.append("[ofx] start failed: ${t.message}")
+            if (generation != connectGeneration.get()) return@launch
+            failConnect(t.message ?: context.getString(VpnConnectMessages.FAILED))
+            return@launch
+          }
+        if (generation != connectGeneration.get()) {
+          OpenFluxSidecar.stop()
+          return@launch
+        }
+      }
+
       var plan = connectProfile.connectPlan
-      val resolved = resolveUplinkIpv4s(plan.uplinkHost)
+      val resolved =
+        if (connectProfile.protocol == ServerProtocol.OpenFlux) emptyList()
+        else resolveUplinkIpv4s(plan.uplinkHost)
       if (generation != connectGeneration.get()) return@launch
 
       if (resolved.isNotEmpty()) {
@@ -526,6 +547,7 @@ class VpnController(private val context: Context) {
       }
 
       val connectTarget = when {
+        connectProfile.protocol == ServerProtocol.OpenFlux -> plan.uplinkHost
         resolved.isNotEmpty() -> resolved.first()
         isLiteralIpv4(plan.uplinkHost) -> plan.uplinkHost
         else -> null
@@ -533,6 +555,7 @@ class VpnController(private val context: Context) {
       if (connectTarget == null) {
         AppLog.append("[app] uplink resolve empty for ${plan.uplinkHost}")
         if (generation != connectGeneration.get()) return@launch
+        OpenFluxSidecar.stop()
         failConnect(context.getString(VpnConnectMessages.SERVER_UNREACHABLE))
         return@launch
       }
@@ -549,6 +572,7 @@ class VpnController(private val context: Context) {
       }.getOrElse { t ->
         AppLog.append("[app] rule-set prefetch failed: ${t.message}")
         if (generation != connectGeneration.get()) return@launch
+        OpenFluxSidecar.stop()
         failConnect(context.getString(VpnConnectMessages.FAILED))
         return@launch
       }
@@ -601,6 +625,7 @@ class VpnController(private val context: Context) {
     watchdogJob?.cancel()
     connectJob?.cancel()
     activeConnectGeneration = 0
+    OpenFluxSidecar.stop()
     applyStateEvent(VpnState.Error(message))
   }
 

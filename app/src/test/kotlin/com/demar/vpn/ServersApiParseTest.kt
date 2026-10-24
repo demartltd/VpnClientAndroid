@@ -3,11 +3,14 @@ package com.demar.vpn
 import com.demar.vpn.data.auth.AuthException
 import com.demar.vpn.data.servers.ServersApi
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
+import com.demar.vpn.data.vpn.OpenFluxLink
 import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.TrojanProfile
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.domain.vpn.directCountryCodes
+import com.demar.vpn.domain.vpn.protocolBadges
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -353,5 +356,50 @@ class ServersApiParseTest {
     assertEquals("", vl.uuid)
     assertEquals("", vl.publicKey)
     assertFalse(vl.hasCredentials)
+  }
+
+  @Test
+  fun parseOpenFlux_fromClientConfigJson() {
+    val boardsUrl =
+      "https://boards.yandex.ru/whiteboard/?hash=459ab47af011b698e27f9870841138c7"
+    val link =
+      "openflux://v1/rY5RCoMwEETP4n6rMa01MSA9SOnHJllJoagkK1XEuxelR-jfMA_ezAaJXCQG8wuFbAoXMKYsgxzcODAtBw3MUzJC2BGjT-WKg6eljLP4hBfT2Yp7wBS6-tairRX2lZS2aTVdVN9qVelayqt26tR6cmDAIrtAHnLgiEOaxsgJzGMDXic6-DkGOczx_d8P-3P_Ag"
+    val config = JSONObject()
+      .put("engine", "openflux_socks")
+      .put("openfluxLink", link)
+      .put("socks", JSONObject().put("host", "127.0.0.1").put("port", 11080))
+    val item = JSONObject()
+      .put("id", "ofx1")
+      .put("name", "RU-TESTER-1")
+      .put("protocol", "openflux")
+      .put("city", "Moscow")
+      .put("clientConfigJson", config.toString())
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertEquals(ServerProtocol.OpenFlux, profile!!.protocol)
+    assertEquals("White", profile.protocolLabel)
+    assertEquals("White List", profile.protocolFullLabel)
+    assertEquals(
+      listOf("White", ServerProtocol.SOCKS_BADGE),
+      profile.protocolBadges().map { it.label },
+    )
+    val ofx = profile.profile as OpenFluxSocksProfile
+    assertEquals(link, ofx.openfluxLink)
+    assertEquals(11080, ofx.socksPort)
+    assertTrue(ofx.hasCredentials)
+    val decoded = OpenFluxLink.decode(link)
+    assertEquals("secret-16-chars!!", decoded.secret)
+    assertEquals(boardsUrl, decoded.boardsUrl)
+  }
+
+  @Test
+  fun parseOpenFlux_previewWithoutConfig_locked() {
+    val item = JSONObject()
+      .put("id", "ofx-preview")
+      .put("name", "RU-TESTER-2")
+      .put("protocol", "openflux")
+    val profile = ServersApi.parseServerItem(item)
+    assertNotNull(profile)
+    assertFalse(profile!!.profile.hasCredentials)
   }
 }

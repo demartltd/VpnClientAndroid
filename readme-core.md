@@ -132,8 +132,10 @@ Hysteria2: Chrome QUIC parrot **включён по умолчанию** в 1.14
 
 ## Route и TUN
 
-- TUN: `gvisor`, `strict_route`, `172.19.0.1/30`, split `0.0.0.0/1` + `128.0.0.0/1`
+- TUN: `gvisor`, `strict_route`, `172.19.0.1/30`, MTU ≤1400, split `0.0.0.0/1` + `128.0.0.0/1`
 - Route: sniff → hijack-dns → QUIC reject → private direct → **API rule-sets** → IPv6 reject → proxy
+- Bootstrap / bypass hosts: `domain_suffix` → DIRECT (DNS + route)
+- OpenFlux: SOCKS sidecar + carrier suffix anti-loop (`boards.yandex.ru`…); restart on default-network change / dead SOCKS
 - `override_android_vpn: true`
 - `default_domain_resolver`: `dns-direct`, `ipv4_only`
 

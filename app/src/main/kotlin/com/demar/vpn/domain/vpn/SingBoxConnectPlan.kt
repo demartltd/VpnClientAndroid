@@ -109,6 +109,33 @@ data class SingBoxConnectPlan(
       return of(profile.server, outbound, bootstrap, bypassRuleSets)
     }
 
+    /** Local OpenFlux SOCKS sidecar; carrier domains must stay DIRECT (anti-loop). */
+    fun openfluxSocks(
+      profile: OpenFluxSocksProfile,
+      bypassRuleSets: List<ApiBypassRuleSet> = emptyList(),
+    ): SingBoxConnectPlan {
+      val outbound = mapOf(
+        "type" to "socks",
+        "tag" to SingBoxTags.PROXY,
+        "server" to profile.server,
+        "server_port" to profile.port,
+        "version" to "5",
+      )
+      return of(
+        uplink = profile.server,
+        outbound = outbound,
+        bootstrap = OPENFLUX_ANTI_LOOP_DOMAINS,
+        bypass = bypassRuleSets,
+      )
+    }
+
+    /**
+     * Carrier roots kept DIRECT (domain_suffix). Covers boards.yandex.ru
+     * (incl. socket*.boards.yandex.ru) and parent Yandex hosts if needed.
+     */
+    val OPENFLUX_ANTI_LOOP_DOMAINS: List<String> =
+      listOf("boards.yandex.ru", "yandex.ru", "yandex.net")
+
     private fun of(
       uplink: String,
       outbound: Map<String, Any?>,
@@ -134,6 +161,10 @@ data class SingBoxConnectPlan(
 
     private fun directIPs(host: String): List<String> {
       val trimmed = host.trim()
+      // Loopback in route_exclude_address breaks Android VpnService ("Bad address").
+      if (trimmed == "127.0.0.1" || trimmed == "::1" || trimmed.equals("localhost", ignoreCase = true)) {
+        return emptyList()
+      }
       return if (isLiteralIpv4(trimmed)) listOf(trimmed) else emptyList()
     }
   }

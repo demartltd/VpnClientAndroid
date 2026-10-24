@@ -72,6 +72,8 @@ android {
 
     packaging {
         jniLibs {
+            // Extract libopenflux.so so ProcessBuilder can exec it (W^X: no exec from filesDir).
+            useLegacyPackaging = true
             excludes += setOf(
                 "**/armeabi-v7a/**",
                 "**/x86/**",

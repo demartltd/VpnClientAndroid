@@ -3,11 +3,13 @@ package com.demar.vpn
 import com.demar.vpn.data.network.InternetProbe
 import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -34,6 +36,17 @@ class UplinkProbeTest {
     )
     val state = UplinkProbe.probe(profile)
     assertEquals(ServerReachStatus.Offline, state.status)
+  }
+
+  @Test
+  fun probe_openflux_skipsForeignTcp_returnsOnlineWithoutLatency() = runBlocking {
+    val profile = ServerProfile.fromTag(
+      OpenFluxSocksProfile("RU-TESTER-1", openfluxLink = "openflux://v1/x"),
+    )
+    val state = UplinkProbe.probe(profile)
+    assertEquals(ServerReachStatus.Online, state.status)
+    assertNull(state.latencyMs)
+    assertNull(state.tlsMs)
   }
 
   @Test

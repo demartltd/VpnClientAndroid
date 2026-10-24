@@ -3,6 +3,7 @@ package com.demar.vpn.data.network
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
+import com.demar.vpn.domain.vpn.ServerReachStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -13,6 +14,10 @@ object UplinkProbe {
    * HY2 (QUIC/UDP): TCP connect + QUIC Version Negotiation (TLS-over-TCP never applies).
    */
   suspend fun probe(profile: ServerProfile): ServerReachState {
+    // OpenFlux SOCKS: foreign TCP ping is meaningless (carrier via Yandex Boards).
+    if (profile.protocol == ServerProtocol.OpenFlux) {
+      return ServerReachState(ServerReachStatus.Online)
+    }
     val host = profile.connectPlan.uplinkHost.trim()
     if (host.isEmpty()) return ServerReachState.Offline
     val port = profile.uplinkPort

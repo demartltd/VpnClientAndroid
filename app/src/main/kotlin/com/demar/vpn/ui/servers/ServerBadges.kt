@@ -1,7 +1,9 @@
 package com.demar.vpn.ui.servers
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -25,9 +27,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerTier
+import com.demar.vpn.domain.vpn.protocolBadges
 import com.demar.vpn.ui.theme.PlusBadgeSeed
 import com.demar.vpn.ui.theme.VipBadgeSeed
+import com.demar.vpn.ui.theme.WhiteListBadgeBg
+import com.demar.vpn.ui.theme.WhiteListBadgeFg
 import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 
@@ -46,10 +52,13 @@ data class ServerBadgePalette(
   val plusFg: Color,
   val vipBg: Color,
   val vipFg: Color,
+  val whiteListBg: Color = WhiteListBadgeBg,
+  val whiteListFg: Color = WhiteListBadgeFg,
 ) {
-  fun colors(tier: ServerTier?): Pair<Color, Color> = when (tier) {
-    ServerTier.Plus -> plusBg to plusFg
-    ServerTier.Vip -> vipBg to vipFg
+  fun colors(tier: ServerTier? = null, whiteList: Boolean = false): Pair<Color, Color> = when {
+    whiteList -> whiteListBg to whiteListFg
+    tier == ServerTier.Plus -> plusBg to plusFg
+    tier == ServerTier.Vip -> vipBg to vipFg
     else -> freeBg to freeFg
   }
 }
@@ -92,9 +101,10 @@ fun ServerBadge(
   label: String,
   palette: ServerBadgePalette,
   tier: ServerTier? = null,
+  whiteList: Boolean = false,
   large: Boolean = false,
 ) {
-  val (bg, fg) = palette.colors(tier)
+  val (bg, fg) = palette.colors(tier, whiteList)
   Box(
     Modifier
       .then(if (large) Modifier.height(HomeBadgeHeight) else Modifier)
@@ -109,6 +119,26 @@ fun ServerBadge(
       fontWeight = FontWeight.SemiBold,
       color = fg,
     )
+  }
+}
+
+/** Protocol chips; OpenFlux keeps White List + SOCKS in one row. */
+@Composable
+fun ProtocolServerBadges(
+  profile: ServerProfile,
+  palette: ServerBadgePalette,
+  full: Boolean = false,
+  large: Boolean = false,
+  gap: Dp = 4.dp,
+) {
+  val specs = profile.protocolBadges(full)
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(gap),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    specs.forEach { spec ->
+      ServerBadge(spec.label, palette, whiteList = spec.whiteList, large = large)
+    }
   }
 }
 

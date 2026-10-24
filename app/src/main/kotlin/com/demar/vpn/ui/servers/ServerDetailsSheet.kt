@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.demar.vpn.R
 import com.demar.vpn.data.account.VpnAccountApi
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.directCountryCodes
 import com.demar.vpn.ui.components.StaticSheetDragHandle
@@ -75,8 +76,10 @@ fun ServerDetailsSheet(
   val cs = MaterialTheme.colorScheme
   val directCodes = remember(profile.bypassRuleSets) { profile.bypassRuleSets.directCountryCodes() }
   val metrics = listOf(
-    "TCP" to ServerReachState.formatMs(reachState.latencyMs),
-    "TLS" to ServerReachState.formatMs(reachState.tlsMs),
+    "TCP" to if (profile.protocol == ServerProtocol.OpenFlux) "—"
+    else ServerReachState.formatMs(reachState.latencyMs),
+    "TLS" to if (profile.protocol == ServerProtocol.OpenFlux) "—"
+    else ServerReachState.formatMs(reachState.tlsMs),
     stringResource(R.string.server_traffic) to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"),
   )
   ModalBottomSheet(
@@ -117,7 +120,7 @@ fun ServerDetailsSheet(
         verticalAlignment = Alignment.CenterVertically,
       ) {
         ServerBadge(profile.tier.label, badgePalette, profile.tier, large = true)
-        ServerBadge(profile.protocolFullLabel, badgePalette, large = true)
+        ProtocolServerBadges(profile, badgePalette, full = true, large = true, gap = 6.dp)
       }
       Spacer(Modifier.height(16.dp))
       Surface(

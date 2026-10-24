@@ -4,7 +4,7 @@
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
 
-Ядро: **sing-box 1.14.1** (**Hysteria2** + **Trojan** + **VLESS Reality**). Документация: https://sing-box.sagernet.org/
+Ядро: **sing-box 1.14.1** (**Hysteria2** + **Trojan** + **VLESS Reality** + **OpenFlux** SOCKS sidecar). Документация: https://sing-box.sagernet.org/
 
 **UI:** Material 3 Expressive, **тёмная тема only**, seed `#3A6EA5` — `MaterialKolor` `TonalSpot`.
 
@@ -16,6 +16,7 @@
 
 ```bash
 python3 scripts/libbox-build-android.py   # один раз (нужен go)
+./scripts/openflux-build-android.sh       # OpenFlux SOCKS sidecar arm64 → assets (нужен go)
 python3 scripts/generate_icons.py         # launcher icons из scripts/logo_clear.png
 # key.properties — см. readme-signing.md
 pwsh scripts/build_android.ps1
@@ -31,14 +32,14 @@ pwsh scripts/build_android.ps1
 
 | Экран | Статус |
 |-------|--------|
-| Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / VLESS Reality) |
-| Servers | Refresh / фильтры 1:1 (sheet: tier + protocol multi-select); все протоколы в одном списке с бейджем HY2/TRJ/VLESS; список с `fastapi.demar.cc` по подписке |
+| Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / Trojan / VLESS / OpenFlux) |
+| Servers | Refresh / фильтры 1:1 (sheet: tier + protocol multi-select); бейджи HY2/TRJ/VLESS; OpenFlux → White List/SOCKS; список с `fastapi.demar.cc` по подписке |
 | Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csapi.demar.cc`, channel `android`, `sourceId=2`, альбом до 10 фото WebP) |
 | Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `api.demar.cc`; VPN profile/notify/traffic → `fastapi.demar.cc`; Buy/Renew/Increase → RollyPay checkout (`/vpn/pay/*`, Custom Tabs, `demarvpn://pay/ok\|fail`) |
 | App settings (журнал + язык + beta) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU/TR/UK/UZ/zh-Hans/zh-Hant/KO/JA/ES/DE/FR/HI, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS (`UpdateDownloadService`) с progress notification |
 | Service menu (3× tap version) | about + latest version API + diagnostics |
 
-VPN connect (Hysteria2 + Trojan + VLESS Reality) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+VPN connect (Hysteria2 + Trojan + VLESS Reality + OpenFlux SOCKS sidecar) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://api.demar.cc`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://fastapi.demar.cc/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://fastapi.demar.cc/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
 
 ---
 
@@ -100,6 +101,6 @@ UI-журнал («Настройки → Настройки приложени�
 | Compose UI (4 tabs + push + login) | реализовано |
 | Тема / snackbar / соц. иконки / i18n EN+RU+TR+UK+UZ+zh-Hans+zh-Hant+KO+JA+ES+DE+FR+HI | per-app language через `localeConfig`; checkout default currency: RU→RUB, иначе EUR |
 | Libbox VPN layer | `vpn/*` |
-| Domain / data / VPN pipeline | `domain/vpn/*`, `data/vpn/*` (HY2 + VLESS Reality) |
+| Domain / data / VPN pipeline | `domain/vpn/*`, `data/vpn/*` (HY2 + Trojan + VLESS + OpenFlux) |
 | Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |
 | Auto-update (APK + SHA-256) | `data/update/*`, Home FAB + UpdateBottomSheet; beta channel via App settings → `/android/beta` |
