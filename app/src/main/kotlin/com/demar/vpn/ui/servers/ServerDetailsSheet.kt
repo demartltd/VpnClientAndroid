@@ -75,13 +75,14 @@ fun ServerDetailsSheet(
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val cs = MaterialTheme.colorScheme
   val directCodes = remember(profile.bypassRuleSets) { profile.bypassRuleSets.directCountryCodes() }
-  val metrics = listOf(
-    "TCP" to if (profile.protocol == ServerProtocol.OpenFlux) "—"
-    else ServerReachState.formatMs(reachState.latencyMs),
-    "TLS" to if (profile.protocol == ServerProtocol.OpenFlux) "—"
-    else ServerReachState.formatMs(reachState.tlsMs),
-    stringResource(R.string.server_traffic) to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"),
-  )
+  val trafficLabel = stringResource(R.string.server_traffic)
+  val metrics = buildList {
+    if (profile.protocol.showsUplinkPing) {
+      add("TCP" to ServerReachState.formatMs(reachState.latencyMs))
+      add("TLS" to ServerReachState.formatMs(reachState.tlsMs))
+    }
+    add(trafficLabel to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"))
+  }
   ModalBottomSheet(
     onDismissRequest = onDismiss,
     sheetState = sheetState,

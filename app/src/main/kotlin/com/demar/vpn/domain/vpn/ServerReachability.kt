@@ -37,10 +37,10 @@ data class ServerReachState(
 
     fun formatMs(ms: Int?): String = ms?.let { "~${it}ms" } ?: "—"
 
-    /** List/home ping label; OpenFlux SOCKS has no TCP uplink metric. */
+    /** List ping label; empty when [ServerProtocol.showsUplinkPing] is false. */
     fun formatListLabel(state: ServerReachState, protocol: ServerProtocol): String =
       when {
-        protocol == ServerProtocol.OpenFlux && state.status == ServerReachStatus.Online -> "—"
+        !protocol.showsUplinkPing -> ""
         state.status == ServerReachStatus.Offline -> "—"
         else -> formatMs(state.tlsMs ?: state.latencyMs)
       }
