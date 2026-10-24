@@ -21,6 +21,7 @@ import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerReachState
+import com.demar.vpn.domain.vpn.ServerReachStatus
 import com.demar.vpn.domain.vpn.VlessRealityProfile
 import com.demar.vpn.domain.vpn.VpnConnectMessages
 import com.demar.vpn.domain.vpn.VpnState
@@ -48,7 +49,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -213,20 +216,25 @@ class VpnController(private val context: Context) {
     return sub == null || sub.equals("free", ignoreCase = true)
   }
 
+  private fun whiteListVpnMode(): Boolean =
+    _selectedProfile.value?.protocol == ServerProtocol.OpenFlux
+
   private fun tunFingerprint(): String {
     val tun = TunSettingsStore.settings.value
     return tun.fingerprint(
       TunSettingsStore.groups.value,
       TunSettingsStore.siteGroups.value,
       isFreeSubscription(),
+      whiteListVpnMode(),
     )
   }
 
   private fun effectiveTunSettings(): TunSettings {
     val isFree = isFreeSubscription()
+    val wl = whiteListVpnMode()
     return TunSettings(
-      bypassPackages = TunSettingsStore.effectiveBypassPackages(context, isFree),
-      bypassHosts = TunSettingsStore.effectiveBypassHosts(context, isFree),
+      bypassPackages = TunSettingsStore.effectiveBypassPackages(context, isFree, wl),
+      bypassHosts = TunSettingsStore.effectiveBypassHosts(context, isFree, wl),
     )
   }
 
@@ -328,17 +336,13 @@ class VpnController(private val context: Context) {
   }
 
   fun setServersTabActive(active: Boolean) {
-    if (!active) {
-      reachabilityJob?.cancel()
-      reachabilityJob = null
-      return
-    }
-    if (initialReachabilityDone || _serverProfiles.value.isEmpty()) return
+    // Do not cancel in-flight probes when leaving the tab — finish all servers.
+    if (!active || initialReachabilityDone || _serverProfiles.value.isEmpty()) return
     initialReachabilityDone = true
     scheduleProbeAllServers()
   }
 
-  /** One in-flight probe at a time — cancels any previous run. */
+  /** One in-flight batch; new schedule cancels the previous. */
   private fun scheduleProbeAllServers(): Job? {
     if (_serverProfiles.value.isEmpty()) return null
     reachabilityJob?.cancel()
@@ -349,15 +353,24 @@ class VpnController(private val context: Context) {
     val profiles = _serverProfiles.value.filter { !it.isLocked }
     if (profiles.isEmpty()) return
     markServersChecking()
+    val gate = Semaphore(PROBE_PARALLEL)
     coroutineScope {
       profiles.forEach { profile ->
         launch {
-          val state = UplinkProbe.probe(profile)
+          val state = gate.withPermit { UplinkProbe.probe(profile) }
           ensureActive()
           _serverReachability.value = _serverReachability.value + (profile.id to state)
         }
       }
     }
+    // Cancelled mid-flight → don't leave Checking forever.
+    val finished = _serverReachability.value.mapValues { (_, s) ->
+      if (s.status == ServerReachStatus.Checking) {
+        s.latencyMs?.let { ServerReachState(ServerReachStatus.Online, s.latencyMs, s.tlsMs) }
+          ?: ServerReachState.Offline
+      } else s
+    }
+    _serverReachability.value = finished
     persistReachability()
   }
 
@@ -729,6 +742,8 @@ class VpnController(private val context: Context) {
   }
 
   companion object {
+    /** Cap parallel uplink probes (Karing mobile ~10; keep network calm). */
+    private const val PROBE_PARALLEL = 8
     private const val DISCONNECT_WATCHDOG_MS = 5_000L
     private const val STALE_DISCONNECTED_MS = 2_000L
   }

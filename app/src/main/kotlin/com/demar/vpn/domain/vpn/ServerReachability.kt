@@ -10,9 +10,9 @@ enum class ServerReachStatus {
 
 data class ServerReachState(
   val status: ServerReachStatus,
-  /** TCP RTT ms. */
+  /** TCP connect RTT ms. */
   val latencyMs: Int? = null,
-  /** TLS handshake RTT ms. */
+  /** Handshake RTT: TLS (TCP protocols) or QUIC (HY2). Cache key `tlsMs` kept for compat. */
   val tlsMs: Int? = null,
 ) {
   /** Stable cache entry — skip in-flight Checking without metrics. */
@@ -45,16 +45,20 @@ data class ServerReachState(
         else -> formatMs(state.tlsMs ?: state.latencyMs)
       }
 
-    fun fromProbes(tcpMs: Int, tlsMs: Int): ServerReachState {
+    fun fromProbes(tcpMs: Int, handshakeMs: Int): ServerReachState {
       val tcpOk = tcpMs >= 0
-      val tlsOk = tlsMs >= 0
-      if (!tcpOk && !tlsOk) return Offline
+      val hsOk = handshakeMs >= 0
+      if (!tcpOk && !hsOk) return Offline
       return ServerReachState(
         status = ServerReachStatus.Online,
         latencyMs = tcpMs.takeIf { tcpOk },
-        tlsMs = tlsMs.takeIf { tlsOk },
+        tlsMs = handshakeMs.takeIf { hsOk },
       )
     }
+
+    /** Details row label for handshake metric. */
+    fun handshakeLabel(protocol: ServerProtocol): String =
+      if (protocol == ServerProtocol.Hysteria2) "QUIC" else "TLS"
 
     fun fromCacheJson(obj: JSONObject): ServerReachState? {
       val status = when (obj.optString("status")) {

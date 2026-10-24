@@ -130,17 +130,25 @@ object TunSettingsStore {
     return parsed
   }
 
-  fun effectiveBypassPackages(context: Context, isFree: Boolean): List<String> {
+  fun effectiveBypassPackages(
+    context: Context,
+    isFree: Boolean,
+    whiteListVpnMode: Boolean = false,
+  ): List<String> {
     val tun = load(context)
     val groups = if (_groups.value.isEmpty()) loadCachedCatalog(context).appGroups else _groups.value
-    return tun.effectivePackages(groups, isFree)
+    return tun.effectivePackages(groups, isFree, whiteListVpnMode)
   }
 
-  fun effectiveBypassHosts(context: Context, isFree: Boolean): List<String> {
+  fun effectiveBypassHosts(
+    context: Context,
+    isFree: Boolean,
+    whiteListVpnMode: Boolean = false,
+  ): List<String> {
     val tun = load(context)
     val sites =
       if (_siteGroups.value.isEmpty()) loadCachedCatalog(context).siteGroups else _siteGroups.value
-    return tun.effectiveHosts(sites, isFree)
+    return tun.effectiveHosts(sites, isFree, whiteListVpnMode)
   }
 
   private fun loadOverrides(

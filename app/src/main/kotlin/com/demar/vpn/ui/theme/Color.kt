@@ -8,6 +8,6 @@ val DemarSeed = Color(0xFF3A6EA5)
 val PlusBadgeSeed = Color(0xFF43A047)
 val VipBadgeSeed = Color(0xFF8E24AA)
 
-/** OpenFlux «White List» badge — soft off-white (not pure #FFF) on dark UI. */
-val WhiteListBadgeBg = Color(0xFFD8D6D4)
-val WhiteListBadgeFg = Color(0xFF2C2B2A)
+/** OpenFlux «White List» badge — mid cool gray so it reads on dark server rows. */
+val WhiteListBadgeBg = Color(0xFF6E6E6E)
+val WhiteListBadgeFg = Color(0xFFF2F2F2)

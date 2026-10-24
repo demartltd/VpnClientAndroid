@@ -15,6 +15,10 @@ class EgressConstantsTest {
       egressHostProbeLabel(EgressHostProbe(tcpMs = 42, httpsMs = 88, tlsMs = 12)),
     )
     assertEquals("TCP 0 · TLS 0 · HTTPS 0", egressHostProbeLabel(EgressHostProbe()))
+    assertEquals(
+      "TCP n/a · TLS n/a · HTTPS n/a",
+      egressHostProbeLabel(EgressHostProbe(tcpMs = -1, httpsMs = -1, tlsMs = -1)),
+    )
   }
 
   @Test

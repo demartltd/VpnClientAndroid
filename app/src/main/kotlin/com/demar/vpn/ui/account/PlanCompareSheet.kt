@@ -73,12 +73,6 @@ fun PlanCompareSheet(
       CompareCell.Bool(true),
       CompareCell.Bool(true),
     ),
-    RowSpec(
-      stringResource(R.string.pay_compare_ip),
-      CompareCell.Bool(false),
-      CompareCell.Bool(false),
-      CompareCell.Bool(true),
-    ),
   )
   ModalBottomSheet(
     onDismissRequest = onDismiss,

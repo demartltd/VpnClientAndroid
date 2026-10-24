@@ -160,7 +160,6 @@
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Oilaviy takliflar*</string>
     <string name="pay_compare_tun">TUN sozlamalari</string>
-    <string name="pay_compare_ip">Maxsus IP*</string>
     <string name="pay_compare_footnote">*Hozircha mavjud emas.</string>
     <string name="soon">Tez orada</string>
         <string name="server_load">Yuklama</string>

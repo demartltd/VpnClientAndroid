@@ -155,6 +155,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 - `com.demar.vpn` всегда в TUN `exclude_package` + `VpnService.addDisallowedApplication` (control-plane мимо TUN)
 - Эффективный exclude = ручные пакеты ∪ пакеты **включённых** preset-групп (если `rulesEnabled`; на Free master всегда ON)
+- Группы с `isWhiteList=true`: в обычном режиме — в exclude (мимо TUN); на OpenFlux (WL) — **не** в exclude (через VPN). Классический bypass (`isWhiteList=false`) — всегда мимо TUN
 - Preset-группы: `GET https://vpn.example.invalid/tun` → `android[]` (`TunGroupsApi`); кэш prefs `tun_groups_json`
 - Free: все группы forced ON (Switch locked); кастомные apps недоступны; Plus/Vip — master Switch + тоггл группы + кастом
 - UI: App settings → TUN → Ad block → (paid) master rules → ручные apps → системные группы
@@ -174,6 +175,17 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 | Hostname | `resolveUplinkIpv4s` → `withExtraDirectIps` перед build |
 
 ---
+
+## List ping (Servers)
+
+Параллельный uplink RTT до connect (`UplinkProbe` → `InternetProbe`, ≤2 s × ≤3, concurrency 8):
+
+- Trojan / VLESS: TCP + TLS
+- HY2: TCP + QUIC Version Negotiation (UDP); при UDP-filter — TCP fallback в list metric
+- OpenFlux: `—` (local SOCKS)
+- Триггеры: fetch servers / pull-to-refresh / первый вход на tab; уход с tab **не** отменяет batch
+
+Не путать с post-connect tunnel probe и с connect-time `resolveUplinkIpv4s` (DNS bypass).
 
 ## Diag inbound
 

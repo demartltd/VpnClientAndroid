@@ -36,6 +36,11 @@ class TunGroupsParseTest {
           "apps": [
             {"name": "Сбербанк", "id": "ru.sberbankmobile"}
           ]
+        },
+        {
+          "name": "WL Apps",
+          "isWhiteList": true,
+          "apps": [{"name": "Telegram", "id": "org.telegram.messenger"}]
         }
       ],
       "sites": [
@@ -51,6 +56,11 @@ class TunGroupsParseTest {
           "name": "Optional",
           "enabledByDefault": false,
           "sites": [{"name": "Example", "host": "example.com"}]
+        },
+        {
+          "name": "WL Sites",
+          "isWhiteList": true,
+          "sites": [{"name": "VK", "host": "vk.com"}]
         }
       ],
       "windows": [{"name": "Games", "apps": [{"name": "Steam", "id": "steam.exe"}]}]
@@ -60,17 +70,22 @@ class TunGroupsParseTest {
   @Test
   fun parse_androidAndSites_stableIds() {
     val catalog = TunGroupsApi.parse(sampleJson)
-    assertEquals(2, catalog.appGroups.size)
+    assertEquals(3, catalog.appGroups.size)
     assertEquals("games", catalog.appGroups[0].id)
     assertTrue(catalog.appGroups[0].enabledByDefault)
+    assertFalse(catalog.appGroups[0].isWhiteList)
     assertFalse(catalog.appGroups[1].enabledByDefault)
     assertEquals("ru.sberbankmobile", catalog.appGroups[1].apps.single().id)
+    assertTrue(catalog.appGroups[2].isWhiteList)
+    assertEquals("org.telegram.messenger", catalog.appGroups[2].apps.single().id)
 
-    assertEquals(2, catalog.siteGroups.size)
+    assertEquals(3, catalog.siteGroups.size)
     assertEquals("streaming", catalog.siteGroups[0].id)
     assertTrue(catalog.siteGroups[0].enabledByDefault)
     assertFalse(catalog.siteGroups[1].enabledByDefault)
     assertEquals("twitch.tv", catalog.siteGroups[0].sites[0].host)
+    assertTrue(catalog.siteGroups[2].isWhiteList)
+    assertEquals("vk.com", catalog.siteGroups[2].sites.single().host)
   }
 
   @Test
@@ -103,13 +118,13 @@ class TunGroupsParseTest {
       siteGroupOverrides = mapOf("optional" to true),
     )
     assertEquals(
-      listOf("com.custom.app", "ru.sberbankmobile"),
+      listOf("com.custom.app", "org.telegram.messenger", "ru.sberbankmobile"),
       tun.effectivePackages(catalog.appGroups, isFree = false),
     )
     assertFalse(tun.isGroupEnabled(catalog.appGroups[0], isFree = false))
     assertTrue(tun.isGroupEnabled(catalog.appGroups[1], isFree = false))
     assertEquals(
-      listOf("example.com", "twitch.tv", "youtube.com"),
+      listOf("example.com", "twitch.tv", "vk.com", "youtube.com"),
       tun.effectiveHosts(catalog.siteGroups, isFree = false),
     )
   }
@@ -118,7 +133,7 @@ class TunGroupsParseTest {
   fun effectiveHosts_trimsAndDedups() {
     val catalog = TunGroupsApi.parse(sampleJson)
     assertEquals(
-      listOf("twitch.tv", "youtube.com"),
+      listOf("twitch.tv", "vk.com", "youtube.com"),
       TunSettings().effectiveHosts(catalog.siteGroups, isFree = false),
     )
     assertEquals("twitch.tv", cleanedDomain("  twitch.tv.  "))
@@ -187,5 +202,28 @@ class TunGroupsParseTest {
     assertFalse(TunSettings(adBlockEnabled = false).isAdBlockEnabled(false))
     assertTrue(TunSettings(adBlockEnabled = true).isAdBlockEnabled(false))
     assertFalse(TunSettings(adBlockEnabled = true).isAdBlockEnabled(true))
+  }
+
+  @Test
+  fun whiteListVpnMode_omitsWhiteListGroupsFromBypass() {
+    val catalog = TunGroupsApi.parse(sampleJson)
+    val tun = TunSettings()
+    val normalPkgs = tun.effectivePackages(catalog.appGroups, isFree = false)
+    val wlPkgs = tun.effectivePackages(catalog.appGroups, isFree = false, whiteListVpnMode = true)
+    assertTrue(normalPkgs.contains("org.telegram.messenger"))
+    assertTrue(normalPkgs.contains("com.miHoYo.GenshinImpact"))
+    assertFalse(wlPkgs.contains("org.telegram.messenger"))
+    assertTrue(wlPkgs.contains("com.miHoYo.GenshinImpact"))
+
+    val normalHosts = tun.effectiveHosts(catalog.siteGroups, isFree = false)
+    val wlHosts = tun.effectiveHosts(catalog.siteGroups, isFree = false, whiteListVpnMode = true)
+    assertTrue(normalHosts.contains("vk.com"))
+    assertTrue(normalHosts.contains("twitch.tv"))
+    assertFalse(wlHosts.contains("vk.com"))
+    assertTrue(wlHosts.contains("twitch.tv"))
+
+    val fpNormal = tun.fingerprint(catalog.appGroups, catalog.siteGroups, isFree = false)
+    val fpWl = tun.fingerprint(catalog.appGroups, catalog.siteGroups, isFree = false, whiteListVpnMode = true)
+    assertTrue(fpNormal != fpWl)
   }
 }

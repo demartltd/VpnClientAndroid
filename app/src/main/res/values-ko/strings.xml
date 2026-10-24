@@ -156,7 +156,6 @@
     <string name="pay_compare_traffic">트래픽</string>
     <string name="pay_compare_family">패밀리 초대*</string>
     <string name="pay_compare_tun">TUN 설정</string>
-    <string name="pay_compare_ip">전용 IP*</string>
     <string name="pay_compare_footnote">*아직 사용할 수 없습니다.</string>
     <string name="soon">곧 제공</string>
         <string name="server_load">부하</string>

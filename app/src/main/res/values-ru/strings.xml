@@ -170,7 +170,6 @@
     <string name="pay_compare_traffic">Трафик</string>
     <string name="pay_compare_family">Семейные приглашения*</string>
     <string name="pay_compare_tun">Настройки TUN</string>
-    <string name="pay_compare_ip">Выделенный IP*</string>
     <string name="pay_compare_footnote">*Пока недоступно.</string>
     <string name="soon">Скоро</string>
         <string name="server_load">Нагрузка</string>

@@ -5,6 +5,8 @@ import com.demar.vpn.data.network.UplinkProbe
 import com.demar.vpn.domain.vpn.Hysteria2Profile
 import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProfile
+import com.demar.vpn.domain.vpn.ServerProtocol
+import com.demar.vpn.domain.vpn.ServerReachState
 import com.demar.vpn.domain.vpn.ServerReachStatus
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -50,7 +52,7 @@ class UplinkProbeTest {
   }
 
   @Test
-  fun probe_hy2LiteralIp_fillsTlsFromTcpFallback() = runBlocking {
+  fun probe_hy2LiteralIp_fillsHandshakeFromTcpFallback() = runBlocking {
     val profile = ServerProfile.fromProxy(
       Hysteria2Profile(
         displayName = "HY2-DNS",
@@ -64,7 +66,13 @@ class UplinkProbeTest {
     assertEquals(ServerReachStatus.Online, state.status)
     assertNotNull(state.latencyMs)
     assertTrue(state.latencyMs!! >= 0)
-    // QUIC to :1 fails; HY2 falls back so list metric (tlsMs) is not n/a
+    // QUIC to :1 fails; HY2 falls back so list metric is not n/a
     assertEquals(state.latencyMs, state.tlsMs)
+  }
+
+  @Test
+  fun handshakeLabel_hy2IsQuic() {
+    assertEquals("QUIC", ServerReachState.handshakeLabel(ServerProtocol.Hysteria2))
+    assertEquals("TLS", ServerReachState.handshakeLabel(ServerProtocol.Trojan))
   }
 }

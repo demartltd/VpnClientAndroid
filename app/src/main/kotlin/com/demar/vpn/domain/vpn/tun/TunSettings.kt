@@ -15,13 +15,14 @@ data class TunSettings(
     groups: List<TunGroup> = emptyList(),
     siteGroups: List<TunSiteGroup> = emptyList(),
     isFree: Boolean = true,
+    whiteListVpnMode: Boolean = false,
   ): String {
-    val packages = effectivePackages(groups, isFree).joinToString()
-    val hosts = effectiveHosts(siteGroups, isFree).joinToString()
+    val packages = effectivePackages(groups, isFree, whiteListVpnMode).joinToString()
+    val hosts = effectiveHosts(siteGroups, isFree, whiteListVpnMode).joinToString()
     val groupsFp =
       groups.filter { isGroupEnabled(it, isFree) }.map { it.id }.sorted().joinToString()
     val sitesFp =
       siteGroups.filter { isSiteGroupEnabled(it, isFree) }.map { it.id }.sorted().joinToString()
-    return "p=$packages;h=$hosts;g=$groupsFp;s=$sitesFp;r=${isRulesEnabled(isFree)}"
+    return "p=$packages;h=$hosts;g=$groupsFp;s=$sitesFp;r=${isRulesEnabled(isFree)};wl=$whiteListVpnMode"
   }
 }

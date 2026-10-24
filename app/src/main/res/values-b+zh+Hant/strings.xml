@@ -156,7 +156,6 @@
     <string name="pay_compare_traffic">流量</string>
     <string name="pay_compare_family">家庭邀請*</string>
     <string name="pay_compare_tun">TUN 設定</string>
-    <string name="pay_compare_ip">專用 IP*</string>
     <string name="pay_compare_footnote">*暫不可用。</string>
     <string name="soon">即將推出</string>
         <string name="server_load">負載</string>

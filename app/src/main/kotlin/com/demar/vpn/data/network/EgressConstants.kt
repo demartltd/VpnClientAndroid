@@ -25,6 +25,6 @@ data class EgressHostProbe(
 val EgressHostProbeZero = EgressHostProbe()
 
 fun egressHostProbeLabel(p: EgressHostProbe): String {
-  fun ms(v: Int) = if (v > 0) "$v" else "0"
+  fun ms(v: Int) = if (v >= 0) "$v" else "n/a"
   return "TCP ${ms(p.tcpMs)} · TLS ${ms(p.tlsMs)} · HTTPS ${ms(p.httpsMs)}"
 }

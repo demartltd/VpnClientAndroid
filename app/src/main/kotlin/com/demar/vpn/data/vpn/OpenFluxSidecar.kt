@@ -1,10 +1,6 @@
 package com.demar.vpn.data.vpn
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
-import android.os.Handler
-import android.os.Looper
 import com.demar.vpn.data.logging.AppLog
 import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import java.io.File
@@ -23,25 +19,21 @@ import kotlinx.coroutines.withContext
 
 /**
  * Local OpenFlux SOCKS5 (127.0.0.1:11080). Package excluded from TUN → Boards anti-loop.
- * Restarts on default-network change / dead SOCKS (Silent OLCRTC recovery pattern).
+ * Does not restart on network/VPN flips (OFX uses physical path via exclude_package);
+ * only recovers a dead SOCKS port. Exit serves one client key — restart thrash kills the session.
  */
 object OpenFluxSidecar {
   /** Packaged as jniLibs/arm64-v8a (exec from nativeLibraryDir; filesDir is W^X blocked). */
   private const val NATIVE_LIB = "libopenflux.so"
   private const val READY_TIMEOUT_MS = 12_000L
   private const val POLL_MS = 200L
-  private const val NET_DEBOUNCE_MS = 1_500L
   private const val HEALTH_MS = 2_500L
 
   private val processRef = AtomicReference<Process?>(null)
   private val profileRef = AtomicReference<OpenFluxSocksProfile?>(null)
   private val appCtx = AtomicReference<Context?>(null)
-  private val main = Handler(Looper.getMainLooper())
   private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-  private var networkCb: ConnectivityManager.NetworkCallback? = null
-  private var netRestart: Runnable? = null
   private var healthJob: Job? = null
-  @Volatile private var lastNet: Network? = null
 
   val isRunning: Boolean get() = processRef.get()?.isAlive == true
 
@@ -104,25 +96,6 @@ object OpenFluxSidecar {
   }
 
   private fun armWatches() {
-    val ctx = appCtx.get() ?: return
-    val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return
-    lastNet = null
-    val cb =
-      object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-          val prev = lastNet
-          lastNet = network
-          if (prev == null || prev == network) return
-          scheduleRestart("net")
-        }
-
-        override fun onLost(network: Network) {
-          if (lastNet == network) lastNet = null
-          scheduleRestart("net-lost")
-        }
-      }
-    networkCb = cb
-    runCatching { cm.registerDefaultNetworkCallback(cb, main) }
     healthJob =
       scope.launch {
         var fails = 0
@@ -140,14 +113,6 @@ object OpenFluxSidecar {
       }
   }
 
-  private fun scheduleRestart(reason: String) {
-    if (profileRef.get() == null) return
-    netRestart?.let { main.removeCallbacks(it) }
-    val r = Runnable { scope.launch { restartNow(reason) } }
-    netRestart = r
-    main.postDelayed(r, NET_DEBOUNCE_MS)
-  }
-
   private suspend fun restartNow(reason: String) {
     val ctx = appCtx.get() ?: return
     val profile = profileRef.get() ?: return
@@ -159,19 +124,8 @@ object OpenFluxSidecar {
   }
 
   private fun stopWatches() {
-    netRestart?.let { main.removeCallbacks(it) }
-    netRestart = null
     healthJob?.cancel()
     healthJob = null
-    lastNet = null
-    val cb = networkCb
-    networkCb = null
-    val ctx = appCtx.get()
-    if (cb != null && ctx != null) {
-      runCatching {
-        ctx.getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(cb)
-      }
-    }
   }
 
   /** Cookie/secret work dir under files/ (not the executable — W^X). */

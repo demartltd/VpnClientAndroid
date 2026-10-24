@@ -79,7 +79,10 @@ fun ServerDetailsSheet(
   val metrics = buildList {
     if (profile.protocol.showsUplinkPing) {
       add("TCP" to ServerReachState.formatMs(reachState.latencyMs))
-      add("TLS" to ServerReachState.formatMs(reachState.tlsMs))
+      add(
+        ServerReachState.handshakeLabel(profile.protocol) to
+          ServerReachState.formatMs(reachState.tlsMs),
+      )
     }
     add(trafficLabel to (trafficBytes?.let(VpnAccountApi::formatBytes) ?: "—"))
   }
