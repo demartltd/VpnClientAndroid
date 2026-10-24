@@ -42,6 +42,9 @@ enum class ServerProtocol(val apiKey: String, val label: String, val fullLabel: 
   /** UI: white White / White List + neutral SCK / SOCKS (OpenFlux sidecar). */
   OpenFlux("openflux", "White", "White List");
 
+  /** False for OpenFlux — SOCKS/carrier has no meaningful TCP uplink RTT. */
+  val showsUplinkPing: Boolean get() = this != OpenFlux
+
   companion object {
     /** Neutral second chip for OpenFlux (list / details). */
     const val SOCKS_BADGE = "SCK"

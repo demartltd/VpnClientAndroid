@@ -594,12 +594,15 @@ private fun ServerRow(
       if (locked) {
         PremiumChip()
       } else {
-        Text(
-          ServerReachState.formatListLabel(reachState, profile.protocol),
-          style = MaterialTheme.typography.labelSmall.compact(10.sp),
-          color = muted,
-        )
-        Spacer(Modifier.width(4.dp))
+        val ping = ServerReachState.formatListLabel(reachState, profile.protocol)
+        if (ping.isNotEmpty()) {
+          Text(
+            ping,
+            style = MaterialTheme.typography.labelSmall.compact(10.sp),
+            color = muted,
+          )
+          Spacer(Modifier.width(4.dp))
+        }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = muted)
       }
     }

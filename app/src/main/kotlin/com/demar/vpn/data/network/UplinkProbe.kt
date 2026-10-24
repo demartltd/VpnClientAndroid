@@ -14,8 +14,7 @@ object UplinkProbe {
    * HY2 (QUIC/UDP): TCP connect + QUIC Version Negotiation (TLS-over-TCP never applies).
    */
   suspend fun probe(profile: ServerProfile): ServerReachState {
-    // OpenFlux SOCKS: foreign TCP ping is meaningless (carrier via Yandex Boards).
-    if (profile.protocol == ServerProtocol.OpenFlux) {
+    if (!profile.protocol.showsUplinkPing) {
       return ServerReachState(ServerReachStatus.Online)
     }
     val host = profile.connectPlan.uplinkHost.trim()

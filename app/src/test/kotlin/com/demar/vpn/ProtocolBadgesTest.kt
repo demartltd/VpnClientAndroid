@@ -59,9 +59,10 @@ class ProtocolBadgesTest {
   }
 
   @Test
-  fun openflux_listLabel_onlineIsDash() {
+  fun openflux_listLabel_isEmpty() {
     val online = ServerReachState(ServerReachStatus.Online, latencyMs = 12, tlsMs = 20)
-    assertEquals("—", ServerReachState.formatListLabel(online, ServerProtocol.OpenFlux))
+    assertFalse(ServerProtocol.OpenFlux.showsUplinkPing)
+    assertEquals("", ServerReachState.formatListLabel(online, ServerProtocol.OpenFlux))
     assertEquals("~20ms", ServerReachState.formatListLabel(online, ServerProtocol.Hysteria2))
   }
 }
