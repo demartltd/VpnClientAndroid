@@ -8,15 +8,19 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Favorites + list filters. */
+/**
+ * Favorites + list filters.
+ * Disk: only **disabled** badges (§10). Untouched / new enum values stay ON.
+ */
 object ServersStore {
   private const val PrefsName = "demar_servers"
   private const val KeyFavorites = "favorites"
-  private const val KeyTiers = "tiers"
-  private const val KeyProtocols = "protocols"
-  /** Enum names seen by this install — new values auto-enable once. */
-  private const val KeyKnownTiers = "known_tiers"
-  private const val KeyKnownProtocols = "known_protocols"
+  private const val KeyDisabledTiers = "disabled_tiers"
+  private const val KeyDisabledProtocols = "disabled_protocols"
+  private const val KeyLegacyTiers = "tiers"
+  private const val KeyLegacyProtocols = "protocols"
+  private const val KeyLegacyKnownTiers = "known_tiers"
+  private const val KeyLegacyKnownProtocols = "known_protocols"
 
   private val allTiers = ServerTier.entries.toSet()
   private val allProtocols = ServerProtocol.entries.toSet()
@@ -29,7 +33,7 @@ object ServersStore {
   val tiers: StateFlow<Set<ServerTier>> = _tiers.asStateFlow()
   val protocols: StateFlow<Set<ServerProtocol>> = _protocols.asStateFlow()
 
-  /** True when selection differs from all tiers + all protocols. */
+  /** Any badge turned off (§4 / §10). */
   fun filtersActive(
     tiers: Set<ServerTier> = _tiers.value,
     protocols: Set<ServerProtocol> = _protocols.value,
@@ -47,27 +51,21 @@ object ServersStore {
       val legacyFav = appContext.getSharedPreferences("demar_server_favorites", Context.MODE_PRIVATE)
 
       _favorites.value = readStrings(p, KeyFavorites) ?: readStrings(legacyFav, "ids") ?: emptySet()
+      _tiers.value = allTiers -
+        loadDisabled(p, KeyDisabledTiers, KeyLegacyTiers, KeyLegacyKnownTiers, allTiers) {
+          ServerTier.valueOf(it)
+        }
+      _protocols.value = allProtocols -
+        loadDisabled(p, KeyDisabledProtocols, KeyLegacyProtocols, KeyLegacyKnownProtocols, allProtocols) {
+          ServerProtocol.valueOf(it)
+        }
 
-      val savedTiers = readEnums(p, KeyTiers, allTiers) { ServerTier.valueOf(it) } ?: allTiers
-      val savedProtocols =
-        readEnums(p, KeyProtocols, allProtocols) { ServerProtocol.valueOf(it) } ?: allProtocols
-
-      val knownTiers = readStrings(p, KeyKnownTiers) ?: savedTiers.map { it.name }.toSet()
-      val knownProtocols =
-        readStrings(p, KeyKnownProtocols) ?: savedProtocols.map { it.name }.toSet()
-
-      _tiers.value = mergeNewEnums(savedTiers, knownTiers, allTiers) { it.name }
-      _protocols.value = mergeNewEnums(savedProtocols, knownProtocols, allProtocols) { it.name }
-
-      // One-shot collapse into demar_servers.
       if (!p.contains(KeyFavorites)) {
         writeStrings(KeyFavorites, _favorites.value)
         legacyFav.edit().clear().apply()
       }
-      writeStrings(KeyTiers, _tiers.value.map { it.name }.toSet())
-      writeStrings(KeyProtocols, _protocols.value.map { it.name }.toSet())
-      writeStrings(KeyKnownTiers, allTiers.map { it.name }.toSet())
-      writeStrings(KeyKnownProtocols, allProtocols.map { it.name }.toSet())
+      clearLegacyKeys()
+      persistDisabled()
       ready = true
     }
   }
@@ -78,43 +76,67 @@ object ServersStore {
     _favorites.value = next
   }
 
-  fun setTiers(value: Set<ServerTier>) = setEnums(KeyTiers, value, allTiers, _tiers) { it.name }
-
-  fun setProtocols(value: Set<ServerProtocol>) =
-    setEnums(KeyProtocols, value, allProtocols, _protocols) { it.name }
-
-  fun resetFilters() {
-    setTiers(allTiers)
-    setProtocols(allProtocols)
+  fun setTiers(value: Set<ServerTier>) {
+    _tiers.value = value.ifEmpty { allTiers }
+    persistDisabled()
   }
 
-  private fun <T> setEnums(
-    key: String,
-    value: Set<T>,
-    fallback: Set<T>,
-    flow: MutableStateFlow<Set<T>>,
-    name: (T) -> String,
-  ) {
-    val next = value.ifEmpty { fallback }
-    writeStrings(key, next.map(name).toSet())
-    flow.value = next
+  fun setProtocols(value: Set<ServerProtocol>) {
+    _protocols.value = value.ifEmpty { allProtocols }
+    persistDisabled()
+  }
+
+  fun resetFilters() {
+    _tiers.value = allTiers
+    _protocols.value = allProtocols
+    persistDisabled()
+  }
+
+  private fun persistDisabled() {
+    writeStrings(KeyDisabledTiers, (allTiers - _tiers.value).map { it.name }.toSet())
+    writeStrings(KeyDisabledProtocols, (allProtocols - _protocols.value).map { it.name }.toSet())
+  }
+
+  /**
+   * Prefer disabled_* keys. Legacy enabled + known → disabled = known − enabled
+   * (enums absent from known stay ON — same as old mergeNewEnums).
+   */
+  private fun <T : Enum<T>> loadDisabled(
+    p: SharedPreferences,
+    disabledKey: String,
+    legacyEnabledKey: String,
+    legacyKnownKey: String,
+    all: Set<T>,
+    parse: (String) -> T,
+  ): Set<T> {
+    if (p.contains(disabledKey)) return readEnums(p, disabledKey, parse)
+    if (!p.contains(legacyEnabledKey)) return emptySet()
+    val enabled = readEnums(p, legacyEnabledKey, parse).ifEmpty { all }
+    val knownNames = readStrings(p, legacyKnownKey) ?: enabled.map { it.name }.toSet()
+    return all.filter { it.name in knownNames }.toSet() - enabled
+  }
+
+  private fun clearLegacyKeys() {
+    prefs().edit()
+      .remove(KeyLegacyTiers)
+      .remove(KeyLegacyProtocols)
+      .remove(KeyLegacyKnownTiers)
+      .remove(KeyLegacyKnownProtocols)
+      .apply()
   }
 
   private fun readStrings(p: SharedPreferences, key: String): Set<String>? =
     if (p.contains(key)) p.getStringSet(key, emptySet())?.toSet().orEmpty() else null
 
-  /** `null` when key absent. */
   private fun <T : Enum<T>> readEnums(
     p: SharedPreferences,
     key: String,
-    fallback: Set<T>,
     parse: (String) -> T,
-  ): Set<T>? {
-    if (!p.contains(key)) return null
-    val parsed = p.getStringSet(key, emptySet()).orEmpty()
+  ): Set<T> {
+    if (!p.contains(key)) return emptySet()
+    return p.getStringSet(key, emptySet()).orEmpty()
       .mapNotNull { runCatching { parse(it) }.getOrNull() }
       .toSet()
-    return parsed.ifEmpty { fallback }
   }
 
   private fun writeStrings(key: String, value: Set<String>) {
@@ -123,18 +145,4 @@ object ServersStore {
 
   private fun prefs() =
     appContext.getSharedPreferences(PrefsName, Context.MODE_PRIVATE)
-
-  /**
-   * Enable enum values that appeared after prefs were last written
-   * (e.g. new [ServerProtocol.OpenFlux] on upgrade).
-   */
-  internal fun <T> mergeNewEnums(
-    saved: Set<T>,
-    previouslyKnownNames: Set<String>,
-    all: Set<T>,
-    name: (T) -> String,
-  ): Set<T> {
-    val newlyAdded = all.filter { name(it) !in previouslyKnownNames }.toSet()
-    return saved + newlyAdded
-  }
 }
