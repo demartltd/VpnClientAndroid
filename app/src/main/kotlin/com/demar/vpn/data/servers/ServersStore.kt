@@ -14,6 +14,9 @@ object ServersStore {
   private const val KeyFavorites = "favorites"
   private const val KeyTiers = "tiers"
   private const val KeyProtocols = "protocols"
+  /** Enum names seen by this install — new values auto-enable once. */
+  private const val KeyKnownTiers = "known_tiers"
+  private const val KeyKnownProtocols = "known_protocols"
 
   private val allTiers = ServerTier.entries.toSet()
   private val allProtocols = ServerProtocol.entries.toSet()
@@ -44,17 +47,27 @@ object ServersStore {
       val legacyFav = appContext.getSharedPreferences("demar_server_favorites", Context.MODE_PRIVATE)
 
       _favorites.value = readStrings(p, KeyFavorites) ?: readStrings(legacyFav, "ids") ?: emptySet()
-      _tiers.value = readEnums(p, KeyTiers, allTiers) { ServerTier.valueOf(it) } ?: allTiers
-      _protocols.value = readEnums(p, KeyProtocols, allProtocols) { ServerProtocol.valueOf(it) }
-        ?: allProtocols
+
+      val savedTiers = readEnums(p, KeyTiers, allTiers) { ServerTier.valueOf(it) } ?: allTiers
+      val savedProtocols =
+        readEnums(p, KeyProtocols, allProtocols) { ServerProtocol.valueOf(it) } ?: allProtocols
+
+      val knownTiers = readStrings(p, KeyKnownTiers) ?: savedTiers.map { it.name }.toSet()
+      val knownProtocols =
+        readStrings(p, KeyKnownProtocols) ?: savedProtocols.map { it.name }.toSet()
+
+      _tiers.value = mergeNewEnums(savedTiers, knownTiers, allTiers) { it.name }
+      _protocols.value = mergeNewEnums(savedProtocols, knownProtocols, allProtocols) { it.name }
 
       // One-shot collapse into demar_servers.
       if (!p.contains(KeyFavorites)) {
         writeStrings(KeyFavorites, _favorites.value)
         legacyFav.edit().clear().apply()
       }
-      if (!p.contains(KeyTiers)) writeStrings(KeyTiers, _tiers.value.map { it.name }.toSet())
-      if (!p.contains(KeyProtocols)) writeStrings(KeyProtocols, _protocols.value.map { it.name }.toSet())
+      writeStrings(KeyTiers, _tiers.value.map { it.name }.toSet())
+      writeStrings(KeyProtocols, _protocols.value.map { it.name }.toSet())
+      writeStrings(KeyKnownTiers, allTiers.map { it.name }.toSet())
+      writeStrings(KeyKnownProtocols, allProtocols.map { it.name }.toSet())
       ready = true
     }
   }
@@ -110,4 +123,18 @@ object ServersStore {
 
   private fun prefs() =
     appContext.getSharedPreferences(PrefsName, Context.MODE_PRIVATE)
+
+  /**
+   * Enable enum values that appeared after prefs were last written
+   * (e.g. new [ServerProtocol.OpenFlux] on upgrade).
+   */
+  internal fun <T> mergeNewEnums(
+    saved: Set<T>,
+    previouslyKnownNames: Set<String>,
+    all: Set<T>,
+    name: (T) -> String,
+  ): Set<T> {
+    val newlyAdded = all.filter { name(it) !in previouslyKnownNames }.toSet()
+    return saved + newlyAdded
+  }
 }

@@ -3,6 +3,7 @@ package com.demar.vpn
 import com.demar.vpn.data.vpn.SingBoxConfigBuilder
 import com.demar.vpn.domain.vpn.ApiBypassRuleSet
 import com.demar.vpn.domain.vpn.Hysteria2Profile
+import com.demar.vpn.domain.vpn.OpenFluxSocksProfile
 import com.demar.vpn.domain.vpn.ServerProfile
 import com.demar.vpn.domain.vpn.ServerProtocol
 import com.demar.vpn.domain.vpn.ServerTier
@@ -109,22 +110,10 @@ class VpnPipelineTest {
         (0 until dnsRules.length()).any { dnsRules.getJSONObject(it).optString("action") == "predefined" },
       )
       for (host in VpnTunnelProbe.probeBootstrapDomains) {
-        val hasBootstrap = (0 until dnsRules.length()).any { i ->
-          val rule = dnsRules.getJSONObject(i)
-          rule.optJSONArray("domain")?.let { arr ->
-            (0 until arr.length()).any { j -> arr.getString(j) == host }
-          } == true
-        }
-        assertTrue("DNS bootstrap for $host", hasBootstrap)
+        assertTrue("DNS bootstrap for $host", dnsHasSuffix(dnsRules, host))
       }
       for (domain in plan.tun.bootstrapDomains) {
-        val hasBootstrap = (0 until dnsRules.length()).any { i ->
-          val rule = dnsRules.getJSONObject(i)
-          rule.optJSONArray("domain")?.let { arr ->
-            (0 until arr.length()).any { j -> arr.getString(j) == domain }
-          } == true
-        }
-        assertTrue("DNS bootstrap for $domain", hasBootstrap)
+        assertTrue("DNS bootstrap for $domain", dnsHasSuffix(dnsRules, domain))
       }
 
       val inbounds = cfg.getJSONArray("inbounds")
@@ -155,19 +144,13 @@ class VpnPipelineTest {
       assertTrue("diag→proxy present", diagIdx >= 0)
       for (host in VpnTunnelProbe.probeBootstrapDomains) {
         val domainDirectIdx = ruleIndex { rule ->
-          rule.optString("outbound") == SingBoxTags.DIRECT &&
-            rule.optJSONArray("domain")?.let { arr ->
-              (0 until arr.length()).any { j -> arr.getString(j) == host }
-            } == true
+          rule.optString("outbound") == SingBoxTags.DIRECT && suffixHas(rule, host)
         }
         assertEquals("probe host $host must not be route DIRECT", -1, domainDirectIdx)
       }
       for (domain in plan.tun.bootstrapDomains) {
         val domainDirectIdx = ruleIndex { rule ->
-          rule.optString("outbound") == SingBoxTags.DIRECT &&
-            rule.optJSONArray("domain")?.let { arr ->
-              (0 until arr.length()).any { j -> arr.getString(j) == domain }
-            } == true
+          rule.optString("outbound") == SingBoxTags.DIRECT && suffixHas(rule, domain)
         }
         if (domainDirectIdx >= 0) {
           assertTrue("diag before uplink DIRECT for $domain", diagIdx < domainDirectIdx)
@@ -666,6 +649,39 @@ class VpnPipelineTest {
     assertTrue(dnsHas(withGeo, SingBoxConfigBuilder.ADS_RULE_SET_TAG, "reject"))
     assertTrue(routeRejectsRuleSet(withGeo, SingBoxConfigBuilder.ADS_RULE_SET_TAG))
     assertTrue(dnsHas(withGeo, "geosite-category-ru", "route", SingBoxTags.DNS_DIRECT))
+  }
+
+  @Test
+  fun openflux_buildsSocksOutboundAndAntiLoopDomains() {
+    val profile = ServerProfile.fromTag(
+      OpenFluxSocksProfile(
+        displayName = "RU-TESTER-1",
+        openfluxLink = "openflux://v1/testdummy",
+        socksHost = "127.0.0.1",
+        socksPort = 11080,
+      ),
+      city = "Moscow",
+    )
+    val plan = profile.connectPlan
+    assertEquals("127.0.0.1", plan.uplinkHost)
+    assertEquals("socks", plan.proxyOutbound["type"])
+    assertEquals(11080, plan.proxyOutbound["server_port"])
+    assertTrue(plan.tun.bootstrapDomains.contains("boards.yandex.ru"))
+    val cfg = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(plan))
+    val proxy = cfg.getJSONArray("outbounds").getJSONObject(0)
+    assertEquals("socks", proxy.getString("type"))
+    assertEquals(11080, proxy.getInt("server_port"))
+    assertEquals("5", proxy.getString("version"))
+    val dnsRules = cfg.getJSONObject("dns").optJSONArray("rules") ?: JSONArray()
+    assertTrue(dnsHasSuffix(dnsRules, "boards.yandex.ru"))
+  }
+
+  private fun dnsHasSuffix(rules: JSONArray, host: String): Boolean =
+    (0 until rules.length()).any { suffixHas(rules.getJSONObject(it), host) }
+
+  private fun suffixHas(rule: JSONObject, host: String): Boolean {
+    val arr = rule.optJSONArray("domain_suffix") ?: return false
+    return (0 until arr.length()).any { arr.getString(it) == host }
   }
 
   private fun dnsHas(cfg: JSONObject, tag: String, action: String, server: String? = null) =

@@ -34,6 +34,9 @@ app/src/main/jniLibs/
 # Ads rule-set — fetched by scripts/build_android.ps1 before release
 app/src/main/assets/rule-sets/*.srs
 
+# OpenFlux sidecar binary — scripts/openflux-build-android.sh
+app/src/main/assets/openflux/openflux-arm64
+
 # Release signing — readme-signing.md
 key.properties
 **/*.jks

@@ -584,7 +584,7 @@ private fun ServerRow(
           Spacer(Modifier.width(4.dp))
           ServerBadge(profile.tier.label, badgePalette, profile.tier)
           Spacer(Modifier.width(4.dp))
-          ServerBadge(profile.protocolLabel, badgePalette)
+          ProtocolServerBadges(profile, badgePalette)
         }
         if (profile.listSubtitle.isNotEmpty()) {
           Text(profile.listSubtitle, style = MaterialTheme.typography.bodySmall, color = muted)
@@ -595,7 +595,7 @@ private fun ServerRow(
         PremiumChip()
       } else {
         Text(
-          ServerReachState.formatMs(reachState.tlsMs),
+          ServerReachState.formatListLabel(reachState, profile.protocol),
           style = MaterialTheme.typography.labelSmall.compact(10.sp),
           color = muted,
         )

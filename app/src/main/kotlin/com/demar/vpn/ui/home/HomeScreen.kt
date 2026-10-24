@@ -57,6 +57,7 @@ import com.demar.vpn.ui.components.ThroughputLine
 import com.demar.vpn.ui.components.mainTabPadding
 import com.demar.vpn.ui.servers.CountryFlag
 import com.demar.vpn.ui.servers.FavoriteServerBadge
+import com.demar.vpn.ui.servers.ProtocolServerBadges
 import com.demar.vpn.ui.servers.ServerBadge
 import com.demar.vpn.ui.servers.ServerBadgePalette
 import com.demar.vpn.ui.servers.ServerDetailsSheet
@@ -152,6 +153,7 @@ private fun SelectedServerLabel(
 ) {
   val cs = MaterialTheme.colorScheme
   val city = profile.city?.takeIf { it.isNotBlank() }.orEmpty()
+  // tier + protocol group (+ heart); OpenFlux White+SOCKS stay together in ProtocolServerBadges
   val badgeCount = 2 + if (favorite) 1 else 0
   val badgesPerRow = if (badgeCount >= 3) 2 else 1
   Surface(
@@ -198,7 +200,7 @@ private fun SelectedServerLabel(
       ) {
         if (favorite) FavoriteServerBadge()
         ServerBadge(profile.tier.label, badgePalette, profile.tier, large = true)
-        ServerBadge(profile.protocolLabel, badgePalette, large = true)
+        ProtocolServerBadges(profile, badgePalette, full = true, large = true)
       }
     }
   }

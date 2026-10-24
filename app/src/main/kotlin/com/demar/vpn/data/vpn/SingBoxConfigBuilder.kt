@@ -19,7 +19,7 @@ object SingBoxConfigBuilder {
     plan: SingBoxConnectPlan,
     tun: TunSettings = TunSettings(),
     tunName: String = "tun0",
-    mtu: Int = 1492,
+    mtu: Int = 1400,
     logLevel: String = "warning",
     adsPath: String? = null,
   ): String {
@@ -81,7 +81,7 @@ object SingBoxConfigBuilder {
     ),
     "rules" to jArr(
       jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
-      *domainRules(bootstrap, "action" to "route", "server" to SingBoxTags.DNS_DIRECT),
+      *suffixRule(bootstrap, "server" to SingBoxTags.DNS_DIRECT),
       *suffixRule(bypassHosts, "server" to SingBoxTags.DNS_DIRECT),
       *listOfNotNull(ads.takeIf { it }?.let { adsReject() }).toTypedArray(),
       *ruleSets.filter { it.isGeosite }.map {
@@ -118,7 +118,7 @@ object SingBoxConfigBuilder {
       *directIPs.map {
         jObj("ip_cidr" to jArr("$it/32"), "action" to "route", "outbound" to SingBoxTags.DIRECT)
       }.toTypedArray(),
-      *domainRules(bootstrap, "action" to "route", "outbound" to SingBoxTags.DIRECT),
+      *suffixRule(bootstrap, "outbound" to SingBoxTags.DIRECT),
       *suffixRule(bypassHosts, "outbound" to SingBoxTags.DIRECT),
       jObj("ip_version" to 6, "action" to "reject"),
       jObj("inbound" to jArr(SingBoxTags.TUN_INBOUND), "action" to "route", "outbound" to SingBoxTags.PROXY),
@@ -156,7 +156,7 @@ object SingBoxConfigBuilder {
     "type" to "tun",
     "tag" to SingBoxTags.TUN_INBOUND,
     "interface_name" to tunName,
-    "mtu" to mtu.coerceAtMost(1400),
+    "mtu" to mtu.coerceIn(1280, 1400),
     "auto_route" to true,
     "strict_route" to strictRoute,
     "address" to jArr("172.19.0.1/30"),
@@ -170,14 +170,11 @@ object SingBoxConfigBuilder {
     tun.put("route_exclude_address", jArr(*directIPs.map { "$it/32" }.toTypedArray()))
   }
 
-  private fun domainRules(domains: List<String>, vararg extra: Pair<String, Any?>) =
-    cleanDomains(domains).map { jObj("domain" to jArr(it), *extra) }.toTypedArray()
-
-  private fun suffixRule(hosts: List<String>, vararg extra: Pair<String, Any?>) =
-    if (hosts.isEmpty()) emptyArray()
-    else arrayOf(
-      jObj("domain_suffix" to jArr(*hosts.toTypedArray()), "action" to "route", *extra),
-    )
+  private fun suffixRule(hosts: List<String>, vararg extra: Pair<String, Any?>): Array<JSONObject> {
+    val cleaned = cleanDomains(hosts)
+    if (cleaned.isEmpty()) return emptyArray()
+    return arrayOf(jObj("domain_suffix" to jArr(*cleaned.toTypedArray()), "action" to "route", *extra))
+  }
 
   private fun cleanDomains(domains: List<String>) =
     domains.mapNotNull { cleanedDomain(it) }.distinct()
