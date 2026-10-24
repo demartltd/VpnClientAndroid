@@ -160,7 +160,6 @@
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Aile davetleri*</string>
     <string name="pay_compare_tun">TUN ayarları</string>
-    <string name="pay_compare_ip">Özel IP*</string>
     <string name="pay_compare_footnote">*Henüz kullanılamıyor.</string>
     <string name="soon">Yakında</string>
         <string name="server_load">Yük</string>

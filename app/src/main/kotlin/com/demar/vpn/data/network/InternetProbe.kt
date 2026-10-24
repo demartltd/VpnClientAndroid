@@ -36,15 +36,15 @@ object InternetProbe {
     SSLContext.getInstance("TLS").apply { init(null, trustAll, secureRandom) }
   }
 
-  /** Probe selected kinds in parallel. Skipped kinds stay 0. */
+  /** Probe selected kinds in parallel. Skipped → 0; fail → -1 (label `n/a`). */
   suspend fun probeHost(
     host: String,
     port: Int = 443,
     kinds: Set<ProbeKind> = ProbeKind.entries.toSet(),
   ): EgressHostProbe = coroutineScope {
-    val tcp = if (ProbeKind.Tcp in kinds) async { probeTcpMs(host, port).coerceAtLeast(0) } else null
-    val https = if (ProbeKind.Https in kinds) async { probeHttpsMs(host).coerceAtLeast(0) } else null
-    val tls = if (ProbeKind.Tls in kinds) async { probeTlsMs(host, port).coerceAtLeast(0) } else null
+    val tcp = if (ProbeKind.Tcp in kinds) async { probeTcpMs(host, port) } else null
+    val https = if (ProbeKind.Https in kinds) async { probeHttpsMs(host) } else null
+    val tls = if (ProbeKind.Tls in kinds) async { probeTlsMs(host, port) } else null
     EgressHostProbe(
       tcpMs = tcp?.await() ?: 0,
       httpsMs = https?.await() ?: 0,

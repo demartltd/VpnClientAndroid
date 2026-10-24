@@ -160,7 +160,6 @@
     <string name="pay_compare_traffic">ट्रैफ़िक</string>
     <string name="pay_compare_family">पारिवारिक आमंत्रण*</string>
     <string name="pay_compare_tun">TUN सेटिंग्स</string>
-    <string name="pay_compare_ip">समर्पित IP*</string>
     <string name="pay_compare_footnote">*अभी उपलब्ध नहीं।</string>
     <string name="soon">जल्द आ रहा है</string>
         <string name="server_load">लोड</string>

@@ -160,7 +160,6 @@
     <string name="pay_compare_traffic">Traffic</string>
     <string name="pay_compare_family">Familieneinladungen*</string>
     <string name="pay_compare_tun">TUN-Einstellungen</string>
-    <string name="pay_compare_ip">Dedizierte IP*</string>
     <string name="pay_compare_footnote">*Noch nicht verfügbar.</string>
     <string name="soon">Demnächst</string>
         <string name="server_load">Last</string>

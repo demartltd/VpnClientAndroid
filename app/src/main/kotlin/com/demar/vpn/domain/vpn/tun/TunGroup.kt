@@ -9,6 +9,8 @@ data class TunGroup(
   val name: String,
   val apps: List<TunAppRef>,
   val enabledByDefault: Boolean = true,
+  /** Normal: outside TUN. OpenFlux (WL): through VPN — omit from exclude. */
+  val isWhiteList: Boolean = false,
 ) {
   companion object {
     fun idFor(name: String): String = name.trim().lowercase()
@@ -20,6 +22,7 @@ data class TunSiteGroup(
   val name: String,
   val sites: List<TunSiteRef>,
   val enabledByDefault: Boolean = true,
+  val isWhiteList: Boolean = false,
 ) {
   companion object {
     fun idFor(name: String): String = name.trim().lowercase()
@@ -46,10 +49,17 @@ fun TunSettings.isGroupEnabled(group: TunGroup, isFree: Boolean): Boolean =
 fun TunSettings.isSiteGroupEnabled(group: TunSiteGroup, isFree: Boolean): Boolean =
   resolveGroupEnabled(isFree, group.enabledByDefault, siteGroupOverrides, group.id)
 
-fun TunSettings.effectivePackages(groups: List<TunGroup>, isFree: Boolean): List<String> {
+fun TunSettings.effectivePackages(
+  groups: List<TunGroup>,
+  isFree: Boolean,
+  whiteListVpnMode: Boolean = false,
+): List<String> {
   if (!isRulesEnabled(isFree)) return emptyList()
   val fromGroups =
-    groups.asSequence().filter { isGroupEnabled(it, isFree) }.flatMap { it.apps.asSequence().map { a -> a.id } }
+    groups.asSequence()
+      .filter { isGroupEnabled(it, isFree) }
+      .filter { !whiteListVpnMode || !it.isWhiteList }
+      .flatMap { it.apps.asSequence().map { a -> a.id } }
   return (bypassPackages.asSequence() + fromGroups)
     .map { it.trim() }
     .filter { it.isNotEmpty() }
@@ -58,11 +68,16 @@ fun TunSettings.effectivePackages(groups: List<TunGroup>, isFree: Boolean): List
     .toList()
 }
 
-fun TunSettings.effectiveHosts(siteGroups: List<TunSiteGroup>, isFree: Boolean): List<String> {
+fun TunSettings.effectiveHosts(
+  siteGroups: List<TunSiteGroup>,
+  isFree: Boolean,
+  whiteListVpnMode: Boolean = false,
+): List<String> {
   if (!isRulesEnabled(isFree)) return emptyList()
   return siteGroups
     .asSequence()
     .filter { isSiteGroupEnabled(it, isFree) }
+    .filter { !whiteListVpnMode || !it.isWhiteList }
     .flatMap { it.sites.asSequence() }
     .mapNotNull { cleanedDomain(it.host) }
     .distinct()

@@ -67,7 +67,7 @@ internal object VpnTunnelProbe {
         }
       }
       attempts++
-      if (httpOk(attempts, protectFd)) return ProbeOutcome(ReadyResult.Ok, attempts, consecutiveHttpFails)
+      if (httpOk(attempts)) return ProbeOutcome(ReadyResult.Ok, attempts, consecutiveHttpFails)
       val pastWarmup = System.currentTimeMillis() - diagOpenAt >= HTTP_WARMUP_MS
       if (pastWarmup) {
         consecutiveHttpFails++
@@ -88,7 +88,7 @@ internal object VpnTunnelProbe {
     return ProbeOutcome(result, attempts, consecutiveHttpFails)
   }
 
-  private fun httpOk(attempt: Int, protectFd: ((Int) -> Boolean)?): Boolean {
+  private fun httpOk(attempt: Int): Boolean {
     val url = PROBE_URLS[(attempt - 1) % PROBE_URLS.size]
     val body = httpGetViaDiagProxy(
       SingBoxTags.DIAG_LISTEN_HOST,
@@ -116,7 +116,6 @@ internal object VpnTunnelProbe {
     port: Int,
     url: String,
     timeoutMs: Int = TIMEOUT_MS,
-    protectFd: ((Int) -> Boolean)? = null,
   ): String? {
     var conn: HttpURLConnection? = null
     return try {

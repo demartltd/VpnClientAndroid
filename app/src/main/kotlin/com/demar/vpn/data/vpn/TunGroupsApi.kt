@@ -74,6 +74,7 @@ object TunGroupsApi {
         name = name,
         apps = apps,
         enabledByDefault = obj.optBoolean("enabledByDefault", true),
+        isWhiteList = obj.optBoolean("isWhiteList", false),
       )
     }
 
@@ -90,6 +91,7 @@ object TunGroupsApi {
         name = name,
         sites = sites,
         enabledByDefault = obj.optBoolean("enabledByDefault", true),
+        isWhiteList = obj.optBoolean("isWhiteList", false),
       )
     }
 
