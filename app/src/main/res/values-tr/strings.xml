@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">Veriler nasıl işlenir</string>
     <string name="settings_language">Dil</string>
     <string name="settings_language_system">Sistem varsayılanı</string>
-    <string name="settings_tun">TUN ayarları</string>
     <string name="settings_tun_sub">VPN tünelinden hariç uygulamalar ve siteler</string>
-    <string name="settings_tun_title">TUN ayarları</string>
     <string name="settings_tun_apps_add">Uygulama ekle</string>
     <string name="settings_tun_apps_add_sub">Hariç tutulacak yüklü uygulamayı seçin</string>
     <string name="settings_tun_apps_search">Uygulama ara</string>
     <string name="settings_tun_apps_remove">Kaldır</string>
     <string name="settings_tun_custom_title">Özel uygulamalar</string>
     <string name="settings_tun_custom_free_sub">Ücretli abonelikte kullanılabilir</string>
-    <string name="settings_tun_rules_title">TUN ayarları</string>
     <string name="settings_tun_rules_sub">Seçili uygulamaları ve siteleri VPN dışına alın</string>
     <string name="settings_tun_adblock_sub">DNS ile reklamları engelle</string>
     <string name="settings_tun_group_sub">VPN tünelinden hariç</string>
@@ -159,7 +156,6 @@
     <string name="pay_compare_speed">Hız</string>
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Aile davetleri*</string>
-    <string name="pay_compare_tun">TUN ayarları</string>
     <string name="pay_compare_footnote">*Henüz kullanılamıyor.</string>
     <string name="soon">Yakında</string>
         <string name="server_load">Yük</string>

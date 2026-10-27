@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">Cómo se tratan los datos</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_system">Predeterminado del sistema</string>
-    <string name="settings_tun">Ajustes TUN</string>
     <string name="settings_tun_sub">Apps y sitios excluidos del túnel VPN</string>
-    <string name="settings_tun_title">Ajustes TUN</string>
     <string name="settings_tun_apps_add">Añadir app</string>
     <string name="settings_tun_apps_add_sub">Elige una app instalada para excluir</string>
     <string name="settings_tun_apps_search">Buscar apps</string>
     <string name="settings_tun_apps_remove">Eliminar</string>
     <string name="settings_tun_custom_title">Apps personalizadas</string>
     <string name="settings_tun_custom_free_sub">Disponible con una suscripción de pago</string>
-    <string name="settings_tun_rules_title">Ajustes TUN</string>
     <string name="settings_tun_rules_sub">Excluir apps y sitios seleccionados de la VPN</string>
     <string name="settings_tun_adblock_sub">Bloquear anuncios mediante DNS</string>
     <string name="settings_tun_group_sub">Excluidos del túnel VPN</string>
@@ -159,7 +156,6 @@
     <string name="pay_compare_speed">Velocidad</string>
     <string name="pay_compare_traffic">Tráfico</string>
     <string name="pay_compare_family">Invitaciones familiares*</string>
-    <string name="pay_compare_tun">Ajustes TUN</string>
     <string name="pay_compare_footnote">*Aún no disponible.</string>
     <string name="soon">Próximamente</string>
         <string name="server_load">Carga</string>

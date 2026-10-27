@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">資料處理方式</string>
     <string name="settings_language">語言</string>
     <string name="settings_language_system">跟隨系統</string>
-    <string name="settings_tun">TUN 設定</string>
     <string name="settings_tun_sub">排除在 VPN 通道外的應用程式與網站</string>
-    <string name="settings_tun_title">TUN 設定</string>
     <string name="settings_tun_apps_add">新增應用程式</string>
     <string name="settings_tun_apps_add_sub">選擇要排除的已安裝應用程式</string>
     <string name="settings_tun_apps_search">搜尋應用程式</string>
     <string name="settings_tun_apps_remove">移除</string>
     <string name="settings_tun_custom_title">自訂應用程式</string>
     <string name="settings_tun_custom_free_sub">付費訂閱可用</string>
-    <string name="settings_tun_rules_title">TUN 設定</string>
     <string name="settings_tun_rules_sub">將選定的應用程式與網站排除在 VPN 之外</string>
     <string name="settings_tun_adblock_sub">透過 DNS 封鎖廣告</string>
     <string name="settings_tun_group_sub">排除在 VPN 通道外</string>
@@ -155,7 +152,6 @@
     <string name="pay_compare_speed">速度</string>
     <string name="pay_compare_traffic">流量</string>
     <string name="pay_compare_family">家庭邀請*</string>
-    <string name="pay_compare_tun">TUN 設定</string>
     <string name="pay_compare_footnote">*暫不可用。</string>
     <string name="soon">即將推出</string>
         <string name="server_load">負載</string>

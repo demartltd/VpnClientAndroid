@@ -91,7 +91,7 @@ private fun SubscriptionInfoSheet(
   val features = listOf(
     stringResource(R.string.sub_alert_secure),
     "Ad block",
-    stringResource(R.string.pay_compare_tun),
+    "Routing",
   )
   val nowIcon = if (afterPositive) Icons.Filled.Cancel to cs.error else Icons.Filled.Check to cs.primary
   val afterIcon = if (afterPositive) Icons.Filled.Check to cs.primary else Icons.Filled.Cancel to cs.error

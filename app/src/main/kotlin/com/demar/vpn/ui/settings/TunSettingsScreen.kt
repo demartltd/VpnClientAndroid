@@ -144,7 +144,7 @@ fun TunSettingsScreen(
   }
 
   DemarBackScaffold(
-    title = stringResource(R.string.settings_tun_title),
+    title = "Routing",
     onBack = onBack,
   ) { padding ->
     Column(
@@ -169,7 +169,7 @@ fun TunSettingsScreen(
       Spacer(Modifier.height(12.dp))
       SettingsActionButton(
         Icons.Outlined.VpnLock,
-        stringResource(R.string.settings_tun_rules_title),
+        "Routing",
         stringResource(R.string.settings_tun_rules_sub),
         trailingIcon = null,
         trailing = {
