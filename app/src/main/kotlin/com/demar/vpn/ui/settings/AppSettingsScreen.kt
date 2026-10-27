@@ -114,7 +114,7 @@ fun AppSettingsScreen(
         )
         SettingsActionButton(
           Icons.Outlined.VpnLock,
-          stringResource(R.string.settings_tun),
+          "Routing",
           stringResource(R.string.settings_tun_sub),
           onClick = onTunSettings,
         )

@@ -68,7 +68,7 @@ fun PlanCompareSheet(
       CompareCell.Bool(true),
     ),
     RowSpec(
-      stringResource(R.string.pay_compare_tun),
+      "Routing",
       CompareCell.Bool(false),
       CompareCell.Bool(true),
       CompareCell.Bool(true),

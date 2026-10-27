@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">Як обробляються дані</string>
     <string name="settings_language">Мова</string>
     <string name="settings_language_system">Як у системі</string>
-    <string name="settings_tun">Налаштування TUN</string>
     <string name="settings_tun_sub">Програми та сайти поза VPN-тунелем</string>
-    <string name="settings_tun_title">Налаштування TUN</string>
     <string name="settings_tun_apps_add">Додати програму</string>
     <string name="settings_tun_apps_add_sub">Оберіть встановлену програму для виключення</string>
     <string name="settings_tun_apps_search">Пошук програм</string>
     <string name="settings_tun_apps_remove">Видалити</string>
     <string name="settings_tun_custom_title">Власні програми</string>
     <string name="settings_tun_custom_free_sub">Доступно з платною підпискою</string>
-    <string name="settings_tun_rules_title">Налаштування TUN</string>
     <string name="settings_tun_rules_sub">Виключити вибрані програми та сайти з VPN</string>
     <string name="settings_tun_adblock_sub">Блокувати рекламу через DNS</string>
     <string name="settings_tun_group_sub">Поза VPN-тунелем</string>
@@ -169,7 +166,6 @@
     <string name="pay_compare_speed">Швидкість</string>
     <string name="pay_compare_traffic">Трафік</string>
     <string name="pay_compare_family">Сімейні запрошення*</string>
-    <string name="pay_compare_tun">Налаштування TUN</string>
     <string name="pay_compare_footnote">*Поки недоступно.</string>
     <string name="soon">Незабаром</string>
         <string name="server_load">Навантаження</string>

@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">データの取り扱い</string>
     <string name="settings_language">言語</string>
     <string name="settings_language_system">システム既定</string>
-    <string name="settings_tun">TUN 設定</string>
     <string name="settings_tun_sub">VPN トンネルから除外するアプリとサイト</string>
-    <string name="settings_tun_title">TUN 設定</string>
     <string name="settings_tun_apps_add">アプリを追加</string>
     <string name="settings_tun_apps_add_sub">除外するインストール済みアプリを選択</string>
     <string name="settings_tun_apps_search">アプリを検索</string>
     <string name="settings_tun_apps_remove">削除</string>
     <string name="settings_tun_custom_title">カスタムアプリ</string>
     <string name="settings_tun_custom_free_sub">有料サブスクリプションで利用可能</string>
-    <string name="settings_tun_rules_title">TUN 設定</string>
     <string name="settings_tun_rules_sub">選択したアプリとサイトを VPN から除外</string>
     <string name="settings_tun_adblock_sub">DNS で広告をブロック</string>
     <string name="settings_tun_group_sub">VPN トンネルから除外</string>
@@ -155,7 +152,6 @@
     <string name="pay_compare_speed">速度</string>
     <string name="pay_compare_traffic">トラフィック</string>
     <string name="pay_compare_family">ファミリー招待*</string>
-    <string name="pay_compare_tun">TUN 設定</string>
     <string name="pay_compare_footnote">*まだ利用できません。</string>
     <string name="soon">近日公開</string>
         <string name="server_load">負荷</string>

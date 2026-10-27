@@ -30,16 +30,13 @@
     <string name="settings_privacy_sub">Ma’lumotlar qanday qayta ishlanadi</string>
     <string name="settings_language">Til</string>
     <string name="settings_language_system">Tizim bo‘yicha</string>
-    <string name="settings_tun">TUN sozlamalari</string>
     <string name="settings_tun_sub">VPN tunnelidan chiqarilgan ilovalar va saytlar</string>
-    <string name="settings_tun_title">TUN sozlamalari</string>
     <string name="settings_tun_apps_add">Ilova qo‘shish</string>
     <string name="settings_tun_apps_add_sub">Chiqarib tashlash uchun o‘rnatilgan ilovani tanlang</string>
     <string name="settings_tun_apps_search">Ilovalarni qidirish</string>
     <string name="settings_tun_apps_remove">O‘chirish</string>
     <string name="settings_tun_custom_title">Shaxsiy ilovalar</string>
     <string name="settings_tun_custom_free_sub">Pullik obunada mavjud</string>
-    <string name="settings_tun_rules_title">TUN sozlamalari</string>
     <string name="settings_tun_rules_sub">Tanlangan ilovalar va saytlarni VPN dan chiqarish</string>
     <string name="settings_tun_adblock_sub">DNS orqali reklamalarni bloklash</string>
     <string name="settings_tun_group_sub">VPN tunnelidan tashqari</string>
@@ -159,7 +156,6 @@
     <string name="pay_compare_speed">Tezlik</string>
     <string name="pay_compare_traffic">Trafik</string>
     <string name="pay_compare_family">Oilaviy takliflar*</string>
-    <string name="pay_compare_tun">TUN sozlamalari</string>
     <string name="pay_compare_footnote">*Hozircha mavjud emas.</string>
     <string name="soon">Tez orada</string>
         <string name="server_load">Yuklama</string>
