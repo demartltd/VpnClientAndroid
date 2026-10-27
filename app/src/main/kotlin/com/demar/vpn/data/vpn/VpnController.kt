@@ -575,24 +575,23 @@ class VpnController(private val context: Context) {
 
       val dialServer = plan.proxyOutbound["server"]
       val adBlock = TunSettingsStore.settings.value.isAdBlockEnabled(isFreeSubscription())
-      val prefetched = runCatching {
-        withContext(Dispatchers.IO) {
-          val geo = RuleSetPrefetch.ensure(context, plan.bypassRuleSets)
-          val ads = if (adBlock) RuleSetPrefetch.ensureAds(context) else null
-          if (adBlock && ads == null) AppLog.append("[app] ads rule-set asset missing")
-          geo to ads
-        }
+      val prepared = runCatching {
+        withContext(Dispatchers.IO) { RuleSets.prepare(context, plan, wantAds = adBlock) }
       }.getOrElse { t ->
-        AppLog.append("[app] rule-set prefetch failed: ${t.message}")
+        AppLog.append("[app] rule-set prepare failed: ${t.message}")
         if (generation != connectGeneration.get()) return@launch
         OpenFluxSidecar.stop()
         failConnect(context.getString(VpnConnectMessages.FAILED))
         return@launch
       }
-      plan = plan.copy(bypassRuleSets = prefetched.first)
+      plan = prepared.plan
       if (generation != connectGeneration.get()) return@launch
-      val configJson =
-        SingBoxConfigBuilder.buildTunConfigJson(plan, effectiveTunSettings(), adsPath = prefetched.second)
+      val configJson = SingBoxConfigBuilder.buildTunConfigJson(
+        plan,
+        effectiveTunSettings(),
+        adsPath = prepared.adsPath,
+        ruleSetDir = prepared.dir,
+      )
       val uplinkHost = plan.uplinkHost
       val uplinkPort = connectProfile.uplinkPort
 

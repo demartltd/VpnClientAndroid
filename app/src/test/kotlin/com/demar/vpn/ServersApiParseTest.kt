@@ -145,12 +145,17 @@ class ServersApiParseTest {
     assertEquals(10, hy2.upMbps)
     assertEquals(10, hy2.downMbps)
     assertEquals(6, profile.bypassRuleSets.size)
-    assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" && it.url.contains("Chocolate4U") })
+    assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-ir" })
     assertTrue(profile.bypassRuleSets.any { it.tag == "geosite-cn" })
     assertEquals(listOf("CN", "IR", "RU"), profile.bypassRuleSets.directCountryCodes())
-    val built = SingBoxConfigBuilder.buildTunConfigJson(profile.connectPlan)
+    val built = SingBoxConfigBuilder.buildTunConfigJson(
+      profile.connectPlan,
+      ruleSetDir = "/data/data/com.demar.vpn/files/rule-sets",
+    )
     assertFalse(built.contains("route_exclude_address_set"))
+    assertFalse(built.contains("http_clients"))
     assertTrue(built.contains("geosite-ir"))
+    assertTrue(built.contains("\"type\": \"local\""))
     assertTrue(built.contains("\"up_mbps\": 10"))
     assertTrue(built.contains("\"down_mbps\": 10"))
   }

@@ -8,12 +8,13 @@ import com.demar.vpn.domain.vpn.tun.cleanedDomain
 import com.demar.vpn.vpn.VpnTunnelProbe
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 object SingBoxConfigBuilder {
   private const val DNS_UPSTREAM = "1.1.1.1"
   /** Always exclude own UID from TUN (mirrors VpnService.addDisallowedApplication). */
   const val SELF_PACKAGE = "com.demar.vpn"
-  const val ADS_RULE_SET_TAG = "geosite-category-ads"
+  const val ADS_RULE_SET_TAG = RuleSets.ADS_TAG
 
   fun buildTunConfigJson(
     plan: SingBoxConnectPlan,
@@ -22,6 +23,7 @@ object SingBoxConfigBuilder {
     mtu: Int = 1400,
     logLevel: String = "warning",
     adsPath: String? = null,
+    ruleSetDir: String? = null,
   ): String {
     // DNS: uplink + probe hosts. Route DIRECT: uplink only (probe hosts must not bypass proxy).
     val routeBootstrap = plan.tun.bootstrapDomains
@@ -31,6 +33,8 @@ object SingBoxConfigBuilder {
       (listOf(SELF_PACKAGE) + tun.bypassPackages).map { it.trim() }.filter { it.isNotEmpty() }.distinct()
     val bypassHosts = cleanDomains(tun.bypassHosts)
     val ads = adsPath?.trim()?.takeIf { it.isNotEmpty() }
+    val rsDir = ruleSetDir?.trim()?.takeIf { it.isNotEmpty() }
+      ?: ads?.let { File(it).parent }
     return jObj(
       "log" to jObj("level" to logLevel, "timestamp" to true),
       "dns" to makeDns(plan.tun.dnsFinal, dnsBootstrap, ruleSets, bypassHosts, ads != null),
@@ -43,7 +47,7 @@ object SingBoxConfigBuilder {
           "listen_port" to SingBoxTags.DIAG_LISTEN_PORT,
         ),
       ),
-      "route" to makeRoute(plan.directIPs, routeBootstrap, ruleSets, bypassHosts, ads),
+      "route" to makeRoute(plan.directIPs, routeBootstrap, ruleSets, bypassHosts, ads, rsDir),
       "outbounds" to jArr(
         toJson(plan.proxyOutbound),
         jObj("type" to "direct", "tag" to SingBoxTags.DIRECT),
@@ -54,11 +58,7 @@ object SingBoxConfigBuilder {
         ),
         "cache_file" to jObj("enabled" to true, "store_dns" to true),
       ),
-    ).also { cfg ->
-      if (ruleSets.isNotEmpty()) {
-        cfg.put("http_clients", jArr(jObj("tag" to SingBoxTags.HTTP_RS_DL, "detour" to SingBoxTags.PROXY)))
-      }
-    }.toString(2)
+    ).toString(2)
   }
 
   private fun adsReject() = jObj("rule_set" to jArr(ADS_RULE_SET_TAG), "action" to "reject")
@@ -82,8 +82,9 @@ object SingBoxConfigBuilder {
     "rules" to jArr(
       jObj("query_type" to jArr("PTR"), "action" to "reject", "method" to "drop"),
       *suffixRule(bootstrap, "server" to SingBoxTags.DNS_DIRECT),
-      *suffixRule(bypassHosts, "server" to SingBoxTags.DNS_DIRECT),
+      // Ads before site-bypass / geosite — else yandex.ru bypass skips an.yandex.ru.
       *listOfNotNull(ads.takeIf { it }?.let { adsReject() }).toTypedArray(),
+      *suffixRule(bypassHosts, "server" to SingBoxTags.DNS_DIRECT),
       *ruleSets.filter { it.isGeosite }.map {
         jObj("rule_set" to jArr(it.tag), "action" to "route", "server" to SingBoxTags.DNS_DIRECT)
       }.toTypedArray(),
@@ -99,6 +100,7 @@ object SingBoxConfigBuilder {
     ruleSets: List<ApiBypassRuleSet>,
     bypassHosts: List<String>,
     adsPath: String?,
+    ruleSetDir: String?,
   ) = jObj(
     "auto_detect_interface" to true,
     "override_android_vpn" to true,
@@ -125,26 +127,23 @@ object SingBoxConfigBuilder {
     ),
   ).also { route ->
     if (ruleSets.isEmpty() && adsPath == null) return@also
-    if (ruleSets.isNotEmpty()) route.put("default_http_client", SingBoxTags.HTTP_RS_DL)
+    val dir = ruleSetDir ?: return@also
     route.put(
       "rule_set",
       jArr(
-        *ruleSets.map { remoteRuleSet(it) }.toTypedArray(),
-        *listOfNotNull(adsPath?.let { localAds(it) }).toTypedArray(),
+        *ruleSets.map { localRuleSet(it.tag, dir) }.toTypedArray(),
+        *listOfNotNull(adsPath?.let { localRuleSet(ADS_RULE_SET_TAG, dir, it) }).toTypedArray(),
       ),
     )
   }
 
-  private fun remoteRuleSet(rs: ApiBypassRuleSet) = jObj(
-    "tag" to rs.tag,
-    "type" to "remote",
-    "format" to "binary",
-    "url" to rs.url,
-    "initial_path" to rs.initialPath?.trim()?.takeIf { it.isNotEmpty() },
-  )
-
-  private fun localAds(path: String) =
-    jObj("tag" to ADS_RULE_SET_TAG, "type" to "local", "format" to "binary", "path" to path)
+  private fun localRuleSet(tag: String, dir: String, path: String? = null) =
+    jObj(
+      "tag" to tag,
+      "type" to "local",
+      "format" to "binary",
+      "path" to (path ?: File(dir, "$tag.srs").absolutePath),
+    )
 
   private fun makeTunInbound(
     tunName: String,

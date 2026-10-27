@@ -72,8 +72,8 @@ $kind = if ($prerelease) { 'pre-release' } else { 'release' }
 Write-Host "Selected: $kind" -ForegroundColor Cyan
 
 if (-not $SkipBuild) {
-    Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
-    & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+    Write-Host 'Syncing rule-sets…' -ForegroundColor Cyan
+    & (Join-Path $PSScriptRoot 'sync_rulesets.ps1')
     Write-Host 'Building release APK...' -ForegroundColor Cyan
     Push-Location -LiteralPath $root
     try {

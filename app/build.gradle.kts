@@ -1,3 +1,4 @@
+import java.io.File
 import java.io.FileInputStream
 import java.util.Properties
 
@@ -138,15 +139,28 @@ tasks.register("verifyBundledLibboxAar") {
     }
 }
 
-tasks.register("verifyAdsRuleSet") {
+tasks.register("verifyRuleSets") {
     doLast {
-        val srs = layout.projectDirectory.file("src/main/assets/rule-sets/geosite-category-ads.srs").asFile
-        if (!srs.isFile || srs.length() <= 0L) {
+        val dir = layout.projectDirectory.dir("src/main/assets/rule-sets").asFile
+        val required = listOf(
+            "geosite-category-ads",
+            "geosite-category-ru",
+            "geosite-ir",
+            "geosite-cn",
+            "geoip-ru",
+            "geoip-ir",
+            "geoip-cn",
+        )
+        val missing = required.filter { tag ->
+            val f = File(dir, "$tag.srs")
+            !f.isFile || f.length() <= 0L
+        }
+        if (missing.isNotEmpty()) {
             throw GradleException(
                 """
-                Missing ads rule-set: ${srs.path}
+                Missing rule-sets in ${dir.path}: ${missing.joinToString(", ")}
 
-                Fix: pwsh scripts/sync_ads_ruleset.ps1
+                Fix: pwsh scripts/sync_rulesets.ps1
                 (also run automatically by build_android.ps1 / install_release.ps1)
                 """.trimIndent(),
             )
@@ -155,5 +169,5 @@ tasks.register("verifyAdsRuleSet") {
 }
 
 tasks.named("preBuild").configure {
-    dependsOn("verifyBundledLibboxAar", "verifyAdsRuleSet")
+    dependsOn("verifyBundledLibboxAar", "verifyRuleSets")
 }

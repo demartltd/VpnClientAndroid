@@ -10,14 +10,14 @@
   Удалить com.demar.vpn перед установкой (нужно при смене release → debug).
 .PARAMETER Serial
   Serial устройства (adb devices). Если не задан — единственный USB (-d), иначе ошибка при нескольких.
-.PARAMETER SkipAdsSync
-  Не скачивать ads.srs перед сборкой.
+.PARAMETER SkipRuleSetSync
+  Не скачивать rule-sets (.srs) перед сборкой. Alias: -SkipAdsSync.
 #>
 param(
     [switch]$SkipBuild,
     [switch]$NoLaunch,
     [switch]$Replace,
-    [switch]$SkipAdsSync,
+    [Alias('SkipAdsSync')][switch]$SkipRuleSetSync,
     [string]$Serial = ''
 )
 
@@ -108,15 +108,15 @@ try {
     if ($Replace) { Uninstall-AppPackage }
 
     if (-not $SkipBuild) {
-        if (-not $SkipAdsSync) {
-            $ans = Read-Host 'Download ads.srs? 1=Yes 2=No'
-            if ($ans -eq '2') { $SkipAdsSync = $true }
+        if (-not $SkipRuleSetSync) {
+            $ans = Read-Host 'Download rule-sets (.srs)? 1=Yes 2=No'
+            if ($ans -eq '2') { $SkipRuleSetSync = $true }
         }
-        if (-not $SkipAdsSync) {
-            Write-Host 'Syncing ads rule-set…' -ForegroundColor Cyan
-            & (Join-Path $PSScriptRoot 'sync_ads_ruleset.ps1')
+        if (-not $SkipRuleSetSync) {
+            Write-Host 'Syncing rule-sets…' -ForegroundColor Cyan
+            & (Join-Path $PSScriptRoot 'sync_rulesets.ps1')
         } else {
-            Write-Host 'Skipping ads.srs download.' -ForegroundColor Yellow
+            Write-Host 'Skipping rule-set download.' -ForegroundColor Yellow
         }
         Write-Host 'Building and installing debug…' -ForegroundColor Cyan
         Invoke-GradleInstallDebug
