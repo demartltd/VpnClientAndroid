@@ -122,7 +122,7 @@ Uplink host = VPS `server`, не SNI. Bootstrap DNS/route: только uplink h
 | `dns-direct` | `type: local` | bootstrap, domain resolver |
 | `dns-remote` | HTTPS `1.1.1.1` | DoH через proxy |
 
-Rules: PTR → reject; bootstrap domains → `dns-direct`. Глобально: `final: dns-remote`, `strategy: ipv4_only`, `optimistic: true` (1.14+).
+Rules: PTR → reject; bootstrap → `dns-direct`; **Ad block** reject (`geosite-category-ads`) **до** site-bypass / geosite (иначе `yandex.ru` пропускает `an.yandex.ru`); site bypass → `dns-direct`; geosite → `dns-direct`. `final: dns-remote`, `ipv4_only`, `optimistic`.
 
 `experimental.cache_file`: всегда `enabled` + `store_dns` — DNS-кэш переживает reconnect.
 
@@ -141,13 +141,13 @@ Hysteria2: Chrome QUIC parrot **включён по умолчанию** в 1.14
 
 ### API geo-bypass (из `clientConfigJson`)
 
-Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJson`. Клиент парсит tags/URLs в `ApiBypassRuleSet` и собирает Android-конфиг:
+Servermaster кладёт `route.rule_set` (RU/IR/CN) в `clientConfigJson`. Клиент парсит tags в `ApiBypassRuleSet` (URL ignored). Connect: `RuleSets.prepare` → только существующие bundled `.srs`; все `type: local`:
 
 - geosite → DNS `dns-direct` + route `direct`
 - geoip → route `direct`
+- ads → DNS+route `reject` (отдельный тоггл, не в `plan.bypassRuleSets`)
 - **не** эмитить TUN `route_exclude_address_set` (VpnService / DeadSystemException)
-- download: top-level `http_clients` (`rs-dl` → `detour: proxy`) + `route.default_http_client` (не `download_detour`)
-- cold start: `RuleSetPrefetch` скачивает `.srs` до TUN → remote `initial_path` (sing-box 1.14); фон — через `rs-dl`
+- без runtime HTTP: нет `http_clients` / `rs-dl` / `initial_path`
 
 ### TunSettings (локально)
 
@@ -163,7 +163,7 @@ Servermaster кладёт remote `route.rule_set` (RU/IR/CN) в `clientConfigJso
 
 ### Ad block (DNS + route)
 
-Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: bundled ads rule-set (`type: local`, tag `geosite-category-ads`) + DNS и route `action: reject`. Sync качает полный [DustinWin `ads.srs`](https://github.com/DustinWin/ruleset_geodata/releases/download/sing-box-ruleset/ads.srs) → `app/src/main/assets/rule-sets/geosite-category-ads.srs` (`scripts/sync_ads_ruleset.ps1`, также из `build_android.ps1` / `install_release.ps1` / `release_to_github.ps1`). Gradle `verifyAdsRuleSet` на `preBuild` — без `.srs` сборка падает. Runtime — `RuleSetPrefetch.ensureAds` (copy asset → `filesDir`), без сети. Path-реклама на first-party хосте (напр. `yandex.ru/ads/...`) DNS не режет. **Не** флипает `dns-direct`. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
+Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: bundled ads rule-set (`type: local`, tag `geosite-category-ads`) + DNS и route `action: reject`. Build: `scripts/sync_rulesets.ps1` → ads + geosite/geoip RU/IR/CN → `app/src/main/assets/rule-sets/` (gitignore; вызывается из `build_android.ps1` / `install_release.ps1` / `release_to_github.ps1`). Gradle `verifyRuleSets` на `preBuild`. Runtime — `RuleSets.prepare` (copy assets → `filesDir`), без сети. Path-реклама на first-party хосте (напр. `yandex.ru/ads/...`) DNS не режет. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
 
 ---
 
@@ -226,7 +226,8 @@ AAR: `app/libs/libbox.aar` (arm64). Geo-базы в APK не bundle'ятся.
 | Путь | Роль |
 |------|------|
 | `domain/vpn/*` | `ProxyProfile`, `Hysteria2Profile`, `TrojanProfile`, `VlessRealityProfile`, `SingBoxConnectPlan`, `ApiBypassRuleSet` |
-| `data/vpn/SingBoxConfigBuilder.kt` | TUN + DNS + route JSON |
+| `data/vpn/SingBoxConfigBuilder.kt` | TUN + DNS + route JSON (`type: local` `.srs`) |
+| `data/vpn/RuleSets.kt` | Bundled `.srs` copy assets → filesDir, `prepare` |
 | `data/vpn/VpnController.kt` | Connect pipeline, UI bridge |
 | `data/network/UplinkIpv4.kt` | uplink resolve |
 | `vpn/SingBoxCore.kt` | Libbox in-process |

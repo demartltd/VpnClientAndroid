@@ -2,13 +2,11 @@ package com.demar.vpn.domain.vpn
 
 import java.util.Locale
 
-/** Remote sing-box rule-set extracted from API `clientConfigJson.route.rule_set`. */
-data class ApiBypassRuleSet(
-  val tag: String,
-  val url: String,
-  /** Local seed for sing-box `initial_path` (cold start before TUN). */
-  val initialPath: String? = null,
-) {
+/**
+ * Bypass rule-set tag from API `clientConfigJson.route.rule_set`.
+ * Geosite/geoip → bundled local `.srs`; API `url` ignored at runtime.
+ */
+data class ApiBypassRuleSet(val tag: String) {
   val isGeosite: Boolean get() = tag.startsWith("geosite")
 
   /** ISO country from `geoip-xx` tags (direct / outside VPN). */
@@ -23,4 +21,3 @@ data class ApiBypassRuleSet(
 
 fun List<ApiBypassRuleSet>.directCountryCodes(): List<String> =
   mapNotNull { it.geoipCountryCode }.distinct().sorted()
-

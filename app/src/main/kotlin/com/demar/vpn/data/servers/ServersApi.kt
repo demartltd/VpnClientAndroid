@@ -252,18 +252,21 @@ object ServersApi {
     return value.takeIf { it > 0 }
   }
 
-  /** Remote rule-sets from API; ignores TUN `route_exclude_address_set` (unsupported on VpnService). */
+  /**
+   * Rule-set tags from API (`type: remote` binary). Tag only; URL ignored at runtime (bundled local).
+   * Ignores TUN `route_exclude_address_set` (unsupported on VpnService).
+   */
   fun parseBypassRuleSets(config: JSONObject): List<ApiBypassRuleSet> {
     val arr = config.optJSONObject("route")?.optJSONArray("rule_set") ?: return emptyList()
     val out = linkedMapOf<String, ApiBypassRuleSet>()
     for (i in 0 until arr.length()) {
       val item = arr.optJSONObject(i) ?: continue
       val tag = item.optString("tag").trim().takeIf { it.isNotEmpty() } ?: continue
-      val url = item.optString("url").trim().takeIf { it.isNotEmpty() } ?: continue
+      if (item.optString("url").trim().isEmpty()) continue
       val type = item.optString("type").ifBlank { "remote" }
       val format = item.optString("format").ifBlank { "binary" }
       if (type != "remote" || format != "binary") continue
-      out.putIfAbsent(tag, ApiBypassRuleSet(tag, url))
+      out.putIfAbsent(tag, ApiBypassRuleSet(tag))
     }
     return out.values.toList()
   }

@@ -490,55 +490,37 @@ class VpnPipelineTest {
   @Test
   fun tunSettings_apiRuleSetsAddDnsRouteAndCache() {
     val ruleSets = listOf(
-      ApiBypassRuleSet("geoip-ru", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs"),
-      ApiBypassRuleSet("geosite-category-ru", "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs"),
-      ApiBypassRuleSet("geoip-ir", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ir.srs"),
-      ApiBypassRuleSet("geosite-ir", "https://raw.githubusercontent.com/Chocolate4U/Iran-sing-box-rules/rule-set/geosite-ir.srs"),
-      ApiBypassRuleSet("geoip-cn", "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-cn.srs"),
-      ApiBypassRuleSet("geosite-cn", "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs"),
+      ApiBypassRuleSet("geoip-ru"),
+      ApiBypassRuleSet("geosite-category-ru"),
+      ApiBypassRuleSet("geoip-ir"),
+      ApiBypassRuleSet("geosite-ir"),
+      ApiBypassRuleSet("geoip-cn"),
+      ApiBypassRuleSet("geosite-cn"),
     )
+    val dir = "/data/data/com.demar.vpn/files/rule-sets"
     val plan = SingBoxConnectPlan.hysteria2(
       fixtureServers[0].profile as Hysteria2Profile,
       bypassRuleSets = ruleSets,
     )
-    val json = SingBoxConfigBuilder.buildTunConfigJson(plan)
-    for (rs in ruleSets) {
-      assertTrue(rs.tag, json.contains(rs.tag))
-      assertTrue(rs.url, json.contains(rs.url))
-    }
+    val json = SingBoxConfigBuilder.buildTunConfigJson(plan, ruleSetDir = dir)
+    for (rs in ruleSets) assertTrue(rs.tag, json.contains(rs.tag))
     assertFalse(json.contains("route_exclude_address_set"))
     assertFalse(json.contains("download_detour"))
+    assertFalse(json.contains("http_clients"))
     val cfg = JSONObject(json)
     assertTrue(cfg.getJSONObject("dns").optBoolean("optimistic"))
     val cache = cfg.getJSONObject("experimental").getJSONObject("cache_file")
     assertTrue(cache.getBoolean("enabled"))
     assertTrue(cache.getBoolean("store_dns"))
-    assertTrue(cfg.has("http_clients"))
-    assertEquals(SingBoxTags.HTTP_RS_DL, cfg.getJSONObject("route").getString("default_http_client"))
-    assertTrue(cfg.getJSONObject("route").has("rule_set"))
+    assertFalse(cfg.getJSONObject("route").has("default_http_client"))
     val rsArr = cfg.getJSONObject("route").getJSONArray("rule_set")
-    assertFalse(rsArr.getJSONObject(0).has("initial_path"))
-  }
-
-  @Test
-  fun tunSettings_ruleSets_emitInitialPathWhenPresent() {
-    val path = "/data/data/com.demar.vpn/files/rule-sets/geoip-ru.srs"
-    val plan = SingBoxConnectPlan.hysteria2(
-      fixtureServers[0].profile as Hysteria2Profile,
-      bypassRuleSets = listOf(
-        ApiBypassRuleSet(
-          "geoip-ru",
-          "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-ru.srs",
-          initialPath = path,
-        ),
-      ),
-    )
-    val rs = JSONObject(SingBoxConfigBuilder.buildTunConfigJson(plan))
-      .getJSONObject("route")
-      .getJSONArray("rule_set")
-      .getJSONObject(0)
-    assertEquals(path, rs.getString("initial_path"))
-    assertEquals("remote", rs.getString("type"))
+    assertEquals(6, rsArr.length())
+    val first = rsArr.getJSONObject(0)
+    assertEquals("local", first.getString("type"))
+    assertEquals("binary", first.getString("format"))
+    assertTrue(first.getString("path").startsWith(dir))
+    assertFalse(first.has("url"))
+    assertFalse(first.has("initial_path"))
   }
 
   @Test
@@ -631,21 +613,24 @@ class VpnPipelineTest {
     assertTrue(routeRejectsRuleSet(cfg, SingBoxConfigBuilder.ADS_RULE_SET_TAG))
     assertFalse(routeDirectsRuleSet(cfg, SingBoxConfigBuilder.ADS_RULE_SET_TAG))
 
-    val geo = ApiBypassRuleSet(
-      "geosite-category-ru",
-      "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ru.srs",
-    )
+    val dir = "/data/data/com.demar.vpn/files/rule-sets"
     val withGeo = JSONObject(
       SingBoxConfigBuilder.buildTunConfigJson(
-        SingBoxConnectPlan.hysteria2(fixtureServers[0].profile as Hysteria2Profile, bypassRuleSets = listOf(geo)),
-        adsPath = "/tmp/ads.srs",
+        SingBoxConnectPlan.hysteria2(
+          fixtureServers[0].profile as Hysteria2Profile,
+          bypassRuleSets = listOf(ApiBypassRuleSet("geosite-category-ru")),
+        ),
+        adsPath = "$dir/geosite-category-ads.srs",
+        ruleSetDir = dir,
       ),
     )
-    assertTrue(withGeo.has("http_clients"))
-    val tags = (0 until withGeo.getJSONObject("route").getJSONArray("rule_set").length()).map {
-      withGeo.getJSONObject("route").getJSONArray("rule_set").getJSONObject(it).getString("tag")
-    }
+    assertFalse(withGeo.has("http_clients"))
+    val bothSets = withGeo.getJSONObject("route").getJSONArray("rule_set")
+    val tags = (0 until bothSets.length()).map { bothSets.getJSONObject(it).getString("tag") }
     assertEquals(setOf("geosite-category-ru", SingBoxConfigBuilder.ADS_RULE_SET_TAG), tags.toSet())
+    assertTrue((0 until bothSets.length()).all {
+      bothSets.getJSONObject(it).getString("type") == "local" && !bothSets.getJSONObject(it).has("url")
+    })
     assertTrue(dnsHas(withGeo, SingBoxConfigBuilder.ADS_RULE_SET_TAG, "reject"))
     assertTrue(routeRejectsRuleSet(withGeo, SingBoxConfigBuilder.ADS_RULE_SET_TAG))
     assertTrue(dnsHas(withGeo, "geosite-category-ru", "route", SingBoxTags.DNS_DIRECT))

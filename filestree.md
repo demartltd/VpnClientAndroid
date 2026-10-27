@@ -14,7 +14,7 @@ app/src/main/kotlin/com/demar/vpn/
 │   │   └── tun/                 # TunSettings, TunGroup, effectivePackages
 │   └── content/                 # LegalDocument (ToS/PP URLs)
 ├── data/
-│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, OpenFluxSidecar, RuleSetPrefetch, TunSettingsStore, TunGroupsApi
+│   ├── vpn/                     # SingBoxConfigBuilder, VpnController, OpenFluxSidecar, RuleSets (bundled .srs), TunSettingsStore, TunGroupsApi
 │   ├── network/                 # UplinkIpv4, RawTextFetcher, probes
 │   ├── auth/                    # AuthApi, AuthSessionStore, AuthRepository
 │   ├── account/                 # VpnAccountApi (/vpn/account, notify, traffic, promo); PayApi (/vpn/pay/plans, create)
@@ -56,7 +56,7 @@ app/src/test/kotlin/com/demar/vpn/AppUpdateTest.kt
 
 ```
 scripts/
-├── sync_ads_ruleset.ps1
+├── sync_rulesets.ps1            # ads + geosite/geoip RU/IR/CN → assets/rule-sets/
 ├── adb/                         # ADB install + UI automation tests
 │   ├── common.sh
 │   ├── ui_parse.py
@@ -84,7 +84,7 @@ scripts/
 
 ```
 app/src/main/assets/singbox/bundled_version.txt
-app/src/main/assets/rule-sets/geosite-category-ads.srs  # DustinWin ads.srs via scripts/sync_ads_ruleset.ps1 (gitignored)
+app/src/main/assets/rule-sets/*.srs  # ads + geosite/geoip via scripts/sync_rulesets.ps1 (gitignored)
 app/libs/libbox.aar
 ```
 
