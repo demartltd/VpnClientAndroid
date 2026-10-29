@@ -36,6 +36,9 @@
     <string name="settings_tun_apps_search">앱 검색</string>
     <string name="settings_tun_apps_remove">제거</string>
     <string name="settings_tun_custom_title">사용자 지정 앱</string>
+    <string name="settings_tun_custom_sites_title">사용자 지정 사이트</string>
+    <string name="settings_tun_sites_add_sub">쉼표로 구분해 링크를 붙여넣으세요</string>
+    <string name="settings_tun_sites_hint">example.com</string>
     <string name="settings_tun_custom_free_sub">유료 구독에서 사용 가능</string>
     <string name="settings_tun_rules_sub">선택한 앱과 사이트를 VPN에서 제외</string>
     <string name="settings_tun_adblock_sub">DNS로 광고 차단</string>

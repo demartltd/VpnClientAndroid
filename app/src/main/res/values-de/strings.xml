@@ -36,6 +36,9 @@
     <string name="settings_tun_apps_search">Apps suchen</string>
     <string name="settings_tun_apps_remove">Entfernen</string>
     <string name="settings_tun_custom_title">Eigene Apps</string>
+    <string name="settings_tun_custom_sites_title">Eigene Websites</string>
+    <string name="settings_tun_sites_add_sub">Links durch Kommas getrennt einfügen</string>
+    <string name="settings_tun_sites_hint">example.com</string>
     <string name="settings_tun_custom_free_sub">Mit kostenpflichtigem Abo verfügbar</string>
     <string name="settings_tun_rules_sub">Ausgewählte Apps und Seiten vom VPN ausschließen</string>
     <string name="settings_tun_adblock_sub">Werbung über DNS blockieren</string>

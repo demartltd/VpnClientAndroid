@@ -2,7 +2,7 @@ package com.demar.vpn.domain.vpn.tun
 
 data class TunSettings(
   val bypassPackages: List<String> = emptyList(),
-  /** Collapsed effective hosts for sing-box build only; store keeps this empty. */
+  /** User hosts in store; Connect collapses to effective (custom ∪ groups). */
   val bypassHosts: List<String> = emptyList(),
   val appGroupOverrides: Map<String, Boolean> = emptyMap(),
   val siteGroupOverrides: Map<String, Boolean> = emptyMap(),

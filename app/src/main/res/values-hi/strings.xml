@@ -36,6 +36,9 @@
     <string name="settings_tun_apps_search">ऐप खोजें</string>
     <string name="settings_tun_apps_remove">हटाएँ</string>
     <string name="settings_tun_custom_title">कस्टम ऐप</string>
+    <string name="settings_tun_custom_sites_title">कस्टम साइटें</string>
+    <string name="settings_tun_sites_add_sub">लिंक अल्पविराम से अलग करके पेस्ट करें</string>
+    <string name="settings_tun_sites_hint">example.com</string>
     <string name="settings_tun_custom_free_sub">सशुल्क सदस्यता में उपलब्ध</string>
     <string name="settings_tun_rules_sub">चयनित ऐप और साइटों को VPN से बाहर रखें</string>
     <string name="settings_tun_adblock_sub">DNS से विज्ञापन ब्लॉक करें</string>

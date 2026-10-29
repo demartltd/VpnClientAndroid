@@ -74,12 +74,13 @@ fun TunSettings.effectiveHosts(
   whiteListVpnMode: Boolean = false,
 ): List<String> {
   if (!isRulesEnabled(isFree)) return emptyList()
-  return siteGroups
-    .asSequence()
-    .filter { isSiteGroupEnabled(it, isFree) }
-    .filter { !whiteListVpnMode || !it.isWhiteList }
-    .flatMap { it.sites.asSequence() }
-    .mapNotNull { cleanedDomain(it.host) }
+  val fromGroups =
+    siteGroups.asSequence()
+      .filter { isSiteGroupEnabled(it, isFree) }
+      .filter { !whiteListVpnMode || !it.isWhiteList }
+      .flatMap { it.sites.asSequence().map { s -> s.host } }
+  return (bypassHosts.asSequence() + fromGroups)
+    .mapNotNull { cleanedDomain(it) }
     .distinct()
     .sorted()
     .toList()
@@ -87,6 +88,32 @@ fun TunSettings.effectiveHosts(
 
 /** Trim + strip leading/trailing dots (Windows CleanedDomain). */
 fun cleanedDomain(raw: String): String? = raw.trim().trim('.').takeIf { it.isNotEmpty() }
+
+/** Label.Label… with ≥1 dot; rejects bare words and IPv4. */
+private val BypassDomainRe =
+  Regex("""^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$""")
+
+private fun isBypassDomain(host: String): Boolean =
+  BypassDomainRe.matches(host) && !host.matches(Regex("""^\d{1,3}(\.\d{1,3}){3}$"""))
+
+/** URL or host → apex host (`https://www.youtube.com/watch?` → `youtube.com`). */
+fun parseBypassHost(raw: String): String? {
+  val t = raw.trim()
+  if (t.isEmpty()) return null
+  val withScheme = if ("://" in t || t.startsWith("//")) t else "https://$t"
+  val host =
+    runCatching { java.net.URI(withScheme).host }
+      .getOrNull()
+      ?.lowercase()
+      ?.removePrefix("www.")
+      ?: return null
+  val cleaned = cleanedDomain(host) ?: return null
+  return cleaned.takeIf { isBypassDomain(it) }
+}
+
+/** One or many entries separated by comma/whitespace. */
+fun parseBypassHosts(raw: String): List<String> =
+  raw.split(Regex("[,\\s]+")).mapNotNull { parseBypassHost(it) }.distinct().sorted()
 
 fun applyGroupOverride(
   overrides: Map<String, Boolean>,

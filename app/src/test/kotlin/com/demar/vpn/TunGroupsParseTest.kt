@@ -11,6 +11,8 @@ import com.demar.vpn.domain.vpn.tun.effectivePackages
 import com.demar.vpn.domain.vpn.tun.isAdBlockEnabled
 import com.demar.vpn.domain.vpn.tun.isGroupEnabled
 import com.demar.vpn.domain.vpn.tun.isSiteGroupEnabled
+import com.demar.vpn.domain.vpn.tun.parseBypassHost
+import com.demar.vpn.domain.vpn.tun.parseBypassHosts
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -137,6 +139,50 @@ class TunGroupsParseTest {
       TunSettings().effectiveHosts(catalog.siteGroups, isFree = false),
     )
     assertEquals("twitch.tv", cleanedDomain("  twitch.tv.  "))
+  }
+
+  @Test
+  fun parseBypassHost_normalizesUrlAndWww() {
+    assertEquals("youtube.com", parseBypassHost("https://www.youtube.com/watch?"))
+    assertEquals("youtube.com", parseBypassHost("www.youtube.com"))
+    assertEquals("youtube.com", parseBypassHost("youtube.com"))
+    assertEquals("example.com", parseBypassHost("  https://Example.com/path?q=1  "))
+    assertNull(parseBypassHost(""))
+    assertNull(parseBypassHost("   "))
+    assertNull(parseBypassHost("not a host"))
+    assertNull(parseBypassHost("hello"))
+    assertNull(parseBypassHost("localhost"))
+    assertNull(parseBypassHost("1.2.3.4"))
+    assertNull(parseBypassHost("-bad.com"))
+    assertEquals(
+      listOf("example.com"),
+      parseBypassHosts("hello, example.com, localhost, 1.2.3.4"),
+    )
+  }
+
+  @Test
+  fun parseBypassHosts_splitsCommaAndWhitespace() {
+    assertEquals(
+      listOf("example.com", "reddit.com", "youtube.com"),
+      parseBypassHosts("https://www.youtube.com/watch?, example.com  reddit.com"),
+    )
+    assertEquals(listOf("youtube.com"), parseBypassHosts("youtube.com"))
+    assertEquals(emptyList<String>(), parseBypassHosts("  ,  "))
+  }
+
+  @Test
+  fun effectiveHosts_mergesCustomBypassHosts() {
+    val catalog = TunGroupsApi.parse(sampleJson)
+    val tun = TunSettings(bypassHosts = listOf("reddit.com", "youtube.com"))
+    assertEquals(
+      listOf("reddit.com", "twitch.tv", "vk.com", "youtube.com"),
+      tun.effectiveHosts(catalog.siteGroups, isFree = false),
+    )
+    assertEquals(
+      emptyList<String>(),
+      TunSettings(bypassHosts = listOf("reddit.com"), rulesEnabled = false)
+        .effectiveHosts(catalog.siteGroups, isFree = false),
+    )
   }
 
   @Test
