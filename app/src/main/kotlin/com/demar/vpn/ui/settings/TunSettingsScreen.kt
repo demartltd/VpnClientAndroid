@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -223,83 +224,87 @@ fun TunSettingsScreen(
           Spacer(Modifier.height(16.dp))
         }
         SettingsGroup {
-          SettingsActionButton(
-            Icons.Filled.Apps,
-            customTitle,
-            stringResource(
-              if (isFree) R.string.settings_tun_custom_free_sub else R.string.settings_tun_apps_add_sub,
-            ),
-            onClick = if (rulesOn) ({ customExpanded = !customExpanded }) else null,
-            trailingIcon = if (customExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-          )
-          AnimatedVisibility(customExpanded && rulesOn) {
-            Column(Modifier.fillMaxWidth()) {
+          ExpandableSettingsBlock(
+            expanded = customExpanded && rulesOn,
+            header = {
               SettingsActionButton(
-                Icons.Filled.Add,
-                stringResource(R.string.settings_tun_apps_add),
-                stringResource(R.string.settings_tun_apps_add_sub),
-                onClick = if (!isFree) ({ showPicker = true }) else null,
-                modifier = Modifier.alpha(if (isFree) 0.4f else 1f),
+                Icons.Filled.Apps,
+                customTitle,
+                stringResource(
+                  if (isFree) R.string.settings_tun_custom_free_sub else R.string.settings_tun_apps_add_sub,
+                ),
+                onClick = if (rulesOn) ({ customExpanded = !customExpanded }) else null,
+                trailingIcon = if (customExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
               )
-              if (selected.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                selected.forEach { app ->
-                  ExcludedAppRow(
-                    app = app,
-                    onRemove = { vpnController.removeBypassPackage(app.packageName) },
-                  )
-                }
+            },
+          ) {
+            SettingsActionButton(
+              Icons.Filled.Add,
+              stringResource(R.string.settings_tun_apps_add),
+              stringResource(R.string.settings_tun_apps_add_sub),
+              onClick = if (!isFree) ({ showPicker = true }) else null,
+              modifier = Modifier.alpha(if (isFree) 0.4f else 1f),
+            )
+            if (selected.isNotEmpty()) {
+              Spacer(Modifier.height(8.dp))
+              selected.forEach { app ->
+                ExcludedAppRow(
+                  app = app,
+                  onRemove = { vpnController.removeBypassPackage(app.packageName) },
+                )
               }
             }
           }
-          SettingsActionButton(
-            Icons.Filled.Language,
-            customSitesTitle,
-            stringResource(
-              if (isFree) R.string.settings_tun_custom_free_sub else R.string.settings_tun_sites_add_sub,
-            ),
-            onClick = if (rulesOn) ({ customSitesExpanded = !customSitesExpanded }) else null,
-            trailingIcon = if (customSitesExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-          )
-          AnimatedVisibility(customSitesExpanded && rulesOn) {
-            Column(Modifier.fillMaxWidth()) {
-              if (!isFree) {
-                OutlinedTextField(
-                  value = siteDraft,
-                  onValueChange = { siteDraft = it },
-                  modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                  singleLine = true,
-                  shape = RoundedCornerShape(12.dp),
-                  placeholder = { Text(stringResource(R.string.settings_tun_sites_hint)) },
-                  keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                  keyboardActions = KeyboardActions(
-                    onDone = {
-                      vpnController.addBypassHost(siteDraft)
-                      siteDraft = ""
-                      focusManager.clearFocus()
-                    },
-                  ),
+          ExpandableSettingsBlock(
+            expanded = customSitesExpanded && rulesOn,
+            header = {
+              SettingsActionButton(
+                Icons.Filled.Language,
+                customSitesTitle,
+                stringResource(
+                  if (isFree) R.string.settings_tun_custom_free_sub else R.string.settings_tun_sites_add_sub,
+                ),
+                onClick = if (rulesOn) ({ customSitesExpanded = !customSitesExpanded }) else null,
+                trailingIcon = if (customSitesExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+              )
+            },
+          ) {
+            if (!isFree) {
+              OutlinedTextField(
+                value = siteDraft,
+                onValueChange = { siteDraft = it },
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .padding(horizontal = 4.dp),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                placeholder = { Text(stringResource(R.string.settings_tun_sites_hint)) },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(
+                  onDone = {
+                    vpnController.addBypassHost(siteDraft)
+                    siteDraft = ""
+                    focusManager.clearFocus()
+                  },
+                ),
+              )
+            }
+            if (customHosts.isNotEmpty()) {
+              Spacer(Modifier.height(8.dp))
+              customHosts.forEach { host ->
+                TunLineRow(
+                  title = host,
+                  subtitle = host,
+                  leading = { PlaceholderIcon(Icons.Filled.Language) },
+                  trailing = {
+                    IconButton(onClick = { vpnController.removeBypassHost(host) }) {
+                      Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.settings_tun_apps_remove),
+                      )
+                    }
+                  },
                 )
-              }
-              if (customHosts.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                customHosts.forEach { host ->
-                  TunLineRow(
-                    title = host,
-                    subtitle = host,
-                    leading = { PlaceholderIcon(Icons.Filled.Language) },
-                    trailing = {
-                      IconButton(onClick = { vpnController.removeBypassHost(host) }) {
-                        Icon(
-                          Icons.Filled.Close,
-                          contentDescription = stringResource(R.string.settings_tun_apps_remove),
-                        )
-                      }
-                    },
-                  )
-                }
               }
             }
           }
@@ -375,6 +380,20 @@ private fun <T> TunGroupsSection(
 }
 
 @Composable
+private fun ExpandableSettingsBlock(
+  expanded: Boolean,
+  header: @Composable () -> Unit,
+  content: @Composable ColumnScope.() -> Unit,
+) {
+  Column(Modifier.fillMaxWidth()) {
+    header()
+    AnimatedVisibility(expanded) {
+      Column(Modifier.fillMaxWidth().padding(top = 4.dp), content = content)
+    }
+  }
+}
+
+@Composable
 private fun ExpandableGroupHeader(
   icon: androidx.compose.ui.graphics.vector.ImageVector,
   title: String,
@@ -382,24 +401,25 @@ private fun ExpandableGroupHeader(
   switchEnabled: Boolean,
   interactive: Boolean,
   onToggle: (Boolean) -> Unit,
-  content: @Composable () -> Unit,
+  content: @Composable ColumnScope.() -> Unit,
 ) {
   var expanded by remember(title) { mutableStateOf(false) }
-  Column(Modifier.fillMaxWidth()) {
-    SettingsActionButton(
-      icon,
-      title,
-      stringResource(R.string.settings_tun_group_sub),
-      onClick = if (interactive) ({ expanded = !expanded }) else null,
-      trailingIcon = null,
-      trailing = {
-        Switch(checked = enabled, onCheckedChange = onToggle, enabled = switchEnabled)
-      },
-    )
-    AnimatedVisibility(expanded && interactive) {
-      Column(Modifier.padding(top = 4.dp), content = { content() })
-    }
-  }
+  ExpandableSettingsBlock(
+    expanded = expanded && interactive,
+    header = {
+      SettingsActionButton(
+        icon,
+        title,
+        stringResource(R.string.settings_tun_group_sub),
+        onClick = if (interactive) ({ expanded = !expanded }) else null,
+        trailingIcon = null,
+        trailing = {
+          Switch(checked = enabled, onCheckedChange = onToggle, enabled = switchEnabled)
+        },
+      )
+    },
+    content = content,
+  )
 }
 
 @Composable
