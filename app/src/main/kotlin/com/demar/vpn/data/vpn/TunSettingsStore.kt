@@ -7,6 +7,8 @@ import com.demar.vpn.domain.vpn.tun.TunSiteGroup
 import com.demar.vpn.domain.vpn.tun.applyGroupOverride
 import com.demar.vpn.domain.vpn.tun.effectiveHosts
 import com.demar.vpn.domain.vpn.tun.effectivePackages
+import com.demar.vpn.domain.vpn.tun.parseBypassHost
+import com.demar.vpn.domain.vpn.tun.parseBypassHosts
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,6 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 object TunSettingsStore {
   private const val PrefsName = "demar_connection"
   private const val KeyPackages = "bypass_packages"
+  private const val KeyHosts = "bypass_hosts"
   private const val KeyDisabledGroups = "tun_disabled_groups" // legacy → false overrides
   private const val KeyDisabledSiteGroups = "tun_disabled_site_groups" // legacy
   private const val KeyAppOverrides = "tun_app_group_overrides"
@@ -52,9 +55,15 @@ object TunSettingsStore {
         .filter { it.isNotEmpty() && it != self }
         .distinct()
         .sorted()
+    val hosts =
+      p.getStringSet(KeyHosts, emptySet()).orEmpty()
+        .mapNotNull { parseBypassHost(it) }
+        .distinct()
+        .sorted()
     val next =
       TunSettings(
         bypassPackages = packages,
+        bypassHosts = hosts,
         appGroupOverrides = loadOverrides(p, KeyAppOverrides, KeyDisabledGroups),
         siteGroupOverrides = loadOverrides(p, KeySiteOverrides, KeyDisabledSiteGroups),
         rulesEnabled = p.getBoolean(KeyRulesEnabled, true),
@@ -94,6 +103,23 @@ object TunSettingsStore {
 
   fun removePackage(context: Context, packageName: String) {
     setPackages(context, _settings.value.bypassPackages - packageName.trim())
+  }
+
+  fun setHosts(context: Context, hosts: List<String>) {
+    val cleaned = hosts.mapNotNull { parseBypassHost(it) }.distinct().sorted()
+    prefs(context).edit().putStringSet(KeyHosts, cleaned.toSet()).apply()
+    _settings.value = _settings.value.copy(bypassHosts = cleaned)
+  }
+
+  fun addHost(context: Context, raw: String) {
+    val hosts = parseBypassHosts(raw)
+    if (hosts.isEmpty()) return
+    setHosts(context, _settings.value.bypassHosts + hosts)
+  }
+
+  fun removeHost(context: Context, host: String) {
+    val h = parseBypassHost(host) ?: host.trim().lowercase()
+    setHosts(context, _settings.value.bypassHosts - h)
   }
 
   fun setGroupEnabled(context: Context, groupId: String, enabled: Boolean, enabledByDefault: Boolean) {

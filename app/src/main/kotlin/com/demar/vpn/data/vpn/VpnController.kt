@@ -175,6 +175,17 @@ class VpnController(private val context: Context) {
     AppLog.append("tun_apps=remove $packageName")
   }
 
+  fun addBypassHost(host: String) {
+    if (isFreeSubscription()) return
+    TunSettingsStore.addHost(context, host)
+    AppLog.append("tun_hosts=add $host")
+  }
+
+  fun removeBypassHost(host: String) {
+    TunSettingsStore.removeHost(context, host)
+    AppLog.append("tun_hosts=remove $host")
+  }
+
   fun setTunGroupEnabled(groupId: String, enabled: Boolean) {
     if (isFreeSubscription()) return
     val defaultOn = TunSettingsStore.groups.value.find { it.id == groupId }?.enabledByDefault ?: true

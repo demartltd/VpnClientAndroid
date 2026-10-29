@@ -7,10 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,6 +22,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -54,7 +59,9 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -79,7 +86,7 @@ import com.demar.vpn.ui.scaffold.DemarBackScaffold
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TunSettingsScreen(
   vpnController: VpnController,
@@ -87,6 +94,8 @@ fun TunSettingsScreen(
   snackbarHost: SnackbarHostState,
 ) {
   val context = LocalContext.current
+  val focusManager = LocalFocusManager.current
+  val imeVisible = WindowInsets.isImeVisible
   val stored by vpnController.tunSettings.collectAsState()
   val groups by vpnController.tunGroups.collectAsState()
   val siteGroups by vpnController.tunSiteGroups.collectAsState()
@@ -96,7 +105,10 @@ fun TunSettingsScreen(
       session?.vpnSubscription.equals("free", ignoreCase = true) == true
   var showPicker by remember { mutableStateOf(false) }
   var customExpanded by remember { mutableStateOf(false) }
+  var customSitesExpanded by remember { mutableStateOf(false) }
+  var siteDraft by remember { mutableStateOf("") }
   var showLogin by remember { mutableStateOf(false) }
+  var siteImeWasVisible by remember { mutableStateOf(false) }
   var installedApps by remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
   val selected = remember(stored.bypassPackages, context) {
     stored.bypassPackages.map { pkg ->
@@ -104,8 +116,12 @@ fun TunSettingsScreen(
         ?: InstalledApp(pkg, pkg, context.packageManager.defaultActivityIcon)
     }
   }
+  val customHosts = stored.bypassHosts
   val customTitle = stringResource(R.string.settings_tun_custom_title).let { base ->
     if (selected.isEmpty()) base else "$base (${selected.size})"
+  }
+  val customSitesTitle = stringResource(R.string.settings_tun_custom_sites_title).let { base ->
+    if (customHosts.isEmpty()) base else "$base (${customHosts.size})"
   }
   val rulesOn = isFree || stored.rulesEnabled
   val adBlockOn = stored.isAdBlockEnabled(isFree)
@@ -123,6 +139,10 @@ fun TunSettingsScreen(
   }
   LaunchedEffect(isFree) {
     if (isFree) vpnController.setAdBlockEnabled(null)
+  }
+  LaunchedEffect(imeVisible) {
+    if (siteImeWasVisible && !imeVisible) focusManager.clearFocus()
+    siteImeWasVisible = imeVisible
   }
 
   if (showPicker && !isFree && rulesOn) {
@@ -227,6 +247,57 @@ fun TunSettingsScreen(
                   ExcludedAppRow(
                     app = app,
                     onRemove = { vpnController.removeBypassPackage(app.packageName) },
+                  )
+                }
+              }
+            }
+          }
+          SettingsActionButton(
+            Icons.Filled.Language,
+            customSitesTitle,
+            stringResource(
+              if (isFree) R.string.settings_tun_custom_free_sub else R.string.settings_tun_sites_add_sub,
+            ),
+            onClick = if (rulesOn) ({ customSitesExpanded = !customSitesExpanded }) else null,
+            trailingIcon = if (customSitesExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+          )
+          AnimatedVisibility(customSitesExpanded && rulesOn) {
+            Column(Modifier.fillMaxWidth()) {
+              if (!isFree) {
+                OutlinedTextField(
+                  value = siteDraft,
+                  onValueChange = { siteDraft = it },
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                  singleLine = true,
+                  shape = RoundedCornerShape(12.dp),
+                  placeholder = { Text(stringResource(R.string.settings_tun_sites_hint)) },
+                  keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                  keyboardActions = KeyboardActions(
+                    onDone = {
+                      vpnController.addBypassHost(siteDraft)
+                      siteDraft = ""
+                      focusManager.clearFocus()
+                    },
+                  ),
+                )
+              }
+              if (customHosts.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                customHosts.forEach { host ->
+                  TunLineRow(
+                    title = host,
+                    subtitle = host,
+                    leading = { PlaceholderIcon(Icons.Filled.Language) },
+                    trailing = {
+                      IconButton(onClick = { vpnController.removeBypassHost(host) }) {
+                        Icon(
+                          Icons.Filled.Close,
+                          contentDescription = stringResource(R.string.settings_tun_apps_remove),
+                        )
+                      }
+                    },
                   )
                 }
               }

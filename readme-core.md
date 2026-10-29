@@ -151,15 +151,16 @@ Servermaster кладёт `route.rule_set` (RU/IR/CN) в `clientConfigJson`. К�
 
 ### TunSettings (локально)
 
-Модель: `domain/vpn/tun/TunSettings` — `bypassPackages` + group overrides + `rulesEnabled` + `adBlockEnabled`.
+Модель: `domain/vpn/tun/TunSettings` — `bypassPackages` + `bypassHosts` + group overrides + `rulesEnabled` + `adBlockEnabled`.
 
 - `com.demar.vpn` всегда в TUN `exclude_package` + `VpnService.addDisallowedApplication` (control-plane мимо TUN)
-- Эффективный exclude = ручные пакеты ∪ пакеты **включённых** preset-групп (если `rulesEnabled`; на Free master всегда ON)
+- Эффективный exclude apps = ручные пакеты ∪ пакеты **включённых** preset-групп (если `rulesEnabled`; на Free master всегда ON)
+- Эффективные hosts = ручные хосты ∪ хосты **включённых** site-групп → DNS/route `domain_suffix` DIRECT; ввод через Enter, несколько URL/host через запятую/пробел → apex (`https://www.youtube.com/watch?` → `youtube.com`)
 - Группы с `isWhiteList=true`: в обычном режиме — в exclude (мимо TUN); на OpenFlux (WL) — **не** в exclude (через VPN). Классический bypass (`isWhiteList=false`) — всегда мимо TUN
-- Preset-группы: `GET https://vpn.example.invalid/tun` → `android[]` (`TunGroupsApi`); кэш prefs `tun_groups_json`
-- Free: все группы forced ON (Switch locked); кастомные apps недоступны; Plus/Vip — master Switch + тоггл группы + кастом
-- UI: App settings → TUN → Ad block → (paid) master rules → ручные apps → системные группы
-- Persist: SharedPreferences `bypass_packages`, `tun_*_overrides`, `tun_rules_enabled`, `tun_ad_block_enabled`
+- Preset-группы: `GET https://vpn.example.invalid/tun` → `android[]` + `sites[]` (`TunGroupsApi`); кэш prefs `tun_groups_json`
+- Free: все группы forced ON (Switch locked); кастомные apps/sites недоступны; Plus/Vip — master Switch + тоггл группы + кастом
+- UI: App settings → Routing → Ad block → (paid) master rules → ручные apps → ручные sites → группы apps → группы sites
+- Persist: SharedPreferences `bypass_packages`, `bypass_hosts`, `tun_*_overrides`, `tun_rules_enabled`, `tun_ad_block_enabled`
 
 ### Ad block (DNS + route)
 
