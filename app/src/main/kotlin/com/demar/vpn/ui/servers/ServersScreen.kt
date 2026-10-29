@@ -32,18 +32,17 @@ import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicatorDefaults
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.pullToRefresh
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -55,8 +54,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
@@ -69,12 +70,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,6 +85,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.demar.vpn.R
 import com.demar.vpn.data.account.AccountStore
 import com.demar.vpn.data.auth.AuthRepository
+import com.demar.vpn.data.auth.AuthSession
 import com.demar.vpn.data.servers.ServersStore
 import com.demar.vpn.data.vpn.VpnController
 import com.demar.vpn.domain.vpn.ServerProfile
@@ -95,28 +94,30 @@ import com.demar.vpn.domain.vpn.filterServers
 import com.demar.vpn.ui.components.ActiveTabContent
 import com.demar.vpn.ui.components.DemarSnackbar
 import com.demar.vpn.ui.components.toolbarBottomInset
-import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 private const val RefreshStubMinMs = 1_500L
 private const val WaveAmpMax = 0.035f
-private const val CursorBlinkMs = 1_000L
+private const val ContentSettleMs = 320
+private const val IndicatorFadeMs = 220
+private const val ServersReturnDelayMs = 80L
+private val Ease = FastOutSlowInEasing
 private val PullDistance = 56.dp
+private val RefreshHoldFrac = LoadingIndicatorDefaults.ContainerHeight / PullDistance
 private val HeaderPad = 8.dp
 private val HeaderActionSize = 56.dp
 private val HeaderCorner = 16.dp
 private val HeaderIconSize = 28.dp
 private val HeaderChipShape = RoundedCornerShape(HeaderCorner)
 private val ServerRowShape = RoundedCornerShape(12.dp)
-/** Matches iOS `ServerRow.rowMinHeight`. */
 private val ServerRowMinHeight = 72.dp
-
 private val LockedRowVeil = Brush.horizontalGradient(
   0.0f to Color.Black.copy(alpha = 0.28f),
   0.55f to Color.Black.copy(alpha = 0.14f),
@@ -149,15 +150,13 @@ fun ServersScreen(
     val pullState = rememberPullToRefreshState()
     var buttonRefreshing by remember { mutableStateOf(false) }
     var pullRefreshing by remember { mutableStateOf(false) }
-    val busy = buttonRefreshing || pullRefreshing
     var detailsProfile by remember { mutableStateOf<ServerProfile?>(null) }
     var showFilters by remember { mutableStateOf(false) }
     val badgePalette = rememberServerBadgePalette()
     val list = remember(profiles, enabledTiers, enabledProtocols, favoriteIds) {
       profiles.filterServers(enabledTiers, enabledProtocols, favoriteIds)
     }
-
-    fun reachOf(id: String) = reachability[id] ?: ServerReachState.Checking
+    val busy = buttonRefreshing || pullRefreshing
 
     DisposableEffect(active) {
       vpnController.setServersTabActive(active)
@@ -166,102 +165,127 @@ fun ServersScreen(
     LaunchedEffect(active, session?.userId) {
       if (active && session != null) vpnController.refreshServersOnTabOpen()
     }
-    // Spec §3: stale filters that match nothing after refresh → reset.
     LaunchedEffect(profiles, list) {
       if (profiles.isNotEmpty() && list.isEmpty()) ServersStore.resetFilters()
     }
 
-    fun launchRefresh(asButton: Boolean) {
+    fun refresh(asButton: Boolean) {
+      if (busy || session == null) return
+      if (asButton) buttonRefreshing = true else pullRefreshing = true
       scope.launch {
-        if (busy || session == null) return@launch
-        if (asButton) buttonRefreshing = true else pullRefreshing = true
         try {
           val t0 = System.currentTimeMillis()
-          vpnController.refreshSessionData() // ping continues in background after API
-          val remain = RefreshStubMinMs - (System.currentTimeMillis() - t0)
-          if (remain > 0) delay(remain)
+          vpnController.refreshSessionData()
+          delay((RefreshStubMinMs - (System.currentTimeMillis() - t0)).coerceAtLeast(0L))
         } finally {
           if (asButton) buttonRefreshing = false else pullRefreshing = false
         }
       }
     }
 
-    Column(
+    val contentFrac = remember { Animatable(0f) }
+    val indicatorAlpha = remember { Animatable(0f) }
+    var holding by remember { mutableStateOf(false) }
+    val settle = remember { tween<Float>(ContentSettleMs, easing = Ease) }
+    val fade = remember { tween<Float>(IndicatorFadeMs, easing = Ease) }
+    LaunchedEffect(pullRefreshing) {
+      if (pullRefreshing) {
+        holding = true
+        indicatorAlpha.snapTo(1f)
+        contentFrac.animateTo(RefreshHoldFrac, settle)
+      } else if (holding) {
+        val fadeJob = launch { indicatorAlpha.animateTo(0f, fade) }
+        val settleJob = launch {
+          delay(ServersReturnDelayMs)
+          contentFrac.animateTo(0f, settle)
+        }
+        fadeJob.join()
+        settleJob.join()
+        snapshotFlow { pullState.distanceFraction }.first { it <= 0.01f }
+        holding = false
+      }
+    }
+    LaunchedEffect(pullState.distanceFraction, pullRefreshing, holding) {
+      if (pullRefreshing || holding) return@LaunchedEffect
+      val frac = pullState.distanceFraction.coerceAtLeast(0f)
+      contentFrac.snapTo(frac)
+      indicatorAlpha.snapTo(frac.coerceIn(0f, 1f))
+    }
+
+    val pullOffset = PullDistance * contentFrac.value.coerceAtLeast(0f)
+    val indicatorFade = indicatorAlpha.value
+    Box(
       Modifier
         .fillMaxSize()
         .padding(top = 12.dp)
-        .padding(bottom = toolbarBottomInset(24.dp)),
-    ) {
-      ServersHeader(
-        refreshing = buttonRefreshing,
-        enabled = session != null,
-        filtersActive = ServersStore.filtersActive(enabledTiers, enabledProtocols),
-        onRefresh = { launchRefresh(asButton = true) },
-        onFilters = { showFilters = true },
-      )
-      Box(
-        Modifier
-          .weight(1f)
-          .fillMaxWidth()
-          .pullToRefresh(
-            state = pullState,
-            isRefreshing = pullRefreshing,
-            onRefresh = { launchRefresh(asButton = false) },
-            threshold = PullDistance,
-          ),
-      ) {
-        when {
-          session == null -> ServersEmptyState(
-            message = stringResource(R.string.servers_sign_in_hint),
-            actionLabel = stringResource(R.string.sign_in),
-            onAction = onNeedSignIn,
-          )
-          loading && profiles.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-          }
-          error != null && profiles.isEmpty() -> ServersEmptyState(
-            message = error ?: stringResource(R.string.servers_load_failed),
-            actionLabel = stringResource(R.string.servers_retry),
-            onAction = { scope.launch { vpnController.refreshServers() } },
-          )
-          list.isEmpty() -> ServersEmptyState(message = stringResource(R.string.servers_empty))
-          else -> LazyColumn(
-            Modifier
-              .fillMaxSize()
-              .offset(y = PullDistance * pullState.distanceFraction)
-              .semantics { contentDescription = "server_list" },
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-          ) {
-            items(list, key = { it.id }) { profile ->
-              ServerRow(
-                profile = profile,
-                selected = profile.id == selected?.id,
-                favorite = profile.id in favoriteIds,
-                reachState = reachOf(profile.id),
-                badgePalette = badgePalette,
-                onSelect = {
-                  vpnController.selectProfile(profile)
-                  scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
-                },
-                onDetails = { detailsProfile = profile },
-                onNeedUpgrade = onNeedUpgrade,
-              )
-            }
-          }
-        }
-        PullToRefreshDefaults.LoadingIndicator(
+        .padding(bottom = toolbarBottomInset(24.dp))
+        .pullToRefresh(
           state = pullState,
           isRefreshing = pullRefreshing,
-          modifier = Modifier.align(Alignment.TopCenter),
-          maxDistance = PullDistance,
+          onRefresh = { refresh(false) },
+          threshold = PullDistance,
+        ),
+    ) {
+      Column(Modifier.fillMaxSize()) {
+        ServersToolbar(
+          refreshing = buttonRefreshing,
+          enabled = session != null,
+          filtersActive = ServersStore.filtersActive(enabledTiers, enabledProtocols),
+          onRefresh = { refresh(true) },
+          onFilters = { showFilters = true },
         )
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+          Column(Modifier.fillMaxSize().offset(y = pullOffset)) {
+            Text(
+              stringResource(R.string.servers_header_label),
+              Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 4.dp, bottom = 8.dp),
+              color = Color.White,
+              style = MaterialTheme.typography.headlineLarge,
+              fontWeight = FontWeight.Bold,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+            ServersBody(
+              session = session,
+              loading = loading,
+              error = error,
+              profilesEmpty = profiles.isEmpty(),
+              list = list,
+              selectedId = selected?.id,
+              favoriteIds = favoriteIds,
+              reachability = reachability,
+              badgePalette = badgePalette,
+              onNeedSignIn = onNeedSignIn,
+              onRetry = { scope.launch { vpnController.refreshServers() } },
+              onSelect = {
+                vpnController.selectProfile(it)
+                scope.launch { DemarSnackbar.showSuccess(snackbarHost, selectedMsg) }
+              },
+              onDetails = { detailsProfile = it },
+              onNeedUpgrade = onNeedUpgrade,
+              modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+          }
+          if (indicatorFade > 0.01f) {
+            ContainedLoadingIndicator(
+              Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 4.dp)
+                .alpha(indicatorFade),
+            )
+          }
+        }
       }
     }
+
     detailsProfile?.let { profile ->
       val traffic by AccountStore.traffic.collectAsStateWithLifecycle()
       ServerDetailsSheet(
         profile = profile,
-        reachState = reachOf(profile.id),
+        reachState = reachability[profile.id] ?: ServerReachState.Checking,
         trafficBytes = traffic?.bytesForServer(profile.displayName),
         badgePalette = badgePalette,
         favorite = profile.id in favoriteIds,
@@ -276,95 +300,83 @@ fun ServersScreen(
 }
 
 @Composable
-private fun ServersHeader(
+private fun ServersBody(
+  session: AuthSession?,
+  loading: Boolean,
+  error: String?,
+  profilesEmpty: Boolean,
+  list: List<ServerProfile>,
+  selectedId: String?,
+  favoriteIds: Set<String>,
+  reachability: Map<String, ServerReachState>,
+  badgePalette: ServerBadgePalette,
+  onNeedSignIn: () -> Unit,
+  onRetry: () -> Unit,
+  onSelect: (ServerProfile) -> Unit,
+  onDetails: (ServerProfile) -> Unit,
+  onNeedUpgrade: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Box(modifier) {
+    when {
+      session == null -> ServersEmptyState(
+        stringResource(R.string.servers_sign_in_hint),
+        stringResource(R.string.sign_in),
+        onNeedSignIn,
+      )
+      loading && profilesEmpty -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+      error != null && profilesEmpty -> ServersEmptyState(
+        error.ifEmpty { stringResource(R.string.servers_load_failed) },
+        stringResource(R.string.servers_retry),
+        onRetry,
+      )
+      list.isEmpty() -> ServersEmptyState(stringResource(R.string.servers_empty))
+      else -> LazyColumn(
+        Modifier
+          .fillMaxSize()
+          .semantics { contentDescription = "server_list" },
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+      ) {
+        items(list, key = { it.id }) { profile ->
+          ServerRow(
+            profile = profile,
+            selected = profile.id == selectedId,
+            favorite = profile.id in favoriteIds,
+            reachState = reachability[profile.id] ?: ServerReachState.Checking,
+            badgePalette = badgePalette,
+            onSelect = { onSelect(profile) },
+            onDetails = { onDetails(profile) },
+            onNeedUpgrade = onNeedUpgrade,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun ServersToolbar(
   refreshing: Boolean,
   enabled: Boolean,
   filtersActive: Boolean,
   onRefresh: () -> Unit,
   onFilters: () -> Unit,
 ) {
-  val colors = IconButtonDefaults.filledTonalIconButtonColors()
-  val locale = LocalConfiguration.current.locales[0] ?: Locale.getDefault()
-  val style = MaterialTheme.typography.headlineSmall.copy(
-    fontWeight = FontWeight.Light,
-    fontStyle = FontStyle.Italic,
-  )
-  Surface(
-    modifier = Modifier
-      .fillMaxWidth()
-      .padding(horizontal = 16.dp),
-    shape = MaterialTheme.shapes.large,
-    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-  ) {
-    Row(
-      Modifier
-        .fillMaxWidth()
-        .padding(HeaderPad),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(HeaderPad),
-    ) {
-      Surface(
-        modifier = Modifier
-          .weight(1f)
-          .height(HeaderActionSize),
-        shape = HeaderChipShape,
-        color = colors.containerColor,
-      ) {
-        HeaderLabel(
-          text = stringResource(R.string.servers_header_label).uppercase(locale),
-          color = colors.contentColor,
-          style = style,
-        )
-      }
-      HeaderAction(
-        icon = Icons.Outlined.Refresh,
-        contentDescription = stringResource(R.string.servers_refresh),
-        onClick = onRefresh,
-        enabled = enabled,
-        spinning = refreshing,
-      )
-      HeaderAction(
-        icon = if (filtersActive) Icons.Outlined.FilterList else Icons.Outlined.Tune,
-        contentDescription = stringResource(R.string.servers_filters),
-        onClick = onFilters,
-      )
-    }
-  }
-}
-
-@Composable
-private fun HeaderLabel(
-  text: String,
-  color: Color,
-  style: TextStyle,
-) {
-  var cursorOn by remember { mutableStateOf(true) }
-  LaunchedEffect(Unit) {
-    while (true) {
-      delay(CursorBlinkMs)
-      cursorOn = !cursorOn
-    }
-  }
   Row(
-    Modifier
-      .fillMaxSize()
-      .padding(horizontal = 10.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    horizontalArrangement = Arrangement.spacedBy(HeaderPad, Alignment.End),
   ) {
-    Text(
-      text = text,
-      modifier = Modifier.weight(1f, fill = false),
-      color = color,
-      style = style,
-      maxLines = 1,
-      softWrap = false,
-      overflow = TextOverflow.Clip,
+    HeaderAction(
+      Icons.Outlined.Refresh,
+      stringResource(R.string.servers_refresh),
+      onRefresh,
+      enabled,
+      refreshing,
     )
-    Text(
-      text = "_",
-      color = color.copy(alpha = if (cursorOn) 1f else 0f),
-      style = style,
-      maxLines = 1,
+    HeaderAction(
+      if (filtersActive) Icons.Outlined.FilterList else Icons.Outlined.Tune,
+      stringResource(R.string.servers_filters),
+      onFilters,
     )
   }
 }
@@ -381,21 +393,19 @@ private fun HeaderAction(
   val wavePhase = remember { Animatable(0f) }
   val waveAmp = remember { Animatable(0f) }
   LaunchedEffect(spinning) {
-    val easeIn = tween<Float>(420, easing = FastOutSlowInEasing)
-    val easeOut = tween<Float>(360, easing = FastOutSlowInEasing)
     if (spinning) {
-      launch { waveAmp.animateTo(WaveAmpMax, easeIn) }
+      launch { waveAmp.animateTo(WaveAmpMax, tween(420, easing = Ease)) }
       launch {
         val turn = (2f * PI).toFloat()
         while (true) wavePhase.animateTo(wavePhase.value + turn, tween(1_400, easing = LinearEasing))
       }
       while (true) rotation.animateTo(rotation.value + 360f, tween(900, easing = LinearEasing))
     } else {
-      launch { waveAmp.animateTo(0f, easeOut) }
+      launch { waveAmp.animateTo(0f, tween(360, easing = Ease)) }
       val end = ceil(rotation.value / 360.0).toFloat() * 360f
       if (end > rotation.value + 0.5f) {
         val ms = (900f * (end - rotation.value) / 360f).toInt().coerceIn(180, 900)
-        rotation.animateTo(end, tween(ms, easing = FastOutSlowInEasing))
+        rotation.animateTo(end, tween(ms, easing = Ease))
       }
       rotation.snapTo(0f)
     }
@@ -423,13 +433,7 @@ private fun HeaderAction(
         )
         .semantics { this.contentDescription = contentDescription },
     ) {
-      Icon(
-        imageVector = icon,
-        contentDescription = null,
-        modifier = Modifier
-          .size(HeaderIconSize)
-          .rotate(rotation.value),
-      )
+      Icon(icon, null, Modifier.size(HeaderIconSize).rotate(rotation.value))
     }
   }
 }
@@ -516,9 +520,7 @@ private fun ServersEmptyState(
   onAction: (() -> Unit)? = null,
 ) {
   Column(
-    Modifier
-      .fillMaxSize()
-      .padding(32.dp),
+    Modifier.fillMaxSize().padding(32.dp),
     verticalArrangement = Arrangement.Center,
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
@@ -561,10 +563,7 @@ private fun ServerRow(
       .semantics { contentDescription = profile.displayName },
   ) {
     Row(
-      Modifier
-        .fillMaxWidth()
-        .heightIn(min = ServerRowMinHeight)
-        .padding(horizontal = 16.dp),
+      Modifier.fillMaxWidth().heightIn(min = ServerRowMinHeight).padding(horizontal = 16.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       CountryFlag(profile.countryCode)
@@ -596,11 +595,7 @@ private fun ServerRow(
       } else {
         val ping = ServerReachState.formatListLabel(reachState, profile.protocol)
         if (ping.isNotEmpty()) {
-          Text(
-            ping,
-            style = MaterialTheme.typography.labelSmall.compact(10.sp),
-            color = muted,
-          )
+          Text(ping, style = MaterialTheme.typography.labelSmall.compact(10.sp), color = muted)
           Spacer(Modifier.width(4.dp))
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, Modifier.size(20.dp), tint = muted)
