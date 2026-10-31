@@ -12,6 +12,9 @@
 # Local tooling (not in git)
 scripts/
 
+# API endpoints (see .env.example)
+.env
+
 # Android / Gradle local
 local.properties
 .gradle/

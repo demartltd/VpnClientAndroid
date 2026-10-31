@@ -14,7 +14,7 @@ Layout: `filestree.md` · core: `readme-core.md` · signing: `readme-signing.md`
 
 ## First build
 
-Prepare locally (not in git): `libbox.aar`, OpenFlux arm64 sidecar, rule-sets, launcher icons. Signing — [`readme-signing.md`](readme-signing.md).
+Prepare locally (not in git): copy `.env.example` → `.env`, `libbox.aar`, OpenFlux arm64 sidecar, rule-sets, launcher icons. Signing — [`readme-signing.md`](readme-signing.md).
 
 ```bash
 ./gradlew :app:assembleDebug

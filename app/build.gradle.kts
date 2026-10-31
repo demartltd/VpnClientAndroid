@@ -14,6 +14,16 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
+val demarEnv = Properties()
+val demarEnvFile = rootProject.file(".env")
+check(demarEnvFile.exists()) {
+    "Missing .env — copy .env.example to .env and set DEMAR_*_API_BASE"
+}
+demarEnv.load(FileInputStream(demarEnvFile))
+fun demarEnv(key: String): String =
+    demarEnv.getProperty(key)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: error("Missing $key in .env")
+
 val versionNameProp = providers.gradleProperty("VERSION_NAME").get()
 val versionCodeProp = providers.gradleProperty("VERSION_CODE").get().toInt()
 
@@ -27,6 +37,10 @@ android {
         targetSdk = 36
         versionCode = versionCodeProp
         versionName = versionNameProp
+        buildConfigField("String", "DEMAR_AUTH_API_BASE", "\"${demarEnv("DEMAR_AUTH_API_BASE")}\"")
+        buildConfigField("String", "DEMAR_VPN_API_BASE", "\"${demarEnv("DEMAR_VPN_API_BASE")}\"")
+        buildConfigField("String", "DEMAR_ACCOUNT_API_BASE", "\"${demarEnv("DEMAR_ACCOUNT_API_BASE")}\"")
+        buildConfigField("String", "DEMAR_SUPPORT_API_BASE", "\"${demarEnv("DEMAR_SUPPORT_API_BASE")}\"")
         ndk {
             abiFilters += listOf("arm64-v8a")
         }

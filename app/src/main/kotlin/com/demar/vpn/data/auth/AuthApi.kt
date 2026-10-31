@@ -30,12 +30,12 @@ data class SessionExchange(
 )
 
 object AuthApi {
-  const val BASE_URL = "https://auth.example.invalid"
-  const val VPN_API_BASE_URL = "https://vpn.example.invalid"
-  const val ACCOUNT_BASE_URL = "https://account.example.invalid"
+  val BASE_URL: String get() = BuildConfig.DEMAR_AUTH_API_BASE
+  val VPN_API_BASE_URL: String get() = BuildConfig.DEMAR_VPN_API_BASE
+  val ACCOUNT_BASE_URL: String get() = BuildConfig.DEMAR_ACCOUNT_API_BASE
   const val CLIENT_ID = "demar-vpn"
   /** HTTPS handoff page (Chrome cannot reliably open demarvpn:// after Telegram). */
-  const val APP_OAUTH_RETURN = "$ACCOUNT_BASE_URL/auth/app/complete"
+  val APP_OAUTH_RETURN: String get() = "$ACCOUNT_BASE_URL/auth/app/complete"
 
   /** e.g. Pixel 7 (14) - DemarVPN (1.0.7) (Android). ASCII hyphen — HTTP headers must be ASCII. */
   val UserAgent: String

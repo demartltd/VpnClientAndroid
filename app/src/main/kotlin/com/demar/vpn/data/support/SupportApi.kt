@@ -25,7 +25,7 @@ import java.net.URL
 import java.net.URLEncoder
 
 object SupportApi {
-  const val BASE_URL = "https://csauth.example.invalid"
+  val BASE_URL: String get() = BuildConfig.DEMAR_SUPPORT_API_BASE
   const val VpnSourceId = "2"
   const val Channel = "android"
   const val MaxMediaBytes = 25L * 1024 * 1024
