@@ -30,7 +30,7 @@ ServerProfile → SingBoxConnectPlan → [resolveUplinkIpv4s] → SingBoxConfigB
 2. `ServerProtocol` entry (`apiKey` / label)
 3. Parse/preview ветка в `ServersApi` (+ `ServerProfile.fromTag`)
 4. Test / API seed (не hardcode в runtime)
-5. При новом outbound — обновить `TAGS` в `scripts/libbox-build-android.py` (если нужен build tag)
+5. При новом outbound — обновить Libbox build `TAGS` локально (если нужен build tag)
 
 ---
 
@@ -164,7 +164,7 @@ Servermaster кладёт `route.rule_set` (RU/IR/CN) в `clientConfigJson`. К�
 
 ### Ad block (DNS + route)
 
-Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: bundled ads rule-set (`type: local`, tag `geosite-category-ads`) + DNS и route `action: reject`. Build: `scripts/sync_rulesets.ps1` → ads + geosite/geoip RU/IR/CN → `app/src/main/assets/rule-sets/` (gitignore; вызывается из `build_android.ps1` / `install_release.ps1` / `release_to_github.ps1`). Gradle `verifyRuleSets` на `preBuild`. Runtime — `RuleSets.prepare` (copy assets → `filesDir`), без сети. Path-реклама на first-party хосте (напр. `yandex.ru/ads/...`) DNS не режет. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
+Отдельный тоггл в TUN settings. Free: всегда off. Plus/VIP: default **on**, иначе сохранённый выбор. При on: bundled ads rule-set (`type: local`, tag `geosite-category-ads`) + DNS и route `action: reject`. Build: ads + geosite/geoip RU/IR/CN → `app/src/main/assets/rule-sets/` (gitignore; готовить локально перед релизом). Gradle `verifyRuleSets` на `preBuild`. Runtime — `RuleSets.prepare` (copy assets → `filesDir`), без сети. Path-реклама на first-party хосте (напр. `yandex.ru/ads/...`) DNS не режет. Ads **не** в `plan.bypassRuleSets`. Применение на следующем Connect.
 
 ---
 
@@ -203,11 +203,10 @@ Clash API `127.0.0.1:19090` (`experimental.clash_api`) — Home throughput via `
 ## Сборка Libbox
 
 ```bash
-python3 scripts/libbox-build-android.py
 ./gradlew :app:assembleRelease
 ```
 
-Очистка: `python3 scripts/singbox-cleaner.py -y`
+Libbox / assets готовить локально (не в git).
 
 ### Build tags
 

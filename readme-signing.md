@@ -10,7 +10,7 @@
 | Пароли и alias | `key.properties` (корень) | нет |
 | Шаблон | `key.properties.example` | да |
 | Gradle | `app/build.gradle.kts` | да |
-| Backup (max 3) | `scripts/build/android-signing-backup_*.zip` | нет |
+| Backup (max 3) | локальный zip вне репо | нет |
 | SHA-256 (в backup) | `sha256.txt` внутри zip | нет |
 
 `storeFile` в `key.properties` — **относительно** `app/`:
@@ -56,11 +56,7 @@ keytool -printcert -jarfile app/build/outputs/apk/release/app-release.apk
 
 ## Backup
 
-```powershell
-.\scripts\backup-android-signing.ps1
-```
-
-Zip в `scripts/build/` (max 3 копии). Хранить вне репозитория.
+Хранить копии `upload-keystore.jks` + `key.properties` вне репозитория (и вне git).
 
 ## Восстановление
 

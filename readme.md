@@ -14,17 +14,15 @@
 
 ## Первая сборка
 
+Локально (не в git): `libbox.aar`, OpenFlux sidecar arm64, rule-sets, launcher icons. Signing — [`readme-signing.md`](readme-signing.md).
+
 ```bash
-python3 scripts/libbox-build-android.py   # один раз (нужен go)
-./scripts/openflux-build-android.sh       # OpenFlux SOCKS sidecar arm64 → assets (нужен go)
-python3 scripts/generate_icons.py         # launcher icons из scripts/logo_clear.png
-# key.properties — см. readme-signing.md
-pwsh scripts/build_android.ps1
+./gradlew :app:assembleDebug
+# release:
+./gradlew :app:assembleRelease
 ```
 
-Установка release на USB: `pwsh scripts/install_release.ps1`
-
-Версия: `gradle.properties`. Bump: `pwsh scripts/increment_version_auto.ps1`
+Версия: `gradle.properties`.
 
 ---
 
@@ -47,14 +45,6 @@ VPN connect (Hysteria2 + Trojan + VLESS Reality + OpenFlux SOCKS sidecar) — **
 
 ```bash
 ./gradlew :app:installDebug && adb shell am start -n com.demar.vpn/.MainActivity
-./scripts/adb/debug.sh
-./scripts/adb/auth_login_test.sh
-./scripts/adb/servers_fetch_test.sh
-./scripts/adb/vpn_cycle_test.sh -n 5
-./scripts/adb/server_switch_test.sh -n 10
-./scripts/adb/tun_apps_test.sh
-./scripts/adb/self_traffic_test.sh
-./scripts/adb/test_all_devices.sh -n 5
 ```
 
 ### Auth
@@ -75,20 +65,10 @@ adb shell bmgr restore com.demar.vpn
 
 ### Журнал (AppLog)
 
-UI-журнал («Настройки → Настройки приложения») и ADB-выгрузка — один источник `AppLog` (до 512 строк, tail-trim). Приложение зеркалирует журнал во внешнее хранилище при каждой записи — доступно на **debug и release** без `run-as`.
+UI-журнал («Настройки → Настройки приложения») и файл на устройстве — один источник `AppLog` (до 512 строк, tail-trim). Приложение зеркалирует журнал во внешнее хранилище при каждой записи — доступно на **debug и release** без `run-as`.
 
 ```bash
-# Весь журнал в терминал
-./scripts/adb/journal.sh
-
-# Сохранить в файл
-./scripts/adb/journal.sh -o journal.txt
-```
-
-Путь на устройстве (ручной `adb pull`):
-
-```
-/sdcard/Android/data/com.demar.vpn/files/demar/demar_app.log
+adb pull /sdcard/Android/data/com.demar.vpn/files/demar/demar_app.log
 ```
 
 
