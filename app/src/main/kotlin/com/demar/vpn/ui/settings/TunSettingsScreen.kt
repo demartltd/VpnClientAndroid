@@ -269,26 +269,26 @@ fun TunSettingsScreen(
               )
             },
           ) {
-            if (!isFree) {
-              OutlinedTextField(
-                value = siteDraft,
-                onValueChange = { siteDraft = it },
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .padding(horizontal = 4.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                placeholder = { Text(stringResource(R.string.settings_tun_sites_hint)) },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(
-                  onDone = {
-                    vpnController.addBypassHost(siteDraft)
-                    siteDraft = ""
-                    focusManager.clearFocus()
-                  },
-                ),
-              )
-            }
+            OutlinedTextField(
+              value = siteDraft,
+              onValueChange = { siteDraft = it },
+              modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+              enabled = !isFree,
+              singleLine = true,
+              shape = RoundedCornerShape(12.dp),
+              placeholder = { Text(stringResource(R.string.settings_tun_sites_hint)) },
+              keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+              keyboardActions = KeyboardActions(
+                onDone = {
+                  if (isFree) return@KeyboardActions
+                  vpnController.addBypassHost(siteDraft)
+                  siteDraft = ""
+                  focusManager.clearFocus()
+                },
+              ),
+            )
             if (customHosts.isNotEmpty()) {
               Spacer(Modifier.height(8.dp))
               customHosts.forEach { host ->
