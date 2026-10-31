@@ -193,7 +193,6 @@ Servermaster кладёт `route.rule_set` (RU/IR/CN) в `clientConfigJson`. К�
 Mixed `127.0.0.1:10808` (`SingBoxTags.diagInbound`):
 
 - Post-connect: `VpnTunnelProbe` — HTTP через diag mixed → **proxy**; успех = **OR** (первый ответ): Google `generate_204` → CF domain → literal `1.1.1.1` (timeout 1.5s). Probe-хосты только в DNS bootstrap, не в route DIRECT. Правило `diag → proxy` стоит до domain DIRECT.
-- Egress: `NetworkDiagnostics` (roadmap)
 - Native snapshot: `getEgressRouteSnapshot` (`osVpnActive`, `demarConnected`, `diagProxyReady`)
 
 Clash API `127.0.0.1:19090` (`experimental.clash_api`) — Home throughput via `GET /traffic`.

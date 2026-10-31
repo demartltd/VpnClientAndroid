@@ -28,16 +28,14 @@
 
 ## UI
 
-| Экран | Статус |
-|-------|--------|
-| Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / Trojan / VLESS / OpenFlux) |
-| Servers | Refresh / фильтры 1:1 (sheet: tier + protocol multi-select); бейджи HY2/TRJ/VLESS; OpenFlux → White List/SOCKS; список с `vpn.example.invalid` по подписке |
-| Settings + social links | FA6 brand icons; Documents sheet → ToS/PP; Support sheet → CS tickets (`csauth.example.invalid`, channel `android`, `sourceId=2`, альбом до 10 фото WebP) |
-| Account + login sheet | Header (icon + name + ID); Subscription card; SettingsActionButtons → notify/traffic bottom sheets; family stub («Скоро»); Email OTP + Telegram OAuth → `auth.example.invalid`; VPN profile/notify/traffic → `vpn.example.invalid`; Buy/Renew/Increase → RollyPay checkout (`/vpn/pay/*`, Custom Tabs, `demarvpn://pay/ok\|fail`) |
-| App settings (журнал + язык + beta + TUN) | `AppLog` — до 512 строк; язык → системный `ACTION_APP_LOCALE_SETTINGS` (EN/RU/TR/UK/UZ/zh-Hans/zh-Hant/KO/JA/ES/DE/FR/HI, default = язык телефона); бета-канал; update sheet на каждый active + APK download в FGS; **TUN**: Ad block + app/site bypass; geo bypass = bundled geosite/geoip `.srs` (no runtime download) |
-| Service menu (3× tap version) | about + latest version API + diagnostics |
-
-VPN connect (Hysteria2 + Trojan + VLESS Reality + OpenFlux SOCKS sidecar) — **реализовано**. Auth (email OTP + Telegram) — **реализовано** (`data/auth/*`, `https://auth.example.invalid`). Account VPN profile / notify / monthly traffic — **реализовано** (`data/account/*`, `POST https://vpn.example.invalid/vpn/{account,notify,traffic}`). Subscription pay (RollyPay web checkout) — **реализовано** (`PayApi` GET `/vpn/pay/plans`, POST `/vpn/pay/create`; promo apply `/vpn/promo/apply`; return `demarvpn://pay/ok|fail` + session refresh). Servers list по подписке — **реализовано** (`POST https://vpn.example.invalid/vpn/servers`). Share, egress diagnostics — **следующий этап**. Throughput (Home KB/s) — **реализовано**.
+| Экран | |
+|-------|--|
+| Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / Trojan / VLESS / OpenFlux); throughput KB/s |
+| Servers | Refresh / фильтры (tier + protocol); бейджи HY2/TRJ/VLESS; OpenFlux → White List/SOCKS; список с `vpn.example.invalid` |
+| Settings + social links | FA6 brand icons; Documents → ToS/PP; Support → CS tickets (`csauth.example.invalid`) |
+| Account + login sheet | OTP + Telegram → `auth.example.invalid`; plan/traffic/notify → `vpn.example.invalid`; checkout RollyPay (`/vpn/pay/*`) |
+| App settings | журнал, язык, beta/update, TUN (ad block + app/site bypass, bundled geosite/geoip) |
+| Service menu (3× tap version) | about + diagnostics |
 
 ---
 
@@ -70,17 +68,3 @@ UI-журнал («Настройки → Настройки приложени�
 ```bash
 adb pull /sdcard/Android/data/com.demar.vpn/files/demar/demar_app.log
 ```
-
-
----
-
-## Статус (2026-06)
-
-| Область | Статус |
-|---------|--------|
-| Compose UI (4 tabs + push + login) | реализовано |
-| Тема / snackbar / соц. иконки / i18n EN+RU+TR+UK+UZ+zh-Hans+zh-Hant+KO+JA+ES+DE+FR+HI | per-app language через `localeConfig`; checkout default currency: RU→RUB, иначе EUR |
-| Libbox VPN layer | `vpn/*` |
-| Domain / data / VPN pipeline | `domain/vpn/*`, `data/vpn/*` (HY2 + Trojan + VLESS + OpenFlux) |
-| Home connect/disconnect | `VpnController` + `MainActivity` VPN permission |
-| Auto-update (APK + SHA-256) | `data/update/*`, Home FAB + UpdateBottomSheet; beta channel via App settings → `/android/beta` |
