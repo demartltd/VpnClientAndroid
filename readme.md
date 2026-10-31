@@ -1,5 +1,7 @@
 **Demar Proxy Android** — native VPN client in Kotlin + Jetpack Compose
 
+License: [GNU GPL v3](LICENSE) (copyleft / open source). Names **Demar VPN** / **Demar Proxy** and Demar package IDs are reserved — see LICENSE additional terms.
+
 Platform: **Android only**.
 
 **Android minSdk: API 33** (Android 13). arm64-only APK — `app/build.gradle.kts`.
