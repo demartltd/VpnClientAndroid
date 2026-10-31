@@ -31,9 +31,9 @@
 | Экран | |
 |-------|--|
 | Home (VPN toggle) | Connect/disconnect через `VpnController` (HY2 / Trojan / VLESS / OpenFlux); throughput KB/s |
-| Servers | Refresh / фильтры (tier + protocol); бейджи HY2/TRJ/VLESS; OpenFlux → White List/SOCKS; список с `vpn.example.invalid` |
-| Settings + social links | FA6 brand icons; Documents → ToS/PP; Support → CS tickets (`csauth.example.invalid`) |
-| Account + login sheet | OTP + Telegram → `auth.example.invalid`; plan/traffic/notify → `vpn.example.invalid`; checkout RollyPay (`/vpn/pay/*`) |
+| Servers | Refresh / фильтры (tier + protocol); бейджи HY2/TRJ/VLESS; OpenFlux → White List/SOCKS; список с VPN API |
+| Settings + social links | FA6 brand icons; Documents → ToS/PP; Support → CS tickets (support API) |
+| Account + login sheet | OTP + Telegram → auth API; plan/traffic/notify → VPN API; checkout RollyPay (`/vpn/pay/*`) |
 | App settings | журнал, язык, beta/update, TUN (ad block + app/site bypass, bundled geosite/geoip) |
 | Service menu (3× tap version) | about + diagnostics |
 
@@ -59,7 +59,7 @@ adb shell bmgr restore com.demar.vpn
 
 ### Servers
 
-После входа `POST https://vpn.example.invalid/vpn/servers` → список по подписке. Неподдерживаемые протоколы пропускаются в клиенте. Без сессии — CTA войти. Pull-to-refresh обновляет список + reachability.
+После входа `POST /vpn/servers` → список по подписке. Неподдерживаемые протоколы пропускаются в клиенте. Без сессии — CTA войти. Pull-to-refresh обновляет список + reachability.
 
 ### Журнал (AppLog)
 
